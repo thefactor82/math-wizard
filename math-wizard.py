@@ -3,7 +3,6 @@ import random
 import sys
 from collections import deque
 
-# === CONFIGURAZIONI ===
 VITE_MAGO = 3
 TEMPO_LIMITE = 12
 SCREEN_WIDTH = 1280
@@ -70,6 +69,7 @@ class Gioco:
         self.font_piccolo = pygame.font.Font(None, 30)
         self.font_input = pygame.font.Font(None, 56)
         self.font_stats = pygame.font.Font(None, 28)
+        self.font_num = pygame.font.Font(None, 36)
 
         self.carica_risorse()
         self.azzera_partita()
@@ -87,7 +87,13 @@ class Gioco:
         self.monster_img = pygame.transform.scale(monster_sheet, (200, int(200 / mw * mh)))
 
         self.char_h = self.char_img.get_height()
+
     def azzera_partita(self):
+        self.modalita = "auto"
+        self.pool_a = list(range(0, 10))
+        self.pool_b = list(range(0, 10))
+        self.domande_totali = 10
+        self.domande_fatte = 0
         self.vite = VITE_MAGO
         self.livello = 0
         self.corretto = 0
@@ -103,20 +109,63 @@ class Gioco:
         self.feedback_timer = 0
         self.game_over = False
         self.inizio_domanda = 0
-        self.anim_frame = 0
-        self.anim_timer = 0
         self.timeout_gestito = False
+
+        self.config_cursor_row = 0
+        self.config_cursor_col = 0
+        self.config_pool_a = [n in self.pool_a for n in range(13)]
+        self.config_pool_b = [n in self.pool_b for n in range(13)]
+        self.config_domande = 10
+        self.config_swap = False
 
         self.tempi_risposta = []
         self.blocco_corrente = []
         self.coda_rinforzo = deque()
         self.stats = {}
 
+    def mostra_config(self):
+        self.state = "config_fisso"
+
+    def avvia_partita(self):
+        self.state = "gioco"
+        self.game_over = False
+        self.vite = VITE_MAGO
+        self.livello = 0
+        self.tempi_risposta = []
+        self.blocco_corrente = []
+        self.coda_rinforzo = deque()
+        self.stats = {}
+        self.domande_fatte = 0
+        self.domanda_attiva = False
+        self.feedback = None
+        self.game_over = False
+        if self.modalita == "fisso":
+            self.pool_a = [n for n in range(13) if self.config_pool_a[n]]
+            self.pool_b = [n for n in range(13) if self.config_pool_b[n]]
+            if not self.pool_a:
+                self.pool_a = [0]
+            if not self.pool_b:
+                self.pool_b = [0]
+            self.domande_totali = self.config_domande
+            self.swap_operandi = self.config_swap
+        self.nuova_domanda()
+
     def nuova_domanda(self):
         if self.vite <= 0:
             return
-        pool = get_pool(self.livello)
-        self.a, self.b = genera_operandi(pool, self.livello, self.coda_rinforzo)
+        if self.modalita == "auto":
+            pool = get_pool(self.livello)
+            self.a, self.b = genera_operandi(pool, self.livello, self.coda_rinforzo)
+        else:
+            if self.domande_fatte >= self.domande_totali:
+                self.game_over = True
+                return
+            self.a = random.choice(self.pool_a)
+            self.b = random.choice(self.pool_b)
+            if self.swap_operandi and random.random() < 0.5:
+                self.a, self.b = self.b, self.a
+            self.domande_fatte += 1
+
         self.risultato_atteso = self.a * self.b
         self.input_utente = ""
         self.mostro_progresso = 0.0
@@ -127,9 +176,10 @@ class Gioco:
         self.timeout_gestito = False
         self.inizio_domanda = pygame.time.get_ticks()
 
-        richieste = 5 + sum(range(1, self.livello + 1))
-        fatte = sum(1 for esito, _ in self.blocco_corrente if esito)
-        self.domande_mancanti = max(richieste - fatte, 0)
+        if self.modalita == "auto":
+            richieste = 5 + sum(range(1, self.livello + 1))
+            fatte = sum(1 for esito, _ in self.blocco_corrente if esito)
+            self.domande_mancanti = max(richieste - fatte, 0)
 
     def gestisci_input(self, event):
         if event.type == pygame.KEYDOWN:
@@ -141,12 +191,16 @@ class Gioco:
                 self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), flags)
                 return
             if self.state == "menu":
-                if event.key == pygame.K_RETURN:
-                    self.state = "gioco"
-                    self.azzera_partita()
-                    self.nuova_domanda()
+                if event.key == pygame.K_1:
+                    self.modalita = "auto"
+                    self.avvia_partita()
+                elif event.key == pygame.K_2:
+                    self.modalita = "fisso"
+                    self.mostra_config()
                 elif event.key == pygame.K_ESCAPE:
                     self.running = False
+            elif self.state == "config_fisso":
+                self.gestisci_config(event)
             elif self.state == "gioco":
                 if event.key == pygame.K_ESCAPE:
                     self.state = "menu"
@@ -159,13 +213,48 @@ class Gioco:
                         self.input_utente += event.unicode
             elif self.state == "gameover":
                 if event.key == pygame.K_r:
-                    self.state = "gioco"
-                    self.azzera_partita()
-                    self.nuova_domanda()
+                    self.avvia_partita()
                 elif event.key == pygame.K_m:
                     self.state = "menu"
                 elif event.key == pygame.K_ESCAPE:
                     self.running = False
+
+    def gestisci_config(self, event):
+        if event.key == pygame.K_ESCAPE:
+            self.state = "menu"
+            return
+        if event.key == pygame.K_RETURN:
+            self.avvia_partita()
+            return
+
+        max_col = 12 if self.config_cursor_row in (0, 1) else 0
+        if event.key == pygame.K_UP:
+            self.config_cursor_row = max(0, self.config_cursor_row - 1)
+            self.config_cursor_col = min(self.config_cursor_col, 12 if self.config_cursor_row in (0, 1) else 0)
+        elif event.key == pygame.K_DOWN:
+            self.config_cursor_row = min(4, self.config_cursor_row + 1)
+            self.config_cursor_col = min(self.config_cursor_col, 12 if self.config_cursor_row in (0, 1) else 0)
+        elif event.key == pygame.K_LEFT:
+            self.config_cursor_col = max(0, self.config_cursor_col - 1)
+        elif event.key == pygame.K_RIGHT:
+            self.config_cursor_col = min(max_col, self.config_cursor_col + 1)
+        elif event.key == pygame.K_SPACE:
+            if self.config_cursor_row == 0:
+                self.config_pool_a[self.config_cursor_col] = not self.config_pool_a[self.config_cursor_col]
+                if not any(self.config_pool_a):
+                    self.config_pool_a[self.config_cursor_col] = True
+            elif self.config_cursor_row == 1:
+                self.config_pool_b[self.config_cursor_col] = not self.config_pool_b[self.config_cursor_col]
+                if not any(self.config_pool_b):
+                    self.config_pool_b[self.config_cursor_col] = True
+            elif self.config_cursor_row == 3:
+                self.config_swap = not self.config_swap
+        elif event.key in (pygame.K_PLUS, pygame.K_EQUALS):
+            if self.config_cursor_row == 2:
+                self.config_domande = min(99, self.config_domande + 1)
+        elif event.key == pygame.K_MINUS:
+            if self.config_cursor_row == 2:
+                self.config_domande = max(1, self.config_domande - 1)
 
     def controlla_risposta(self):
         if not self.domanda_attiva:
@@ -174,7 +263,7 @@ class Gioco:
         tempo = min((pygame.time.get_ticks() - self.inizio_domanda) / 1000.0, TEMPO_LIMITE)
         self.tempi_risposta.append(tempo)
 
-        livello = self.livello
+        livello = 0 if self.modalita == "fisso" else self.livello
         self.stats.setdefault(livello, {"corrette": 0, "sbagliate": 0, "tempi": []})
 
         if self.input_utente.strip().isdigit():
@@ -207,7 +296,7 @@ class Gioco:
         self.feedback = self.corretto
         self.feedback_timer = pygame.time.get_ticks()
 
-        if self.corretto:
+        if self.modalita == "auto" and self.corretto:
             richieste = 5 + sum(range(1, self.livello + 1))
             ultimi = self.blocco_corrente[-richieste:]
             corrette_blocco = sum(1 for esito, _ in ultimi if esito)
@@ -227,7 +316,7 @@ class Gioco:
         self.timeout_gestito = True
         tempo = TEMPO_LIMITE
         self.tempi_risposta.append(tempo)
-        livello = self.livello
+        livello = 0 if self.modalita == "fisso" else self.livello
         self.stats.setdefault(livello, {"corrette": 0, "sbagliate": 0, "tempi": []})
         self.stats[livello]["sbagliate"] += 1
         self.stats[livello]["tempi"].append(tempo)
@@ -246,7 +335,7 @@ class Gioco:
     def aggiorna(self):
         if self.state == "gameover":
             return
-        if self.state != "gioco":
+        if self.state not in ("gioco",):
             return
 
         if self.domanda_attiva:
@@ -268,6 +357,8 @@ class Gioco:
 
         if self.state == "menu":
             self.disegna_menu()
+        elif self.state == "config_fisso":
+            self.disegna_config()
         elif self.state == "gioco":
             if self.game_over:
                 self.disegna_gameover()
@@ -285,35 +376,107 @@ class Gioco:
         self.screen.blit(overlay, (0, 0))
 
         titolo = self.font_titolo.render("MATH WIZARD", True, GOLD)
-        rect = titolo.get_rect(center=(SCREEN_WIDTH // 2, 160))
+        rect = titolo.get_rect(center=(SCREEN_WIDTH // 2, 100))
         self.screen.blit(titolo, rect)
 
         sottotitolo = self.font_medio.render("Impara le tabelline divertendoti!", True, WHITE)
-        rect = sottotitolo.get_rect(center=(SCREEN_WIDTH // 2, 230))
+        rect = sottotitolo.get_rect(center=(SCREEN_WIDTH // 2, 160))
         self.screen.blit(sottotitolo, rect)
 
-        righe = [
-            "Rispondi correttamente alle moltiplicazioni",
-            "Il mostro si avvicina mentre pensi!",
-            f"Hai {TEMPO_LIMITE} secondi per ogni risposta",
-            f"{VITE_MAGO} vite a disposizione per arrivare al livello 10"
-        ]
-        y = 310
-        for riga in righe:
-            surf = self.font_piccolo.render(riga, True, (200, 200, 200))
-            rect = surf.get_rect(center=(SCREEN_WIDTH // 2, y))
-            self.screen.blit(surf, rect)
-            y += 40
+        y = 280
+        opt1 = self.font_grande.render("1  Autoapprendimento", True, WHITE)
+        rect = opt1.get_rect(midleft=(SCREEN_WIDTH // 2 - 300, y))
+        self.screen.blit(opt1, rect)
+        desc1 = self.font_piccolo.render("Livelli progressivi automatici, operandi 0-12, level-up basato su precisione e velocita", True, GRAY)
+        rect = desc1.get_rect(midleft=(SCREEN_WIDTH // 2 - 300, y + 40))
+        self.screen.blit(desc1, rect)
 
-        start = self.font_grande.render("Premi INVIO per iniziare", True, GREEN)
-        rect = start.get_rect(center=(SCREEN_WIDTH // 2, 520))
-        pulse = abs(pygame.time.get_ticks() % 1000 - 500) / 500
-        start.set_alpha(int(128 + 127 * pulse))
-        self.screen.blit(start, rect)
+        y = 380
+        opt2 = self.font_grande.render("2  Livello Fisso", True, WHITE)
+        rect = opt2.get_rect(midleft=(SCREEN_WIDTH // 2 - 300, y))
+        self.screen.blit(opt2, rect)
+        desc2 = self.font_piccolo.render("Scegli operandi, numero domande e sfida a difficolta costante", True, GRAY)
+        rect = desc2.get_rect(midleft=(SCREEN_WIDTH // 2 - 300, y + 40))
+        self.screen.blit(desc2, rect)
 
-        esci = self.font_piccolo.render("ESC per uscire", True, GRAY)
-        rect = esci.get_rect(center=(SCREEN_WIDTH // 2, 600))
-        self.screen.blit(esci, rect)
+        info = self.font_piccolo.render("Premi 1 o 2 per selezionare  |  ESC per uscire", True, WHITE)
+        rect = info.get_rect(center=(SCREEN_WIDTH // 2, 550))
+        self.screen.blit(info, rect)
+
+    def disegna_config(self):
+        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+        overlay.set_alpha(200)
+        overlay.fill(BG_DARK)
+        self.screen.blit(overlay, (0, 0))
+
+        titolo = self.font_titolo.render("LIVELLO FISSO", True, GOLD)
+        rect = titolo.get_rect(center=(SCREEN_WIDTH // 2, 50))
+        self.screen.blit(titolo, rect)
+
+        labels = ["Operando A", "Operando B"]
+        pools = [self.config_pool_a, self.config_pool_b]
+
+        for row in range(2):
+            y = 140 + row * 100
+            label = self.font_medio.render(labels[row], True, WHITE)
+            rect = label.get_rect(midleft=(80, y + 20))
+            self.screen.blit(label, rect)
+
+            for col in range(13):
+                sx = 280 + col * 68
+                selected = pools[row][col]
+                focused = self.config_cursor_row == row and self.config_cursor_col == col
+                bg_col = (60, 130, 60) if selected else (60, 60, 70)
+                if focused:
+                    pygame.draw.rect(self.screen, (255, 255, 100), (sx - 2, y - 2, 58, 38), 3, border_radius=4)
+                pygame.draw.rect(self.screen, bg_col, (sx, y, 54, 34), border_radius=4)
+                num = self.font_num.render(str(col), True, WHITE)
+                rect_n = num.get_rect(center=(sx + 27, y + 17))
+                self.screen.blit(num, rect_n)
+
+        y = 360
+        label_q = self.font_medio.render("Domande", True, WHITE)
+        rect = label_q.get_rect(midleft=(80, y + 20))
+        self.screen.blit(label_q, rect)
+
+        focused = self.config_cursor_row == 2
+        qx = 280
+        if focused:
+            pygame.draw.rect(self.screen, (255, 255, 100), (qx - 2, y - 2, 90, 38), 3, border_radius=4)
+        pygame.draw.rect(self.screen, (60, 60, 70), (qx, y, 86, 34), border_radius=4)
+        q_surf = self.font_grande.render(str(self.config_domande), True, WHITE)
+        rect_q = q_surf.get_rect(center=(qx + 43, y + 17))
+        self.screen.blit(q_surf, rect_q)
+        hint = self.font_piccolo.render("+ / -", True, GRAY)
+        rect_h = hint.get_rect(midleft=(qx + 100, y + 17))
+        self.screen.blit(hint, rect_h)
+
+        y = 450
+        swap_sel = self.config_cursor_row == 3
+        if swap_sel:
+            pygame.draw.rect(self.screen, (255, 255, 100), (270, y - 4, 190, 44), 3, border_radius=6)
+        bg_swap = (60, 130, 60) if self.config_swap else (60, 60, 70)
+        pygame.draw.rect(self.screen, bg_swap, (272, y, 186, 36), border_radius=6)
+        sw_txt = "ON" if self.config_swap else "OFF"
+        swap_label = self.font_medio.render("Scambia A e B", True, WHITE)
+        rect_sl = swap_label.get_rect(midleft=(80, y + 18))
+        self.screen.blit(swap_label, rect_sl)
+        swap_val = self.font_medio.render(sw_txt, True, WHITE)
+        rect_sv = swap_val.get_rect(center=(365, y + 18))
+        self.screen.blit(swap_val, rect_sv)
+
+        y = 510
+        start_sel = self.config_cursor_row == 4
+        if start_sel:
+            pygame.draw.rect(self.screen, (255, 255, 100), (SCREEN_WIDTH // 2 - 112, y - 4, 224, 54), 3, border_radius=8)
+        pygame.draw.rect(self.screen, (40, 120, 40), (SCREEN_WIDTH // 2 - 110, y, 220, 46), border_radius=8)
+        start_txt = self.font_medio.render("INVIA", True, WHITE)
+        rect_s = start_txt.get_rect(center=(SCREEN_WIDTH // 2, y + 23))
+        self.screen.blit(start_txt, rect_s)
+
+        help = self.font_piccolo.render("Freccette: naviga  |  SPACE: attiva/disattiva  |  INVIO: conferma  |  ESC: indietro", True, GRAY)
+        rect_h2 = help.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 40))
+        self.screen.blit(help, rect_h2)
 
     def disegna_gioco(self):
         wx = 80
@@ -340,18 +503,27 @@ class Gioco:
                 rect = preview.get_rect(center=(SCREEN_WIDTH // 2, 200))
                 self.screen.blit(preview, rect)
 
-        richieste = 5 + sum(range(1, self.livello + 1))
-        corr = sum(1 for esito, _ in self.blocco_corrente if esito)
-        stato = self.font_piccolo.render(f"Livello {self.livello + 1}/{len(LIVELLI)} - {corr}/{richieste} corrette", True, WHITE)
-        self.screen.blit(stato, (20, 20))
+        if self.modalita == "auto":
+            richieste = 5 + sum(range(1, self.livello + 1))
+            corr = sum(1 for esito, _ in self.blocco_corrente if esito)
+            stato = self.font_piccolo.render(f"Livello {self.livello + 1}/{len(LIVELLI)} - {corr}/{richieste} corrette", True, WHITE)
+            self.screen.blit(stato, (20, 20))
+            mode_txt = "Autoapprendimento"
+        else:
+            stato = self.font_piccolo.render(f"Domanda {self.domande_fatte}/{self.domande_totali}", True, WHITE)
+            self.screen.blit(stato, (20, 20))
+            mode_txt = "Livello Fisso"
+        mode = self.font_piccolo.render(mode_txt, True, GRAY)
+        rect_m = mode.get_rect(midright=(SCREEN_WIDTH - 20, 20))
+        self.screen.blit(mode, rect_m)
 
         for i in range(VITE_MAGO):
             colore = RED if i < self.vite else DARK
-            pygame.draw.rect(self.screen, colore, (SCREEN_WIDTH - 70 - i * 50, 25, 35, 30), border_radius=4)
+            pygame.draw.rect(self.screen, colore, (SCREEN_WIDTH - 70 - i * 50, 30, 35, 30), border_radius=4)
             if i < self.vite:
-                pygame.draw.rect(self.screen, (255, 100, 100), (SCREEN_WIDTH - 70 - i * 50 + 3, 28, 29, 24), border_radius=3)
+                pygame.draw.rect(self.screen, (255, 100, 100), (SCREEN_WIDTH - 70 - i * 50 + 3, 33, 29, 24), border_radius=3)
             pygame.draw.rect(self.screen, (200, 200, 200) if i < self.vite else (60, 60, 60),
-                           (SCREEN_WIDTH - 70 - i * 50, 25, 35, 30), 2, border_radius=4)
+                           (SCREEN_WIDTH - 70 - i * 50, 30, 35, 30), 2, border_radius=4)
 
         if self.domanda_attiva:
             bar_w = 400
@@ -403,7 +575,7 @@ class Gioco:
             titolo = self.font_titolo.render("GAME OVER", True, RED)
         else:
             titolo = self.font_titolo.render("PARTITA TERMINATA", True, GOLD)
-        rect = titolo.get_rect(center=(SCREEN_WIDTH // 2, 60))
+        rect = titolo.get_rect(center=(SCREEN_WIDTH // 2, 50))
         self.screen.blit(titolo, rect)
 
         tot_corrette = sum(v["corrette"] for v in self.stats.values())
@@ -414,33 +586,37 @@ class Gioco:
             (f"Corrette: {tot_corrette}", GREEN),
             (f"Sbagliate: {tot_sbagliate}", RED),
             (f"Vite rimaste: {self.vite}", YELLOW),
-            (f"Livello raggiunto: {self.livello + 1}/{len(LIVELLI)}", WHITE),
             (f"Tempo medio: {tempo_medio:.1f}s", WHITE),
         ]
-        y = 130
+        if self.modalita == "auto":
+            righe.insert(2, (f"Livello raggiunto: {self.livello + 1}/{len(LIVELLI)}", WHITE))
+        y = 110
         for testo, colore in righe:
             surf = self.font_medio.render(testo, True, colore)
             rect = surf.get_rect(center=(SCREEN_WIDTH // 2, y))
             self.screen.blit(surf, rect)
-            y += 50
+            y += 46
 
         if self.stats:
             y += 10
-            titolo_stat = self.font_medio.render("Statistiche per livello:", True, GOLD)
+            titolo_stat = self.font_medio.render("Statistiche:", True, GOLD)
             rect = titolo_stat.get_rect(center=(SCREEN_WIDTH // 2, y))
             self.screen.blit(titolo_stat, rect)
-            y += 42
+            y += 38
 
             for i in sorted(self.stats.keys()):
                 entry = self.stats[i]
                 media = sum(entry['tempi']) / len(entry['tempi']) if entry['tempi'] else 0
-                testo = f"Livello {i + 1}: {entry['corrette']} corrette / {entry['sbagliate']} sbagliate - Tempo medio: {media:.1f}s"
+                if self.modalita == "auto":
+                    testo = f"Livello {i + 1}: {entry['corrette']} corrette / {entry['sbagliate']} sbagliate - Tempo medio: {media:.1f}s"
+                else:
+                    testo = f"Pool A e B: {entry['corrette']} corrette / {entry['sbagliate']} sbagliate - Tempo medio: {media:.1f}s"
                 surf = self.font_stats.render(testo, True, (200, 200, 200))
                 rect = surf.get_rect(center=(SCREEN_WIDTH // 2, y))
                 self.screen.blit(surf, rect)
-                y += 30
+                y += 28
 
-        y = max(y + 30, SCREEN_HEIGHT - 120)
+        y = max(y + 20, SCREEN_HEIGHT - 100)
         restart = self.font_medio.render("Premi R per rigiocare  |  M per menu  |  ESC per uscire", True, WHITE)
         rect = restart.get_rect(center=(SCREEN_WIDTH // 2, y))
         self.screen.blit(restart, rect)
