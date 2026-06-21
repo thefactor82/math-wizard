@@ -1,7 +1,11 @@
 import pygame
 import random
 import sys
+import os
+from datetime import datetime
 from collections import deque
+
+SESSIONS_FILE = "sessions.txt"
 
 VITE_MAGO = 3
 TEMPO_LIMITE = 12
@@ -39,7 +43,7 @@ def get_pool(livello_idx):
     return [n for n in base if n not in esclusi] + inclusi
 
 def genera_operandi(pool, livello_idx, reinforce_queue):
-    if reinforce_queue and random.random() < 0.3:
+    if reinforce_queue and random.random() < 0.5:
         return reinforce_queue.popleft()
     while True:
         a = random.choice(pool)
@@ -62,6 +66,8 @@ class Gioco:
         self.clock = pygame.time.Clock()
         self.running = True
         self.state = "menu"
+        self.debug = False
+        self.debug_buf = ""
 
         self.font_titolo = pygame.font.Font(None, 80)
         self.font_grande = pygame.font.Font(None, 64)
@@ -99,6 +105,8 @@ class Gioco:
         self.corretto = 0
         self.a = 0
         self.b = 0
+        self.prev_a = -1
+        self.prev_b = -1
         self.risultato_atteso = 0
         self.input_utente = ""
         self.mostro_progresso = 0.0
@@ -107,6 +115,7 @@ class Gioco:
         self.domanda_attiva = False
         self.feedback = None
         self.feedback_timer = 0
+        self.attendi_invio = False
         self.game_over = False
         self.inizio_domanda = 0
         self.timeout_gestito = False
@@ -116,7 +125,7 @@ class Gioco:
         self.config_pool_a = [n in self.pool_a for n in range(13)]
         self.config_pool_b = [n in self.pool_b for n in range(13)]
         self.config_domande = 10
-        self.config_swap = False
+        self.config_swap = True
 
         self.tempi_risposta = []
         self.blocco_corrente = []
@@ -138,6 +147,9 @@ class Gioco:
         self.domande_fatte = 0
         self.domanda_attiva = False
         self.feedback = None
+        self.attendi_invio = False
+        self.prev_a = -1
+        self.prev_b = -1
         self.game_over = False
         if self.modalita == "fisso":
             self.pool_a = [n for n in range(13) if self.config_pool_a[n]]
@@ -160,11 +172,25 @@ class Gioco:
             if self.domande_fatte >= self.domande_totali:
                 self.game_over = True
                 return
-            self.a = random.choice(self.pool_a)
-            self.b = random.choice(self.pool_b)
+            if self.coda_rinforzo and random.random() < 0.5:
+                self.a, self.b = self.coda_rinforzo.popleft()
+            else:
+                self.a = random.choice(self.pool_a)
+                self.b = random.choice(self.pool_b)
             if self.swap_operandi and random.random() < 0.5:
                 self.a, self.b = self.b, self.a
             self.domande_fatte += 1
+
+        if (self.a, self.b) == (self.prev_a, self.prev_b):
+            if self.a == self.b:
+                pool = get_pool(self.livello) if self.modalita == "auto" else self.pool_a
+                candidates = [n for n in pool if n != self.a]
+                if candidates:
+                    self.a = random.choice(candidates)
+                    self.b = random.choice(pool)
+            else:
+                self.a, self.b = self.b, self.a
+        self.prev_a, self.prev_b = self.a, self.b
 
         self.risultato_atteso = self.a * self.b
         self.input_utente = ""
@@ -173,6 +199,7 @@ class Gioco:
         self.domanda_attiva = True
         self.feedback = None
         self.feedback_timer = 0
+        self.attendi_invio = False
         self.timeout_gestito = False
         self.inizio_domanda = pygame.time.get_ticks()
 
@@ -190,6 +217,11 @@ class Gioco:
                     flags |= pygame.FULLSCREEN
                 self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), flags)
                 return
+            if event.unicode and event.unicode.isalpha():
+                self.debug_buf = (self.debug_buf + event.unicode.lower())[-5:]
+                if self.debug_buf == "debug":
+                    self.debug = not self.debug
+                    self.debug_buf = ""
             if self.state == "menu":
                 if event.key == pygame.K_1:
                     self.modalita = "auto"
@@ -204,6 +236,12 @@ class Gioco:
             elif self.state == "gioco":
                 if event.key == pygame.K_ESCAPE:
                     self.state = "menu"
+                elif self.attendi_invio and event.key == pygame.K_RETURN:
+                    if self.game_over:
+                        self.salva_sessione()
+                        self.state = "gameover"
+                    else:
+                        self.nuova_domanda()
                 elif self.domanda_attiva:
                     if event.key == pygame.K_RETURN and self.input_utente:
                         self.controlla_risposta()
@@ -295,6 +333,8 @@ class Gioco:
         self.domanda_attiva = False
         self.feedback = self.corretto
         self.feedback_timer = pygame.time.get_ticks()
+        if not self.corretto:
+            self.attendi_invio = True
 
         if self.modalita == "auto" and self.corretto:
             richieste = 5 + sum(range(1, self.livello + 1))
@@ -328,6 +368,7 @@ class Gioco:
         self.domanda_attiva = False
         self.feedback = False
         self.feedback_timer = pygame.time.get_ticks()
+        self.attendi_invio = True
         self.mostro_colpito = True
         if self.vite <= 0:
             self.game_over = True
@@ -346,8 +387,11 @@ class Gioco:
             if self.mostro_progresso >= 1.0:
                 self.gestisci_timeout()
         else:
+            if self.attendi_invio:
+                return
             if self.feedback is not None and pygame.time.get_ticks() - self.feedback_timer > 1500:
                 if self.game_over:
+                    self.salva_sessione()
                     self.state = "gameover"
                 else:
                     self.nuova_domanda()
@@ -458,7 +502,7 @@ class Gioco:
         bg_swap = (60, 130, 60) if self.config_swap else (60, 60, 70)
         pygame.draw.rect(self.screen, bg_swap, (272, y, 186, 36), border_radius=6)
         sw_txt = "ON" if self.config_swap else "OFF"
-        swap_label = self.font_medio.render("Scambia A e B", True, WHITE)
+        swap_label = self.font_medio.render("Commuta A/B", True, WHITE)
         rect_sl = swap_label.get_rect(midleft=(80, y + 18))
         self.screen.blit(swap_label, rect_sl)
         swap_val = self.font_medio.render(sw_txt, True, WHITE)
@@ -470,7 +514,7 @@ class Gioco:
         if start_sel:
             pygame.draw.rect(self.screen, (255, 255, 100), (SCREEN_WIDTH // 2 - 112, y - 4, 224, 54), 3, border_radius=8)
         pygame.draw.rect(self.screen, (40, 120, 40), (SCREEN_WIDTH // 2 - 110, y, 220, 46), border_radius=8)
-        start_txt = self.font_medio.render("INVIA", True, WHITE)
+        start_txt = self.font_medio.render("INIZIA", True, WHITE)
         rect_s = start_txt.get_rect(center=(SCREEN_WIDTH // 2, y + 23))
         self.screen.blit(start_txt, rect_s)
 
@@ -482,7 +526,7 @@ class Gioco:
         wx = 80
         wy = SCREEN_HEIGHT // 2 - self.char_h // 2 + 120
         self.screen.blit(self.char_img, (wx, wy))
-        self.screen.blit(self.monster_img, (self.mostro_x, wy + 20))
+        self.screen.blit(self.monster_img, (self.mostro_x, wy + 50))
 
         domanda = self.font_grande.render(f"{self.a}  x  {self.b}  =  ?", True, WHITE)
         rect = domanda.get_rect(center=(SCREEN_WIDTH // 2, 80))
@@ -555,14 +599,50 @@ class Gioco:
 
             if self.feedback:
                 fb = self.font_grande.render("CORRETTO!", True, GREEN)
+                prossimo = self.font_piccolo.render("Prossima domanda...", True, GRAY)
             else:
                 fb = self.font_grande.render(f"SBAGLIATO! Era {self.risultato_atteso}", True, RED)
+                prossimo = self.font_piccolo.render("Premi INVIO per continuare", True, GRAY)
             rect = fb.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 30))
             self.screen.blit(fb, rect)
-
-            prossimo = self.font_piccolo.render("Prossima domanda...", True, GRAY)
             rect = prossimo.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 30))
             self.screen.blit(prossimo, rect)
+
+        if self.debug:
+            label = self.font_stats.render("DEBUG ON", True, (0, 255, 255))
+            rect = label.get_rect(bottomright=(SCREEN_WIDTH - 15, SCREEN_HEIGHT - 15))
+            bg_l = rect.inflate(8, 4)
+            pygame.draw.rect(self.screen, (10, 10, 20), bg_l)
+            pygame.draw.rect(self.screen, (0, 255, 255), bg_l, 1)
+            self.screen.blit(label, rect)
+            dx, dy = 20, 80
+            lines = [
+                "DEBUG",
+                f"Stato: {self.state}",
+                f"Modalita: {self.modalita}",
+                f"Domanda attiva: {self.domanda_attiva}",
+                f"Feedback: {self.feedback}",
+                f"Attendi invio: {self.attendi_invio}",
+                f"Game over: {self.game_over}",
+                f"Lives: {self.vite}",
+                f"Livello: {self.livello + 1 if self.modalita == 'auto' else '-'}",
+                f"Operandi: {self.a} x {self.b}",
+                f"Prev: {self.prev_a} x {self.prev_b}",
+                f"Risultato: {self.risultato_atteso}",
+                f"Pool A: {get_pool(self.livello) if self.modalita == 'auto' else self.pool_a}",
+                f"Pool B: {get_pool(self.livello) if self.modalita == 'auto' else self.pool_b}",
+                f"Coda rinforzo: {list(self.coda_rinforzo)}",
+                f"Progresso mostro: {self.mostro_progresso:.2f}" + (f"  Tempo: {(pygame.time.get_ticks() - self.inizio_domanda)/1000:.1f}s" if self.domanda_attiva else ""),
+            ]
+            bg = pygame.Surface((380, len(lines) * 22 + 10))
+            bg.set_alpha(200)
+            bg.fill((10, 10, 20))
+            self.screen.blit(bg, (dx - 5, dy - 5))
+            for line in lines:
+                surf = self.font_stats.render(line, True, (0, 255, 255))
+                rect = surf.get_rect(topleft=(dx, dy))
+                self.screen.blit(surf, rect)
+                dy += 22
 
     def disegna_gameover(self):
         self.screen.blit(self.bg, (0, 0))
@@ -597,29 +677,45 @@ class Gioco:
             self.screen.blit(surf, rect)
             y += 46
 
-        if self.stats:
-            y += 10
-            titolo_stat = self.font_medio.render("Statistiche:", True, GOLD)
-            rect = titolo_stat.get_rect(center=(SCREEN_WIDTH // 2, y))
-            self.screen.blit(titolo_stat, rect)
-            y += 38
-
-            for i in sorted(self.stats.keys()):
-                entry = self.stats[i]
-                media = sum(entry['tempi']) / len(entry['tempi']) if entry['tempi'] else 0
-                if self.modalita == "auto":
-                    testo = f"Livello {i + 1}: {entry['corrette']} corrette / {entry['sbagliate']} sbagliate - Tempo medio: {media:.1f}s"
-                else:
-                    testo = f"Pool A e B: {entry['corrette']} corrette / {entry['sbagliate']} sbagliate - Tempo medio: {media:.1f}s"
-                surf = self.font_stats.render(testo, True, (200, 200, 200))
+        sessioni = self.carica_sessioni()
+        if sessioni:
+            y += 14
+            titolo_sess = self.font_medio.render("Ultime sessioni:", True, GOLD)
+            rect = titolo_sess.get_rect(center=(SCREEN_WIDTH // 2, y))
+            self.screen.blit(titolo_sess, rect)
+            y += 34
+            for s in sessioni:
+                surf = self.font_stats.render(s, True, (180, 180, 180))
                 rect = surf.get_rect(center=(SCREEN_WIDTH // 2, y))
                 self.screen.blit(surf, rect)
-                y += 28
+                y += 24
 
         y = max(y + 20, SCREEN_HEIGHT - 100)
         restart = self.font_medio.render("Premi R per rigiocare  |  M per menu  |  ESC per uscire", True, WHITE)
         rect = restart.get_rect(center=(SCREEN_WIDTH // 2, y))
         self.screen.blit(restart, rect)
+
+    def salva_sessione(self):
+        tot_corrette = sum(v["corrette"] for v in self.stats.values())
+        tot_sbagliate = sum(v["sbagliate"] for v in self.stats.values())
+        tempo_medio = sum(self.tempi_risposta) / len(self.tempi_risposta) if self.tempi_risposta else 0
+        now = datetime.now().strftime("%Y-%m-%d %H:%M")
+        if self.modalita == "auto":
+            riga = f"{now} | Autoapprendimento | Corrette: {tot_corrette} | Sbagliate: {tot_sbagliate} | Livello: {self.livello + 1}/{len(LIVELLI)} | Tempo medio: {tempo_medio:.1f}s"
+        else:
+            pool_a_txt = ",".join(str(n) for n in self.pool_a)
+            pool_b_txt = ",".join(str(n) for n in self.pool_b)
+            riga = f"{now} | Livello Fisso | Corrette: {tot_corrette} | Sbagliate: {tot_sbagliate} | Pool A: [{pool_a_txt}] | Pool B: [{pool_b_txt}] | Domande: {self.domande_fatte}/{self.domande_totali} | Tempo medio: {tempo_medio:.1f}s"
+        with open(SESSIONS_FILE, "a", encoding="utf-8") as f:
+            f.write(riga + "\n")
+
+    def carica_sessioni(self):
+        if not os.path.exists(SESSIONS_FILE):
+            return []
+        with open(SESSIONS_FILE, "r", encoding="utf-8") as f:
+            righe = f.readlines()
+        ultime = [r.strip() for r in righe if r.strip()]
+        return list(reversed(ultime[-6:]))
 
     def run(self):
         while self.running:
