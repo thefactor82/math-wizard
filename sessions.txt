@@ -2,3 +2,5 @@
 2026-06-21 16:30 | Livello Fisso | Corrette: 18 | Sbagliate: 2 | Pool A: [6,7,8] | Pool B: [3,4,5,6,7,8,9] | Domande: 20/20 | Tempo medio: 5.7s
 2026-06-21 16:32 | Livello Fisso | Corrette: 19 | Sbagliate: 1 | Pool A: [6,7,8] | Pool B: [3,4,5,6,7,8,9] | Domande: 20/20 | Tempo medio: 4.3s
 2026-06-21 16:37 | Livello Fisso | Corrette: 20 | Sbagliate: 0 | Pool A: [6,7,8] | Pool B: [3,4,5,6,7,8,9] | Domande: 20/20 | Tempo medio: 3.2s
+2026-06-21 16:45 | Livello Fisso | Corrette: 5 | Sbagliate: 0 | Pool A: [0,1,2,3,4,5,6,7,8,9] | Pool B: [0,1,2,3,4,5,6,7,8,9] | Domande: 5/5 | Tempo medio: 4.2s
+2026-06-21 16:54 | Livello Fisso | Corrette: 4 | Sbagliate: 1 | Pool A: [0,1,2,3,4,5,6,7,8,9] | Pool B: [0,1,2,3,4,5,6,7,8,9] | Domande: 5/5 | Tempo medio: 3.8s

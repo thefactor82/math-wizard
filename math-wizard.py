@@ -76,6 +76,7 @@ class Gioco:
         self.font_input = pygame.font.Font(None, 56)
         self.font_stats = pygame.font.Font(None, 28)
         self.font_num = pygame.font.Font(None, 36)
+        self.font_tiny = pygame.font.Font(None, 22)
 
         self.carica_risorse()
         self.azzera_partita()
@@ -112,10 +113,12 @@ class Gioco:
         self.mostro_progresso = 0.0
         self.mostro_x = SCREEN_WIDTH - 150
         self.mostro_colpito = False
+        self.hit_timer = 0
         self.domanda_attiva = False
         self.feedback = None
         self.feedback_timer = 0
         self.attendi_invio = False
+        self.zap_timer = 0
         self.game_over = False
         self.inizio_domanda = 0
         self.timeout_gestito = False
@@ -199,6 +202,7 @@ class Gioco:
         self.domanda_attiva = True
         self.feedback = None
         self.feedback_timer = 0
+        self.zap_timer = 0
         self.attendi_invio = False
         self.timeout_gestito = False
         self.inizio_domanda = pygame.time.get_ticks()
@@ -310,6 +314,7 @@ class Gioco:
                 self.corretto = True
                 self.stats[livello]["corrette"] += 1
                 self.mostro_colpito = True
+                self.zap_timer = 12
             else:
                 self.corretto = False
                 self.stats[livello]["sbagliate"] += 1
@@ -317,6 +322,7 @@ class Gioco:
                 self.blocco_corrente.clear()
                 for _ in range(3):
                     self.coda_rinforzo.append((self.a, self.b))
+                self.hit_timer = 12
         else:
             self.corretto = False
             self.stats[livello]["sbagliate"] += 1
@@ -324,6 +330,7 @@ class Gioco:
             self.blocco_corrente.clear()
             for _ in range(3):
                 self.coda_rinforzo.append((self.a, self.b))
+            self.hit_timer = 12
 
         if self.vite <= 0:
             self.game_over = True
@@ -370,10 +377,15 @@ class Gioco:
         self.feedback_timer = pygame.time.get_ticks()
         self.attendi_invio = True
         self.mostro_colpito = True
+        self.hit_timer = 12
         if self.vite <= 0:
             self.game_over = True
 
     def aggiorna(self):
+        if self.zap_timer > 0:
+            self.zap_timer -= 1
+        if self.hit_timer > 0:
+            self.hit_timer -= 1
         if self.state == "gameover":
             return
         if self.state not in ("gioco",):
@@ -397,19 +409,16 @@ class Gioco:
                     self.nuova_domanda()
 
     def disegna(self):
-        self.screen.blit(self.bg, (0, 0))
-
-        if self.state == "menu":
-            self.disegna_menu()
-        elif self.state == "config_fisso":
-            self.disegna_config()
-        elif self.state == "gioco":
-            if self.game_over:
+        if self.state == "gioco" and not self.game_over:
+            self.disegna_gioco()
+        else:
+            self.screen.blit(self.bg, (0, 0))
+            if self.state == "menu":
+                self.disegna_menu()
+            elif self.state == "config_fisso":
+                self.disegna_config()
+            elif self.state in ("gioco", "gameover"):
                 self.disegna_gameover()
-            else:
-                self.disegna_gioco()
-        elif self.state == "gameover":
-            self.disegna_gameover()
 
         pygame.display.flip()
 
@@ -523,10 +532,35 @@ class Gioco:
         self.screen.blit(help, rect_h2)
 
     def disegna_gioco(self):
-        wx = 80
-        wy = SCREEN_HEIGHT // 2 - self.char_h // 2 + 120
+        shake = (0, 0)
+        if self.hit_timer > 0:
+            shake = (random.randint(-4, 4), random.randint(-3, 3))
+            self.screen.blit(self.bg, shake)
+        else:
+            self.screen.blit(self.bg, (0, 0))
+
+        wx = 80 + shake[0]
+        wy = SCREEN_HEIGHT // 2 - self.char_h // 2 + 120 + shake[1]
         self.screen.blit(self.char_img, (wx, wy))
-        self.screen.blit(self.monster_img, (self.mostro_x, wy + 50))
+        self.screen.blit(self.monster_img, (self.mostro_x + shake[0], wy + 50))
+
+        if self.zap_timer > 0:
+            start_x, start_y = 80 + 80, wy + self.char_h // 2
+            end_x, end_y = self.mostro_x + 100, wy + 50 + self.char_h // 2
+            mid_x = (start_x + end_x) // 2
+            segments = 8
+            for offset in range(-4, 5, 2):
+                points = [(start_x, start_y)]
+                for i in range(1, segments):
+                    t = i / segments
+                    x = start_x + (end_x - start_x) * t + random.randint(-30, 30)
+                    y = start_y + (end_y - start_y) * t + random.randint(-40, 40) + offset * 3
+                    points.append((x, y))
+                points.append((end_x, end_y))
+                width = 3 if abs(offset) <= 2 else 1
+                alpha = max(100, 255 - abs(offset) * 40)
+                col = (255, 255, int(255 * self.zap_timer / 12)) if abs(offset) <= 2 else (100, 100, 255)
+                pygame.draw.lines(self.screen, col, False, points, width)
 
         domanda = self.font_grande.render(f"{self.a}  x  {self.b}  =  ?", True, WHITE)
         rect = domanda.get_rect(center=(SCREEN_WIDTH // 2, 80))
@@ -608,6 +642,13 @@ class Gioco:
             rect = prossimo.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 30))
             self.screen.blit(prossimo, rect)
 
+        if self.hit_timer > 0:
+            alpha = int(120 * self.hit_timer / 12)
+            flash = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+            flash.set_alpha(alpha)
+            flash.fill(RED)
+            self.screen.blit(flash, (0, 0))
+
         if self.debug:
             label = self.font_stats.render("DEBUG ON", True, (0, 255, 255))
             rect = label.get_rect(bottomright=(SCREEN_WIDTH - 15, SCREEN_HEIGHT - 15))
@@ -685,7 +726,7 @@ class Gioco:
             self.screen.blit(titolo_sess, rect)
             y += 34
             for s in sessioni:
-                surf = self.font_stats.render(s, True, (180, 180, 180))
+                surf = self.font_tiny.render(s, True, (180, 180, 180))
                 rect = surf.get_rect(center=(SCREEN_WIDTH // 2, y))
                 self.screen.blit(surf, rect)
                 y += 24
