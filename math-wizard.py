@@ -43,7 +43,7 @@ def get_pool(livello_idx):
     return [n for n in base if n not in esclusi] + inclusi
 
 def genera_operandi(pool, livello_idx, reinforce_queue):
-    if reinforce_queue and random.random() < 0.5:
+    if reinforce_queue and random.random() < 0.4:
         return reinforce_queue.popleft()
     while True:
         a = random.choice(pool)
@@ -172,7 +172,7 @@ class Gioco:
             if self.domande_fatte >= self.domande_totali:
                 self.game_over = True
                 return
-            if self.coda_rinforzo and random.random() < 0.5:
+            if self.coda_rinforzo and random.random() < 0.4:
                 self.a, self.b = self.coda_rinforzo.popleft()
             else:
                 self.a = random.choice(self.pool_a)
