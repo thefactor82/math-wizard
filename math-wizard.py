@@ -173,7 +173,8 @@ class Gioco:
             self.a, self.b = genera_operandi(pool, self.livello, self.coda_rinforzo)
         else:
             if self.domande_fatte >= self.domande_totali:
-                self.game_over = True
+                self.salva_sessione()
+                self.state = "gameover"
                 return
             if self.coda_rinforzo and random.random() < 0.4:
                 self.a, self.b = self.coda_rinforzo.popleft()
@@ -238,6 +239,18 @@ class Gioco:
             elif self.state == "config_fisso":
                 self.gestisci_config(event)
             elif self.state == "gioco":
+                if self.game_over:
+                    if event.key == pygame.K_r:
+                        self.avvia_partita()
+                        return
+                    elif event.key == pygame.K_m:
+                        self.salva_sessione()
+                        self.state = "menu"
+                        return
+                    elif event.key == pygame.K_ESCAPE:
+                        self.salva_sessione()
+                        self.state = "menu"
+                        return
                 if event.key == pygame.K_ESCAPE:
                     self.state = "menu"
                 elif self.attendi_invio and event.key == pygame.K_RETURN:
@@ -432,7 +445,7 @@ class Gioco:
         rect = titolo.get_rect(center=(SCREEN_WIDTH // 2, 100))
         self.screen.blit(titolo, rect)
 
-        sottotitolo = self.font_medio.render("Impara le tabelline divertendoti!", True, WHITE)
+        sottotitolo = self.font_medio.render("Impara divertendoti!", True, WHITE)
         rect = sottotitolo.get_rect(center=(SCREEN_WIDTH // 2, 160))
         self.screen.blit(sottotitolo, rect)
 
