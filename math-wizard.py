@@ -127,10 +127,12 @@ class Gioco:
         self.menu_cursor = 0
         self.opzioni_cursor = 0
 
+        self.config_operazione = "moltiplicazione"
+        self.config_somma_massima = 10
         self.config_cursor_row = 0
         self.config_cursor_col = 0
-        self.config_pool_a = [n in self.pool_a for n in range(13)]
-        self.config_pool_b = [n in self.pool_b for n in range(13)]
+        self.config_pool_a = [n < 10 for n in range(100)]
+        self.config_pool_b = [n < 10 for n in range(100)]
         self.config_domande = 10
         self.config_swap = True
 
@@ -161,8 +163,11 @@ class Gioco:
         self.prev_b = -1
         self.game_over = False
         if self.modalita == "fisso":
-            self.pool_a = [n for n in range(13) if self.config_pool_a[n]]
-            self.pool_b = [n for n in range(13) if self.config_pool_b[n]]
+            self.operazione = self.config_operazione
+            self.somma_massima = self.config_somma_massima
+            pool_range = range(13) if self.config_operazione == "moltiplicazione" else range(100)
+            self.pool_a = [n for n in pool_range if self.config_pool_a[n]]
+            self.pool_b = [n for n in pool_range if self.config_pool_b[n]]
             if not self.pool_a:
                 self.pool_a = [0]
             if not self.pool_b:
@@ -187,6 +192,15 @@ class Gioco:
             else:
                 self.a = random.choice(self.pool_a)
                 self.b = random.choice(self.pool_b)
+                if self.operazione == "addizione":
+                    for _ in range(50):
+                        if self.a + self.b <= self.somma_massima:
+                            break
+                        self.a = random.choice(self.pool_a)
+                        self.b = random.choice(self.pool_b)
+                    else:
+                        self.a = min(self.pool_a, key=lambda x: abs(x - self.somma_massima))
+                        self.b = 0
             if self.swap_operandi and random.random() < 0.5:
                 self.a, self.b = self.b, self.a
             self.domande_fatte += 1
@@ -202,7 +216,10 @@ class Gioco:
                 self.a, self.b = self.b, self.a
         self.prev_a, self.prev_b = self.a, self.b
 
-        self.risultato_atteso = self.a * self.b
+        if self.modalita == "fisso" and self.operazione == "addizione":
+            self.risultato_atteso = self.a + self.b
+        else:
+            self.risultato_atteso = self.a * self.b
         self.input_utente = ""
         self.mostro_progresso = 0.0
         self.mostro_colpito = False
@@ -316,34 +333,71 @@ class Gioco:
             self.state = "menu"
             return
 
-        max_col = 12 if self.config_cursor_row in (0, 1) else 0
+        addizione = self.config_operazione == "addizione"
+
+        def max_col_for_row(r):
+            if r in (1, 2):
+                return 12 if not addizione else 9
+            return 0
+
+        def skip_somma(r, step):
+            if not addizione:
+                if step == 1 and r == 2:
+                    return 4
+                if step == -1 and r == 4:
+                    return 2
+            return r
+
+        row = self.config_cursor_row
+        col = self.config_cursor_col
+
         if event.key == pygame.K_UP:
-            self.config_cursor_row = max(0, self.config_cursor_row - 1)
-            self.config_cursor_col = min(self.config_cursor_col, 12 if self.config_cursor_row in (0, 1) else 0)
+            row = max(0, row - 1)
+            row = skip_somma(row, -1)
+            self.config_cursor_col = min(col, max_col_for_row(row))
         elif event.key == pygame.K_DOWN:
-            self.config_cursor_row = min(4, self.config_cursor_row + 1)
-            self.config_cursor_col = min(self.config_cursor_col, 12 if self.config_cursor_row in (0, 1) else 0)
+            row = min(6, row + 1)
+            row = skip_somma(row, 1)
+            self.config_cursor_col = min(col, max_col_for_row(row))
         elif event.key == pygame.K_LEFT:
-            self.config_cursor_col = max(0, self.config_cursor_col - 1)
+            if row == 0:
+                self.config_operazione = "addizione" if not addizione else "moltiplicazione"
+            else:
+                self.config_cursor_col = max(0, col - 1)
         elif event.key == pygame.K_RIGHT:
-            self.config_cursor_col = min(max_col, self.config_cursor_col + 1)
+            if row == 0:
+                self.config_operazione = "addizione" if not addizione else "moltiplicazione"
+            else:
+                self.config_cursor_col = min(max_col_for_row(row), col + 1)
         elif event.key == pygame.K_SPACE:
-            if self.config_cursor_row == 0:
-                self.config_pool_a[self.config_cursor_col] = not self.config_pool_a[self.config_cursor_col]
-                if not any(self.config_pool_a):
-                    self.config_pool_a[self.config_cursor_col] = True
-            elif self.config_cursor_row == 1:
-                self.config_pool_b[self.config_cursor_col] = not self.config_pool_b[self.config_cursor_col]
-                if not any(self.config_pool_b):
-                    self.config_pool_b[self.config_cursor_col] = True
-            elif self.config_cursor_row == 3:
+            if row == 0:
+                self.config_operazione = "addizione" if not addizione else "moltiplicazione"
+            elif row in (1, 2):
+                pool = self.config_pool_a if row == 1 else self.config_pool_b
+                if addizione:
+                    start = col * 10
+                    for i in range(start, start + 10):
+                        pool[i] = not pool[i]
+                    if not any(pool):
+                        pool[start + col] = True
+                else:
+                    pool[col] = not pool[col]
+                    if not any(pool):
+                        pool[col] = True
+            elif row == 5:
                 self.config_swap = not self.config_swap
         elif event.key in (pygame.K_PLUS, pygame.K_EQUALS):
-            if self.config_cursor_row == 2:
+            if row == 3 and addizione:
+                self.config_somma_massima = min(199, self.config_somma_massima + 1)
+            elif row == 4:
                 self.config_domande = min(99, self.config_domande + 1)
         elif event.key == pygame.K_MINUS:
-            if self.config_cursor_row == 2:
+            if row == 3 and addizione:
+                self.config_somma_massima = max(1, self.config_somma_massima - 1)
+            elif row == 4:
                 self.config_domande = max(1, self.config_domande - 1)
+
+        self.config_cursor_row = row
 
     def controlla_risposta(self):
         if not self.domanda_attiva:
@@ -567,36 +621,100 @@ class Gioco:
         self.screen.blit(overlay, (0, 0))
 
         titolo = self.font_titolo.render("LIVELLO FISSO", True, GOLD)
-        rect = titolo.get_rect(center=(SCREEN_WIDTH // 2, 50))
+        rect = titolo.get_rect(center=(SCREEN_WIDTH // 2, 25))
         self.screen.blit(titolo, rect)
 
+        addizione = self.config_operazione == "addizione"
+
+        def row_y(r):
+            base = [65, 120, 200, 290, 340, 400, 460]
+            return base[r]
+
+        # Row 0: Operazione
+        row = 0
+        y = row_y(row)
+        label_op = self.font_medio.render("Operazione", True, WHITE)
+        rect = label_op.get_rect(midleft=(80, y + 17))
+        self.screen.blit(label_op, rect)
+        focused = self.config_cursor_row == row
+        opzioni_op = ["Moltiplicazione", "Addizione"]
+        for i, nome in enumerate(opzioni_op):
+            sx = 280 + i * 220
+            sel = i == (1 if addizione else 0)
+            bg_col = (60, 130, 60) if sel else (60, 60, 70)
+            if focused:
+                col_b = (255, 255, 100) if i == (1 if addizione else 0) else (80, 80, 90)
+                pygame.draw.rect(self.screen, col_b, (sx - 2, y - 2, 210, 38), 3, border_radius=4)
+            pygame.draw.rect(self.screen, bg_col, (sx, y, 206, 34), border_radius=4)
+            txt = self.font_medio.render(nome, True, WHITE)
+            rect_t = txt.get_rect(center=(sx + 103, y + 17))
+            self.screen.blit(txt, rect_t)
+
+        # Row 1-2: Pool A / Pool B
         labels = ["Operando A", "Operando B"]
         pools = [self.config_pool_a, self.config_pool_b]
-
-        for row in range(2):
-            y = 140 + row * 100
-            label = self.font_medio.render(labels[row], True, WHITE)
-            rect = label.get_rect(midleft=(80, y + 20))
+        for ri in range(2):
+            row = 1 + ri
+            y = row_y(row)
+            label = self.font_medio.render(labels[ri], True, WHITE)
+            rect = label.get_rect(midleft=(80, y + 17))
             self.screen.blit(label, rect)
 
-            for col in range(13):
-                sx = 280 + col * 68
-                selected = pools[row][col]
-                focused = self.config_cursor_row == row and self.config_cursor_col == col
-                bg_col = (60, 130, 60) if selected else (60, 60, 70)
-                if focused:
-                    pygame.draw.rect(self.screen, (255, 255, 100), (sx - 2, y - 2, 58, 38), 3, border_radius=4)
-                pygame.draw.rect(self.screen, bg_col, (sx, y, 54, 34), border_radius=4)
-                num = self.font_num.render(str(col), True, WHITE)
-                rect_n = num.get_rect(center=(sx + 27, y + 17))
-                self.screen.blit(num, rect_n)
+            if addizione:
+                ncols = 10
+                for col in range(ncols):
+                    sx = 280 + col * 62
+                    start = col * 10
+                    end = min(start + 9, 99)
+                    selected = any(pools[ri][start:start+10])
+                    focus = self.config_cursor_row == row and self.config_cursor_col == col
+                    bg_col = (60, 130, 60) if selected else (60, 60, 70)
+                    if focus:
+                        pygame.draw.rect(self.screen, (255, 255, 100), (sx - 2, y - 2, 54, 34), 3, border_radius=4)
+                    pygame.draw.rect(self.screen, bg_col, (sx, y, 50, 30), border_radius=4)
+                    txt = self.font_tiny.render(f"{start}-{end}", True, WHITE)
+                    rect_t = txt.get_rect(center=(sx + 25, y + 15))
+                    self.screen.blit(txt, rect_t)
+            else:
+                ncols = 13
+                for col in range(ncols):
+                    sx = 280 + col * 68
+                    selected = pools[ri][col]
+                    focus = self.config_cursor_row == row and self.config_cursor_col == col
+                    bg_col = (60, 130, 60) if selected else (60, 60, 70)
+                    if focus:
+                        pygame.draw.rect(self.screen, (255, 255, 100), (sx - 2, y - 2, 58, 38), 3, border_radius=4)
+                    pygame.draw.rect(self.screen, bg_col, (sx, y, 54, 34), border_radius=4)
+                    num = self.font_num.render(str(col), True, WHITE)
+                    rect_n = num.get_rect(center=(sx + 27, y + 17))
+                    self.screen.blit(num, rect_n)
 
-        y = 360
+        # Row 3: Somma massima
+        row = 3
+        y = row_y(row)
+        if addizione:
+            label_s = self.font_medio.render("Somma massima", True, WHITE)
+            rect = label_s.get_rect(midleft=(80, y + 17))
+            self.screen.blit(label_s, rect)
+            focused = self.config_cursor_row == row
+            sx = 280
+            if focused:
+                pygame.draw.rect(self.screen, (255, 255, 100), (sx - 2, y - 2, 90, 38), 3, border_radius=4)
+            pygame.draw.rect(self.screen, (60, 60, 70), (sx, y, 86, 34), border_radius=4)
+            s_surf = self.font_grande.render(str(self.config_somma_massima), True, WHITE)
+            rect_s = s_surf.get_rect(center=(sx + 43, y + 17))
+            self.screen.blit(s_surf, rect_s)
+            hint_s = self.font_piccolo.render("+ / -", True, GRAY)
+            rect_hs = hint_s.get_rect(midleft=(sx + 100, y + 17))
+            self.screen.blit(hint_s, rect_hs)
+
+        # Row 4: Domande
+        row = 4
+        y = row_y(row)
         label_q = self.font_medio.render("Domande", True, WHITE)
-        rect = label_q.get_rect(midleft=(80, y + 20))
+        rect = label_q.get_rect(midleft=(80, y + 17))
         self.screen.blit(label_q, rect)
-
-        focused = self.config_cursor_row == 2
+        focused = self.config_cursor_row == row
         qx = 280
         if focused:
             pygame.draw.rect(self.screen, (255, 255, 100), (qx - 2, y - 2, 90, 38), 3, border_radius=4)
@@ -608,8 +726,10 @@ class Gioco:
         rect_h = hint.get_rect(midleft=(qx + 100, y + 17))
         self.screen.blit(hint, rect_h)
 
-        y = 450
-        swap_sel = self.config_cursor_row == 3
+        # Row 5: Commutazione
+        row = 5
+        y = row_y(row)
+        swap_sel = self.config_cursor_row == row
         if swap_sel:
             pygame.draw.rect(self.screen, (255, 255, 100), (270, y - 4, 190, 44), 3, border_radius=6)
         bg_swap = (60, 130, 60) if self.config_swap else (60, 60, 70)
@@ -622,8 +742,10 @@ class Gioco:
         rect_sv = swap_val.get_rect(center=(365, y + 18))
         self.screen.blit(swap_val, rect_sv)
 
-        y = 510
-        start_sel = self.config_cursor_row == 4
+        # Row 6: CONFERMA
+        row = 6
+        y = row_y(row)
+        start_sel = self.config_cursor_row == row
         if start_sel:
             pygame.draw.rect(self.screen, (255, 255, 100), (SCREEN_WIDTH // 2 - 112, y - 4, 224, 54), 3, border_radius=8)
         pygame.draw.rect(self.screen, (40, 120, 40), (SCREEN_WIDTH // 2 - 110, y, 220, 46), border_radius=8)
@@ -632,7 +754,7 @@ class Gioco:
         self.screen.blit(start_txt, rect_s)
 
         help = self.font_piccolo.render("Freccette: naviga  |  SPACE: attiva/disattiva  |  INVIO: conferma  |  ESC: indietro", True, GRAY)
-        rect_h2 = help.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 40))
+        rect_h2 = help.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 30))
         self.screen.blit(help, rect_h2)
 
     def disegna_gioco(self):
@@ -666,7 +788,8 @@ class Gioco:
                 col = (255, 255, int(255 * self.zap_timer / 12)) if abs(offset) <= 2 else (100, 100, 255)
                 pygame.draw.lines(self.screen, col, False, points, width)
 
-        domanda = self.font_grande.render(f"{self.a}  x  {self.b}  =  ?", True, WHITE)
+        segno = "+" if hasattr(self, 'operazione') and self.operazione == "addizione" else "x"
+        domanda = self.font_grande.render(f"{self.a}  {segno}  {self.b}  =  ?", True, WHITE)
         rect = domanda.get_rect(center=(SCREEN_WIDTH // 2, 80))
         self.screen.blit(domanda, rect)
 
@@ -848,9 +971,10 @@ class Gioco:
         if self.modalita == "auto":
             riga = f"{now} | Autoapprendimento | Corrette: {tot_corrette} | Sbagliate: {tot_sbagliate} | Livello: {self.livello + 1}/{len(LIVELLI)} | Tempo medio: {tempo_medio:.1f}s"
         else:
+            op_txt = "Addizione" if hasattr(self, 'operazione') and self.operazione == "addizione" else "Moltiplicazione"
             pool_a_txt = ",".join(str(n) for n in self.pool_a)
             pool_b_txt = ",".join(str(n) for n in self.pool_b)
-            riga = f"{now} | Livello Fisso | Corrette: {tot_corrette} | Sbagliate: {tot_sbagliate} | Pool A: [{pool_a_txt}] | Pool B: [{pool_b_txt}] | Domande: {self.domande_fatte}/{self.domande_totali} | Tempo medio: {tempo_medio:.1f}s"
+            riga = f"{now} | Livello Fisso | {op_txt} | Corrette: {tot_corrette} | Sbagliate: {tot_sbagliate} | Pool A: [{pool_a_txt}] | Pool B: [{pool_b_txt}] | Domande: {self.domande_fatte}/{self.domande_totali} | Tempo medio: {tempo_medio:.1f}s"
         with open(SESSIONS_FILE, "a", encoding="utf-8") as f:
             f.write(riga + "\n")
 

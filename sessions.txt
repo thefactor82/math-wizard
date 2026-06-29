@@ -20,3 +20,26 @@
 2026-06-29 12:57 | Livello Fisso | Corrette: 15 | Sbagliate: 0 | Pool A: [7,8,9] | Pool B: [4,5,6,7,8,9] | Domande: 15/15 | Tempo medio: 4.9s
 2026-06-29 12:59 | Livello Fisso | Corrette: 15 | Sbagliate: 0 | Pool A: [7,8,9] | Pool B: [4,5,6,7,8,9] | Domande: 15/15 | Tempo medio: 3.4s
 2026-06-29 13:01 | Livello Fisso | Corrette: 10 | Sbagliate: 0 | Pool A: [7,8,9] | Pool B: [4,5,6,7,8,9] | Domande: 10/10 | Tempo medio: 3.1s
+2026-06-29 15:44 | Livello Fisso | Corrette: 14 | Sbagliate: 1 | Pool A: [7,8,9] | Pool B: [3,4,5,6,7,8,9] | Domande: 15/15 | Tempo medio: 3.5s
+2026-06-29 15:46 | Livello Fisso | Corrette: 15 | Sbagliate: 0 | Pool A: [7,8,9] | Pool B: [3,4,5,6,7,8,9] | Domande: 15/15 | Tempo medio: 3.4s
+2026-06-29 15:48 | Livello Fisso | Corrette: 15 | Sbagliate: 0 | Pool A: [7,8,9] | Pool B: [4,5,6,7,8,9] | Domande: 15/15 | Tempo medio: 3.7s
+2026-06-29 15:49 | Livello Fisso | Corrette: 14 | Sbagliate: 1 | Pool A: [7,8,9] | Pool B: [4,5,6,7,8,9] | Domande: 15/15 | Tempo medio: 3.5s
+2026-06-29 18:15 | Livello Fisso | Addizione | Corrette: 8 | Sbagliate: 2 | Pool A: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19] | Pool B: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19] | Domande: 10/10 | Tempo medio: 5.4s
+2026-06-29 18:17 | Livello Fisso | Addizione | Corrette: 9 | Sbagliate: 1 | Pool A: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19] | Pool B: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19] | Domande: 10/10 | Tempo medio: 4.9s
+2026-06-29 18:20 | Livello Fisso | Addizione | Corrette: 10 | Sbagliate: 3 | Pool A: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19] | Pool B: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19] | Domande: 13/15 | Tempo medio: 5.5s
+2026-06-29 18:23 | Livello Fisso | Addizione | Corrette: 14 | Sbagliate: 1 | Pool A: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19] | Pool B: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19] | Domande: 15/15 | Tempo medio: 4.6s
+2026-06-29 18:26 | Livello Fisso | Addizione | Corrette: 0 | Sbagliate: 3 | Pool A: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19] | Pool B: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19] | Domande: 3/15 | Tempo medio: 1.3s
+2026-06-29 18:28 | Livello Fisso | Addizione | Corrette: 14 | Sbagliate: 1 | Pool A: [0,1,2,3,4,5,6,7,8,9] | Pool B: [0,1,2,3,4,5,6,7,8,9] | Domande: 15/15 | Tempo medio: 4.6s
+2026-06-29 18:31 | Livello Fisso | Addizione | Corrette: 15 | Sbagliate: 0 | Pool A: [0,1,2,3,4,5,6,7,8,9] | Pool B: [0,1,2,3,4,5,6,7,8,9] | Domande: 15/15 | Tempo medio: 4.6s
+2026-06-29 18:33 | Livello Fisso | Addizione | Corrette: 15 | Sbagliate: 0 | Pool A: [0,1,2,3,4,5,6,7,8,9] | Pool B: [0,1,2,3,4,5,6,7,8,9] | Domande: 15/15 | Tempo medio: 4.8s
+2026-06-29 18:34 | Livello Fisso | Addizione | Corrette: 6 | Sbagliate: 3 | Pool A: [0,1,2,3,4,5,6,7,8,9] | Pool B: [0,1,2,3,4,5,6,7,8,9] | Domande: 9/15 | Tempo medio: 3.4s
+2026-06-29 18:39 | Livello Fisso | Addizione | Corrette: 1 | Sbagliate: 3 | Pool A: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19] | Pool B: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19] | Domande: 4/15 | Tempo medio: 3.4s
+2026-06-29 18:39 | Livello Fisso | Addizione | Corrette: 0 | Sbagliate: 3 | Pool A: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19] | Pool B: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19] | Domande: 3/15 | Tempo medio: 2.0s
+2026-06-29 18:40 | Livello Fisso | Addizione | Corrette: 0 | Sbagliate: 3 | Pool A: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19] | Pool B: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19] | Domande: 3/15 | Tempo medio: 1.2s
+2026-06-29 18:42 | Livello Fisso | Addizione | Corrette: 15 | Sbagliate: 0 | Pool A: [0,1,2,3,4,5,6,7,8,9] | Pool B: [0,1,2,3,4,5,6,7,8,9] | Domande: 15/15 | Tempo medio: 3.8s
+2026-06-29 18:43 | Livello Fisso | Addizione | Corrette: 0 | Sbagliate: 3 | Pool A: [0,1,2,3,4,5,6,7,8,9] | Pool B: [0,1,2,3,4,5,6,7,8,9] | Domande: 3/15 | Tempo medio: 1.1s
+2026-06-29 18:43 | Livello Fisso | Addizione | Corrette: 1 | Sbagliate: 3 | Pool A: [0,1,2,3,4,5,6,7,8,9] | Pool B: [0,1,2,3,4,5,6,7,8,9] | Domande: 4/15 | Tempo medio: 2.6s
+2026-06-29 18:45 | Livello Fisso | Addizione | Corrette: 14 | Sbagliate: 1 | Pool A: [0,1,2,3,4,5,6,7,8,9] | Pool B: [0,1,2,3,4,5,6,7,8,9] | Domande: 15/15 | Tempo medio: 4.3s
+2026-06-29 18:46 | Livello Fisso | Addizione | Corrette: 0 | Sbagliate: 3 | Pool A: [0,1,2,3,4,5,6,7,8,9] | Pool B: [0,1,2,3,4,5,6,7,8,9] | Domande: 3/15 | Tempo medio: 0.5s
+2026-06-29 18:48 | Livello Fisso | Addizione | Corrette: 1 | Sbagliate: 3 | Pool A: [0,1,2,3,4,5,6,7,8,9] | Pool B: [0,1,2,3,4,5,6,7,8,9] | Domande: 4/15 | Tempo medio: 1.4s
+2026-06-29 18:50 | Livello Fisso | Addizione | Corrette: 15 | Sbagliate: 0 | Pool A: [0,1,2,3,4,5,6,7,8,9] | Pool B: [0,1,2,3,4,5,6,7,8,9] | Domande: 15/15 | Tempo medio: 4.6s
