@@ -2,6 +2,7 @@ import pygame
 import random
 import sys
 import os
+import math
 from datetime import datetime
 from collections import deque
 
@@ -123,6 +124,9 @@ class Gioco:
         self.inizio_domanda = 0
         self.timeout_gestito = False
 
+        self.menu_cursor = 0
+        self.opzioni_cursor = 0
+
         self.config_cursor_row = 0
         self.config_cursor_col = 0
         self.config_pool_a = [n in self.pool_a for n in range(13)]
@@ -137,6 +141,8 @@ class Gioco:
 
     def mostra_config(self):
         self.state = "config_fisso"
+        self.config_cursor_row = 0
+        self.config_cursor_col = 0
 
     def avvia_partita(self):
         self.state = "gioco"
@@ -228,14 +234,42 @@ class Gioco:
                     self.debug = not self.debug
                     self.debug_buf = ""
             if self.state == "menu":
-                if event.key == pygame.K_1:
+                if event.key == pygame.K_UP:
+                    self.menu_cursor = 0
+                elif event.key == pygame.K_DOWN:
+                    self.menu_cursor = 1
+                elif event.key == pygame.K_RETURN:
+                    self.modalita = "auto" if self.menu_cursor == 0 else "fisso"
+                    self.avvia_partita()
+                elif event.key == pygame.K_1:
                     self.modalita = "auto"
                     self.avvia_partita()
                 elif event.key == pygame.K_2:
                     self.modalita = "fisso"
-                    self.mostra_config()
+                    self.avvia_partita()
+                elif event.key == pygame.K_o:
+                    self.state = "opzioni"
                 elif event.key == pygame.K_ESCAPE:
                     self.running = False
+            elif self.state == "opzioni":
+                if event.key == pygame.K_1:
+                    self.state = "opzioni_auto"
+                elif event.key == pygame.K_2:
+                    self.mostra_config()
+                elif event.key == pygame.K_UP:
+                    self.opzioni_cursor = max(0, self.opzioni_cursor - 1)
+                elif event.key == pygame.K_DOWN:
+                    self.opzioni_cursor = min(1, self.opzioni_cursor + 1)
+                elif event.key == pygame.K_RETURN:
+                    if self.opzioni_cursor == 0:
+                        self.state = "opzioni_auto"
+                    else:
+                        self.mostra_config()
+                elif event.key == pygame.K_ESCAPE:
+                    self.state = "menu"
+            elif self.state == "opzioni_auto":
+                if event.key == pygame.K_ESCAPE:
+                    self.state = "opzioni"
             elif self.state == "config_fisso":
                 self.gestisci_config(event)
             elif self.state == "gioco":
@@ -276,10 +310,10 @@ class Gioco:
 
     def gestisci_config(self, event):
         if event.key == pygame.K_ESCAPE:
-            self.state = "menu"
+            self.state = "opzioni"
             return
         if event.key == pygame.K_RETURN:
-            self.avvia_partita()
+            self.state = "menu"
             return
 
         max_col = 12 if self.config_cursor_row in (0, 1) else 0
@@ -428,6 +462,10 @@ class Gioco:
             self.screen.blit(self.bg, (0, 0))
             if self.state == "menu":
                 self.disegna_menu()
+            elif self.state == "opzioni":
+                self.disegna_opzioni()
+            elif self.state == "opzioni_auto":
+                self.disegna_opzioni_auto()
             elif self.state == "config_fisso":
                 self.disegna_config()
             elif self.state in ("gioco", "gameover"):
@@ -449,25 +487,78 @@ class Gioco:
         rect = sottotitolo.get_rect(center=(SCREEN_WIDTH // 2, 160))
         self.screen.blit(sottotitolo, rect)
 
-        y = 280
-        opt1 = self.font_grande.render("1  Autoapprendimento", True, WHITE)
-        rect = opt1.get_rect(midleft=(SCREEN_WIDTH // 2 - 300, y))
-        self.screen.blit(opt1, rect)
-        desc1 = self.font_piccolo.render("Livelli progressivi automatici, operandi 0-12, level-up basato su precisione e velocita", True, GRAY)
-        rect = desc1.get_rect(midleft=(SCREEN_WIDTH // 2 - 300, y + 40))
-        self.screen.blit(desc1, rect)
+        opzioni = [
+            ("1  Autoapprendimento", "Livelli progressivi automatici, operandi 0-12, level-up basato su precisione e velocita"),
+            ("2  Livello Fisso", "Scegli operandi, numero domande e sfida a difficolta costante"),
+        ]
+        for i, (tit, desc) in enumerate(opzioni):
+            y = 280 + i * 100
+            col = GOLD if i == self.menu_cursor else WHITE
+            opt = self.font_grande.render(tit, True, col)
+            rect = opt.get_rect(midleft=(SCREEN_WIDTH // 2 - 300, y))
+            self.screen.blit(opt, rect)
+            desc_surf = self.font_piccolo.render(desc, True, GRAY)
+            rect = desc_surf.get_rect(midleft=(SCREEN_WIDTH // 2 - 300, y + 40))
+            self.screen.blit(desc_surf, rect)
 
-        y = 380
-        opt2 = self.font_grande.render("2  Livello Fisso", True, WHITE)
-        rect = opt2.get_rect(midleft=(SCREEN_WIDTH // 2 - 300, y))
-        self.screen.blit(opt2, rect)
-        desc2 = self.font_piccolo.render("Scegli operandi, numero domande e sfida a difficolta costante", True, GRAY)
-        rect = desc2.get_rect(midleft=(SCREEN_WIDTH // 2 - 300, y + 40))
-        self.screen.blit(desc2, rect)
+        # gear icon
+        cx, cy, r = SCREEN_WIDTH - 45, 45, 22
+        pygame.draw.circle(self.screen, GRAY, (cx, cy), r, 3)
+        pygame.draw.circle(self.screen, GRAY, (cx, cy), r - 7, 3)
+        for angle in range(0, 360, 30):
+            rad = math.radians(angle)
+            x1 = cx + (r - 5) * math.cos(rad)
+            y1 = cy + (r - 5) * math.sin(rad)
+            x2 = cx + (r + 5) * math.cos(rad)
+            y2 = cy + (r + 5) * math.sin(rad)
+            pygame.draw.line(self.screen, GRAY, (x1, y1), (x2, y2), 4)
+        gear_label = self.font_piccolo.render("O", True, GRAY)
+        rect = gear_label.get_rect(center=(cx, cy))
+        self.screen.blit(gear_label, rect)
 
-        info = self.font_piccolo.render("Premi 1 o 2 per selezionare  |  ESC per uscire", True, WHITE)
+        info = self.font_piccolo.render("Freccette: seleziona  |  INVIO: conferma  |  O: Opzioni  |  ESC: Esci", True, WHITE)
         rect = info.get_rect(center=(SCREEN_WIDTH // 2, 550))
         self.screen.blit(info, rect)
+
+    def disegna_opzioni(self):
+        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+        overlay.set_alpha(200)
+        overlay.fill(BG_DARK)
+        self.screen.blit(overlay, (0, 0))
+
+        titolo = self.font_titolo.render("OPZIONI", True, GOLD)
+        rect = titolo.get_rect(center=(SCREEN_WIDTH // 2, 80))
+        self.screen.blit(titolo, rect)
+
+        voci = [("1", "Autoapprendimento"), ("2", "Livello Fisso")]
+        for i, (num, voce) in enumerate(voci):
+            y = 220 + i * 80
+            col = GOLD if i == self.opzioni_cursor else WHITE
+            txt = self.font_grande.render(f"{num}  {voce}", True, col)
+            rect = txt.get_rect(center=(SCREEN_WIDTH // 2, y + 21))
+            self.screen.blit(txt, rect)
+
+        info = self.font_piccolo.render("1/2 o Freccette: naviga  |  INVIO: seleziona  |  ESC: indietro", True, GRAY)
+        rect = info.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 60))
+        self.screen.blit(info, rect)
+
+    def disegna_opzioni_auto(self):
+        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+        overlay.set_alpha(200)
+        overlay.fill(BG_DARK)
+        self.screen.blit(overlay, (0, 0))
+
+        titolo = self.font_titolo.render("OPZIONI - AUTOAPPRENDIMENTO", True, GOLD)
+        rect = titolo.get_rect(center=(SCREEN_WIDTH // 2, 80))
+        self.screen.blit(titolo, rect)
+
+        info = self.font_medio.render("Nessuna opzione disponibile al momento.", True, GRAY)
+        rect = info.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
+        self.screen.blit(info, rect)
+
+        back = self.font_piccolo.render("ESC: torna indietro", True, GRAY)
+        rect = back.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 60))
+        self.screen.blit(back, rect)
 
     def disegna_config(self):
         overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -536,7 +627,7 @@ class Gioco:
         if start_sel:
             pygame.draw.rect(self.screen, (255, 255, 100), (SCREEN_WIDTH // 2 - 112, y - 4, 224, 54), 3, border_radius=8)
         pygame.draw.rect(self.screen, (40, 120, 40), (SCREEN_WIDTH // 2 - 110, y, 220, 46), border_radius=8)
-        start_txt = self.font_medio.render("INIZIA", True, WHITE)
+        start_txt = self.font_medio.render("CONFERMA", True, WHITE)
         rect_s = start_txt.get_rect(center=(SCREEN_WIDTH // 2, y + 23))
         self.screen.blit(start_txt, rect_s)
 
