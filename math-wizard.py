@@ -64,7 +64,7 @@ class Gioco:
         self.fullscreen = False
         self.flags = pygame.SCALED
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), self.flags)
-        pygame.display.set_caption("Math Wizard - Impara le tabelline!")
+        pygame.display.set_caption("Math Wizard - Impara la matematica")
         self.clock = pygame.time.Clock()
         self.running = True
         self.state = "splash"
