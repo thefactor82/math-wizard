@@ -116,6 +116,7 @@ class Gioco:
         self.config_pool_b = [n < 10 for n in range(100)]
         self.config_domande = 10
         self.config_swap = True
+        self.config_differenza_positiva = True
 
         self.profili = []
         self.profilo_corrente = ""
@@ -153,6 +154,7 @@ class Gioco:
             "pool_b": self.config_pool_b,
             "domande": self.config_domande,
             "swap": self.config_swap,
+            "differenza_positiva": self.config_differenza_positiva,
         }
         with open(path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
@@ -168,6 +170,7 @@ class Gioco:
             self.config_pool_b = data.get("pool_b", self.config_pool_b)
             self.config_domande = data.get("domande", self.config_domande)
             self.config_swap = data.get("swap", self.config_swap)
+            self.config_differenza_positiva = data.get("differenza_positiva", self.config_differenza_positiva)
 
     def percorso_sessioni(self):
         nome = self.profilo_corrente or "_fallback"
@@ -214,6 +217,7 @@ class Gioco:
         self.config_pool_b = [n < 10 for n in range(100)]
         self.config_domande = 10
         self.config_swap = True
+        self.config_differenza_positiva = True
 
         self.tempi_risposta = []
         self.blocco_corrente = []
@@ -244,6 +248,7 @@ class Gioco:
         if self.modalita == "fisso":
             self.operazione = self.config_operazione
             self.somma_massima = self.config_somma_massima
+            self.differenza_positiva = self.config_differenza_positiva
             pool_range = range(13) if self.config_operazione == "moltiplicazione" else range(100)
             self.pool_a = [n for n in pool_range if self.config_pool_a[n]]
             self.pool_b = [n for n in pool_range if self.config_pool_b[n]]
@@ -252,7 +257,7 @@ class Gioco:
             if not self.pool_b:
                 self.pool_b = [0]
             self.domande_totali = self.config_domande
-            self.swap_operandi = self.config_swap
+            self.swap_operandi = True if self.operazione == "sottrazione" else self.config_swap
         self.nuova_domanda()
 
     def nuova_domanda(self):
@@ -282,6 +287,8 @@ class Gioco:
                         self.b = 0
             if self.swap_operandi and random.random() < 0.5:
                 self.a, self.b = self.b, self.a
+            if self.operazione == "sottrazione" and self.differenza_positiva and self.a < self.b:
+                self.a, self.b = self.b, self.a
             self.domande_fatte += 1
 
         if (self.a, self.b) == (self.prev_a, self.prev_b):
@@ -295,8 +302,13 @@ class Gioco:
                 self.a, self.b = self.b, self.a
         self.prev_a, self.prev_b = self.a, self.b
 
-        if self.modalita == "fisso" and self.operazione == "addizione":
-            self.risultato_atteso = self.a + self.b
+        if self.modalita == "fisso":
+            if self.operazione == "addizione":
+                self.risultato_atteso = self.a + self.b
+            elif self.operazione == "sottrazione":
+                self.risultato_atteso = self.a - self.b
+            else:
+                self.risultato_atteso = self.a * self.b
         else:
             self.risultato_atteso = self.a * self.b
         self.input_utente = ""
@@ -440,6 +452,8 @@ class Gioco:
                         self.input_utente = self.input_utente[:-1]
                     elif event.unicode.isdigit() and len(self.input_utente) < 6:
                         self.input_utente += event.unicode
+                    elif event.unicode == "-" and not self.input_utente:
+                        self.input_utente += event.unicode
             elif self.state == "gameover":
                 if event.key == pygame.K_r:
                     self.avvia_partita()
@@ -457,15 +471,19 @@ class Gioco:
             self.state = "menu"
             return
 
+        ops = ["moltiplicazione", "addizione", "sottrazione"]
+        op_idx = ops.index(self.config_operazione)
         addizione = self.config_operazione == "addizione"
+        sottrazione = self.config_operazione == "sottrazione"
+        pools_mode = sottrazione or addizione
 
         def max_col_for_row(r):
             if r in (1, 2):
-                return 12 if not addizione else 9
+                return 12 if not pools_mode else 9
             return 0
 
         def skip_somma(r, step):
-            if not addizione:
+            if not addizione and not sottrazione:
                 if step == 1 and r == 2:
                     return 4
                 if step == -1 and r == 4:
@@ -485,20 +503,20 @@ class Gioco:
             self.config_cursor_col = min(col, max_col_for_row(row))
         elif event.key == pygame.K_LEFT:
             if row == 0:
-                self.config_operazione = "addizione" if not addizione else "moltiplicazione"
+                self.config_operazione = ops[(op_idx - 1) % 3]
             else:
                 self.config_cursor_col = max(0, col - 1)
         elif event.key == pygame.K_RIGHT:
             if row == 0:
-                self.config_operazione = "addizione" if not addizione else "moltiplicazione"
+                self.config_operazione = ops[(op_idx + 1) % 3]
             else:
                 self.config_cursor_col = min(max_col_for_row(row), col + 1)
         elif event.key == pygame.K_SPACE:
             if row == 0:
-                self.config_operazione = "addizione" if not addizione else "moltiplicazione"
+                self.config_operazione = ops[(op_idx + 1) % 3]
             elif row in (1, 2):
                 pool = self.config_pool_a if row == 1 else self.config_pool_b
-                if addizione:
+                if pools_mode:
                     start = col * 10
                     for i in range(start, start + 10):
                         pool[i] = not pool[i]
@@ -508,7 +526,9 @@ class Gioco:
                     pool[col] = not pool[col]
                     if not any(pool):
                         pool[col] = True
-            elif row == 5:
+            elif row == 3 and sottrazione:
+                self.config_differenza_positiva = not self.config_differenza_positiva
+            elif row == 5 and not sottrazione:
                 self.config_swap = not self.config_swap
         elif event.key in (pygame.K_PLUS, pygame.K_EQUALS):
             if row == 3 and addizione:
@@ -533,8 +553,11 @@ class Gioco:
         livello = 0 if self.modalita == "fisso" else self.livello
         self.stats.setdefault(livello, {"corrette": 0, "sbagliate": 0, "tempi": []})
 
-        if self.input_utente.strip().isdigit():
-            risposta = int(self.input_utente)
+        testo = self.input_utente.strip()
+        if testo.startswith("-") and testo[1:].isdigit():
+            risposta = int(testo)
+        elif testo.isdigit():
+            risposta = int(testo)
             if risposta == self.risultato_atteso:
                 self.corretto = True
                 self.stats[livello]["corrette"] += 1
@@ -833,7 +856,10 @@ class Gioco:
         rect = titolo.get_rect(center=(SCREEN_WIDTH // 2, 80))
         self.screen.blit(titolo, rect)
 
+        ops = ["moltiplicazione", "addizione", "sottrazione"]
+        op_idx = ops.index(self.config_operazione)
         addizione = self.config_operazione == "addizione"
+        sottrazione = self.config_operazione == "sottrazione"
 
         def row_y(r):
             base = [150, 210, 290, 380, 430, 490, 550]
@@ -846,13 +872,13 @@ class Gioco:
         rect = label_op.get_rect(midleft=(80, y + 17))
         self.screen.blit(label_op, rect)
         focused = self.config_cursor_row == row
-        opzioni_op = ["Moltiplicazione", "Addizione"]
+        opzioni_op = ["Moltiplicazione", "Addizione", "Sottrazione"]
         for i, nome in enumerate(opzioni_op):
             sx = 360 + i * 220
-            sel = i == (1 if addizione else 0)
+            sel = i == op_idx
             bg_col = (60, 130, 60) if sel else (60, 60, 70)
             if focused:
-                col_b = (255, 255, 100) if i == (1 if addizione else 0) else (80, 80, 90)
+                col_b = (255, 255, 100) if sel else (80, 80, 90)
                 pygame.draw.rect(self.screen, col_b, (sx - 2, y - 2, 210, 38), 3, border_radius=4)
             pygame.draw.rect(self.screen, bg_col, (sx, y, 206, 34), border_radius=4)
             txt = self.font_medio.render(nome, True, WHITE)
@@ -869,7 +895,8 @@ class Gioco:
             rect = label.get_rect(midleft=(80, y + 17))
             self.screen.blit(label, rect)
 
-            if addizione:
+            pools_mode = addizione or sottrazione
+            if pools_mode:
                 ncols = 10
                 for col in range(ncols):
                     sx = 360 + col * 62
@@ -898,7 +925,7 @@ class Gioco:
                     rect_n = num.get_rect(center=(sx + 27, y + 17))
                     self.screen.blit(num, rect_n)
 
-        # Row 3: Somma massima
+        # Row 3: Somma massima / Differenza positiva
         row = 3
         y = row_y(row)
         if addizione:
@@ -916,6 +943,19 @@ class Gioco:
             hint_s = self.font_piccolo.render("+ / -", True, GRAY)
             rect_hs = hint_s.get_rect(midleft=(sx + 100, y + 17))
             self.screen.blit(hint_s, rect_hs)
+        elif sottrazione:
+            focused = self.config_cursor_row == row
+            label_d = self.font_medio.render("Differenza positiva", True, WHITE)
+            rect = label_d.get_rect(midleft=(80, y + 17))
+            self.screen.blit(label_d, rect)
+            if focused:
+                pygame.draw.rect(self.screen, (255, 255, 100), (350, y - 4, 190, 44), 3, border_radius=6)
+            bg_d = (60, 130, 60) if self.config_differenza_positiva else (60, 60, 70)
+            pygame.draw.rect(self.screen, bg_d, (352, y, 186, 36), border_radius=6)
+            dp_txt = "ON" if self.config_differenza_positiva else "OFF"
+            dp_val = self.font_medio.render(dp_txt, True, WHITE)
+            rect_dv = dp_val.get_rect(center=(445, y + 18))
+            self.screen.blit(dp_val, rect_dv)
 
         # Row 4: Domande
         row = 4
@@ -938,12 +978,13 @@ class Gioco:
         # Row 5: Commutazione
         row = 5
         y = row_y(row)
-        swap_sel = self.config_cursor_row == row
+        swap_locked = sottrazione
+        swap_sel = self.config_cursor_row == row and not swap_locked
         if swap_sel:
             pygame.draw.rect(self.screen, (255, 255, 100), (350, y - 4, 190, 44), 3, border_radius=6)
-        bg_swap = (60, 130, 60) if self.config_swap else (60, 60, 70)
+        bg_swap = (60, 130, 60) if (self.config_swap or swap_locked) else (60, 60, 70)
         pygame.draw.rect(self.screen, bg_swap, (352, y, 186, 36), border_radius=6)
-        sw_txt = "ON" if self.config_swap else "OFF"
+        sw_txt = "ON" if (self.config_swap or swap_locked) else "OFF"
         swap_label = self.font_medio.render("Commuta A/B", True, WHITE)
         rect_sl = swap_label.get_rect(midleft=(80, y + 18))
         self.screen.blit(swap_label, rect_sl)
@@ -997,7 +1038,12 @@ class Gioco:
                 col = (255, 255, int(255 * self.zap_timer / 12)) if abs(offset) <= 2 else (100, 100, 255)
                 pygame.draw.lines(self.screen, col, False, points, width)
 
-        segno = "+" if hasattr(self, 'operazione') and self.operazione == "addizione" else "x"
+        if hasattr(self, 'operazione') and self.operazione == "sottrazione":
+            segno = "-"
+        elif hasattr(self, 'operazione') and self.operazione == "addizione":
+            segno = "+"
+        else:
+            segno = "x"
         domanda = self.font_grande.render(f"{self.a}  {segno}  {self.b}  =  ?", True, WHITE)
         rect = domanda.get_rect(center=(SCREEN_WIDTH // 2, 80))
         self.screen.blit(domanda, rect)
@@ -1177,10 +1223,13 @@ class Gioco:
         if self.modalita == "auto":
             riga = f"{now} | Autoapprendimento | Corrette: {tot_corrette} | Sbagliate: {tot_sbagliate} | Livello: {self.livello + 1}/{len(LIVELLI)} | Tempo medio: {tempo_medio:.1f}s"
         else:
-            op_txt = "Addizione" if hasattr(self, 'operazione') and self.operazione == "addizione" else "Moltiplicazione"
+            op_txt = self.operazione.capitalize() if hasattr(self, 'operazione') else "Moltiplicazione"
             pool_a_txt = ",".join(str(n) for n in self.pool_a)
             pool_b_txt = ",".join(str(n) for n in self.pool_b)
-            riga = f"{now} | Livello Fisso | {op_txt} | Corrette: {tot_corrette} | Sbagliate: {tot_sbagliate} | Pool A: [{pool_a_txt}] | Pool B: [{pool_b_txt}] | Domande: {self.domande_fatte}/{self.domande_totali} | Tempo medio: {tempo_medio:.1f}s"
+            extra = ""
+            if self.operazione == "sottrazione" and getattr(self, 'differenza_positiva', False):
+                extra = " | Diff. positiva: ON"
+            riga = f"{now} | Livello Fisso | {op_txt} | Corrette: {tot_corrette} | Sbagliate: {tot_sbagliate} | Pool A: [{pool_a_txt}] | Pool B: [{pool_b_txt}] | Domande: {self.domande_fatte}/{self.domande_totali} | Tempo medio: {tempo_medio:.1f}s{extra}"
         path = self.percorso_sessioni()
         with open(path, "a", encoding="utf-8") as f:
             f.write(riga + "\n")
