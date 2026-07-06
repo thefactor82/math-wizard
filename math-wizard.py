@@ -3,10 +3,11 @@ import random
 import sys
 import os
 import math
+import json
 from datetime import datetime
 from collections import deque
 
-SESSIONS_FILE = "sessions.txt"
+PROFILES_DIR = "profiles"
 
 VITE_MAGO = 3
 TEMPO_LIMITE = 12
@@ -81,6 +82,7 @@ class Gioco:
         self.font_tiny = pygame.font.Font(None, 22)
 
         self.carica_risorse()
+        self.gestione_profili()
         self.azzera_partita()
 
     def carica_risorse(self):
@@ -101,6 +103,77 @@ class Gioco:
         self.heart_grey = pygame.transform.scale(pygame.image.load("lives_lost.png").convert_alpha(), (35, 35))
 
         self.logo = pygame.transform.scale(pygame.image.load("logo.png").convert_alpha(), (SCREEN_WIDTH, SCREEN_HEIGHT))
+
+    def gestione_profili(self):
+        os.makedirs(PROFILES_DIR, exist_ok=True)
+        idx_file = os.path.join(PROFILES_DIR, "profiles.json")
+        self.profilo_cursor = 0
+        self.profilo_input = ""
+        self.profilo_input_mode = False
+        self.config_operazione = "moltiplicazione"
+        self.config_somma_massima = 10
+        self.config_pool_a = [n < 10 for n in range(100)]
+        self.config_pool_b = [n < 10 for n in range(100)]
+        self.config_domande = 10
+        self.config_swap = True
+
+        self.profili = []
+        self.profilo_corrente = ""
+        if os.path.exists(idx_file):
+            try:
+                with open(idx_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                self.profili = [p for p in data.get("profiles", [])
+                                if os.path.isdir(os.path.join(PROFILES_DIR, p))]
+                self.profilo_corrente = data.get("current", "")
+                if self.profilo_corrente not in self.profili:
+                    self.profilo_corrente = ""
+            except (json.JSONDecodeError, Exception):
+                self.profili = []
+                self.profilo_corrente = ""
+        if self.profilo_corrente in self.profili:
+            self.carica_config_profilo(self.profilo_corrente)
+
+    def salva_profili(self):
+        path = os.path.join(PROFILES_DIR, "profiles.json")
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump({"profiles": self.profili, "current": self.profilo_corrente}, f, indent=2)
+
+    def salva_config_profilo(self, nome=None):
+        nome = nome or self.profilo_corrente
+        if not nome:
+            return
+        prof_dir = os.path.join(PROFILES_DIR, nome)
+        os.makedirs(prof_dir, exist_ok=True)
+        path = os.path.join(prof_dir, "config.json")
+        data = {
+            "operazione": self.config_operazione,
+            "somma_massima": self.config_somma_massima,
+            "pool_a": self.config_pool_a,
+            "pool_b": self.config_pool_b,
+            "domande": self.config_domande,
+            "swap": self.config_swap,
+        }
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+
+    def carica_config_profilo(self, nome):
+        path = os.path.join(PROFILES_DIR, nome, "config.json")
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            self.config_operazione = data.get("operazione", self.config_operazione)
+            self.config_somma_massima = data.get("somma_massima", self.config_somma_massima)
+            self.config_pool_a = data.get("pool_a", self.config_pool_a)
+            self.config_pool_b = data.get("pool_b", self.config_pool_b)
+            self.config_domande = data.get("domande", self.config_domande)
+            self.config_swap = data.get("swap", self.config_swap)
+
+    def percorso_sessioni(self):
+        nome = self.profilo_corrente or "_fallback"
+        prof_dir = os.path.join(PROFILES_DIR, nome)
+        os.makedirs(prof_dir, exist_ok=True)
+        return os.path.join(prof_dir, "sessions.txt")
 
     def azzera_partita(self):
         self.modalita = "auto"
@@ -256,7 +329,45 @@ class Gioco:
                 if self.debug_buf == "debug":
                     self.debug = not self.debug
                     self.debug_buf = ""
-            if self.state == "menu":
+            if self.state == "profile_select":
+                if self.profilo_input_mode:
+                    if event.key == pygame.K_ESCAPE:
+                        self.profilo_input_mode = False
+                        self.profilo_input = ""
+                    elif event.key == pygame.K_RETURN and self.profilo_input.strip():
+                        nuovo = self.profilo_input.strip()
+                        if nuovo not in self.profili:
+                            self.profili.append(nuovo)
+                            self.salva_config_profilo(nuovo)
+                            self.profilo_corrente = nuovo
+                            self.salva_profili()
+                            self.profilo_input = ""
+                            self.profilo_input_mode = False
+                            self.state = "menu"
+                    elif event.key == pygame.K_BACKSPACE:
+                        self.profilo_input = self.profilo_input[:-1]
+                    elif event.unicode and event.unicode.isprintable() and len(self.profilo_input) < 30:
+                        self.profilo_input += event.unicode
+                    return
+                if event.key == pygame.K_UP:
+                    self.profilo_cursor = (self.profilo_cursor - 1) % (len(self.profili) + 1)
+                elif event.key == pygame.K_DOWN:
+                    self.profilo_cursor = (self.profilo_cursor + 1) % (len(self.profili) + 1)
+                elif event.key == pygame.K_RETURN:
+                    if self.profilo_cursor < len(self.profili):
+                        self.profilo_corrente = self.profili[self.profilo_cursor]
+                        self.carica_config_profilo(self.profilo_corrente)
+                        self.salva_profili()
+                        self.state = "menu"
+                    else:
+                        self.profilo_input_mode = True
+                        self.profilo_input = ""
+                elif event.key == pygame.K_ESCAPE:
+                    if self.profili:
+                        self.state = "menu"
+                    else:
+                        self.running = False
+            elif self.state == "menu":
                 if event.key == pygame.K_UP:
                     self.menu_cursor = 0
                 elif event.key == pygame.K_DOWN:
@@ -272,6 +383,12 @@ class Gioco:
                     self.avvia_partita()
                 elif event.key == pygame.K_o:
                     self.state = "opzioni"
+                elif event.key == pygame.K_p:
+                    if self.profilo_corrente in self.profili:
+                        self.profilo_cursor = self.profili.index(self.profilo_corrente)
+                    else:
+                        self.profilo_cursor = 0
+                    self.state = "profile_select"
                 elif event.key == pygame.K_ESCAPE:
                     self.running = False
             elif self.state == "opzioni":
@@ -336,6 +453,7 @@ class Gioco:
             self.state = "opzioni"
             return
         if event.key == pygame.K_RETURN:
+            self.salva_config_profilo()
             self.state = "menu"
             return
 
@@ -495,7 +613,7 @@ class Gioco:
             self.hit_timer -= 1
         if self.state == "splash":
             if pygame.time.get_ticks() - self.splash_start >= 5000:
-                self.state = "menu"
+                self.state = "profile_select"
             return
         if self.state == "gameover":
             return
@@ -522,6 +640,8 @@ class Gioco:
     def disegna(self):
         if self.state == "splash":
             self.disegna_splash()
+        elif self.state == "profile_select":
+            self.disegna_profilo()
         elif self.state == "gioco" and not self.game_over:
             self.disegna_gioco()
         else:
@@ -554,6 +674,60 @@ class Gioco:
         overlay.set_alpha(alpha)
         overlay.fill(BLACK)
         self.screen.blit(overlay, (0, 0))
+
+    def disegna_profilo(self):
+        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+        overlay.set_alpha(200)
+        overlay.fill(BG_DARK)
+        self.screen.blit(overlay, (0, 0))
+
+        if self.profilo_input_mode:
+            titolo = self.font_titolo.render("NUOVO PROFILO", True, GOLD)
+            rect = titolo.get_rect(center=(SCREEN_WIDTH // 2, 120))
+            self.screen.blit(titolo, rect)
+
+            lbl = self.font_medio.render("Inserisci il nome:", True, WHITE)
+            rect = lbl.get_rect(center=(SCREEN_WIDTH // 2, 260))
+            self.screen.blit(lbl, rect)
+
+            txt = self.profilo_input + ("|" if pygame.time.get_ticks() % 1000 < 500 else " ")
+            surf = self.font_input.render(txt, True, WHITE)
+            box = surf.get_rect(center=(SCREEN_WIDTH // 2, 330))
+            bg = box.inflate(40, 16)
+            bg.width = max(bg.width, 200)
+            pygame.draw.rect(self.screen, (40, 40, 60), bg, border_radius=8)
+            pygame.draw.rect(self.screen, (100, 100, 180), bg, 2, border_radius=8)
+            self.screen.blit(surf, box)
+
+            if self.profilo_input:
+                hint = self.font_piccolo.render("INVIO per confermare", True, GRAY)
+                rect = hint.get_rect(center=(SCREEN_WIDTH // 2, 380))
+                self.screen.blit(hint, rect)
+            back = self.font_piccolo.render("ESC: annulla", True, GRAY)
+            rect = back.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 60))
+            self.screen.blit(back, rect)
+            return
+
+        titolo = self.font_titolo.render("SELEZIONA PROFILO", True, GOLD)
+        rect = titolo.get_rect(center=(SCREEN_WIDTH // 2, 80))
+        self.screen.blit(titolo, rect)
+
+        voci = self.profili + ["+ Nuovo profilo"]
+        nuovo_idx = len(self.profili)
+        for i, voce in enumerate(voci):
+            y = 170 + i * 60
+            col = GOLD if i == self.profilo_cursor else WHITE
+            txt = self.font_grande.render(voce, True, col)
+            rect = txt.get_rect(midleft=(SCREEN_WIDTH // 2 - 200, y))
+            self.screen.blit(txt, rect)
+            if i < nuovo_idx and voce == self.profilo_corrente:
+                ok = self.font_piccolo.render("(attivo)", True, GRAY)
+                rect = ok.get_rect(midleft=(SCREEN_WIDTH // 2 + 150, y + 20))
+                self.screen.blit(ok, rect)
+
+        info = self.font_piccolo.render("Freccette: naviga  |  INVIO: seleziona  |  ESC: esci", True, GRAY)
+        rect = info.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 60))
+        self.screen.blit(info, rect)
 
     def disegna_menu(self):
         overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -598,8 +772,15 @@ class Gioco:
         rect = gear_label.get_rect(center=(cx, cy))
         self.screen.blit(gear_label, rect)
 
+        profilo_lbl = self.font_piccolo.render(f"Profilo: {self.profilo_corrente}", True, GRAY)
+        rect = profilo_lbl.get_rect(midleft=(SCREEN_WIDTH // 2 - 300, 550))
+        self.screen.blit(profilo_lbl, rect)
+        cambia_lbl = self.font_piccolo.render("P: Cambia profilo", True, GRAY)
+        rect = cambia_lbl.get_rect(midleft=(SCREEN_WIDTH // 2 - 300, 575))
+        self.screen.blit(cambia_lbl, rect)
+
         info = self.font_piccolo.render("Freccette: seleziona  |  INVIO: conferma  |  O: Opzioni  |  ESC: Esci", True, WHITE)
-        rect = info.get_rect(center=(SCREEN_WIDTH // 2, 550))
+        rect = info.get_rect(center=(SCREEN_WIDTH // 2, 620))
         self.screen.blit(info, rect)
 
     def disegna_opzioni(self):
@@ -1000,13 +1181,15 @@ class Gioco:
             pool_a_txt = ",".join(str(n) for n in self.pool_a)
             pool_b_txt = ",".join(str(n) for n in self.pool_b)
             riga = f"{now} | Livello Fisso | {op_txt} | Corrette: {tot_corrette} | Sbagliate: {tot_sbagliate} | Pool A: [{pool_a_txt}] | Pool B: [{pool_b_txt}] | Domande: {self.domande_fatte}/{self.domande_totali} | Tempo medio: {tempo_medio:.1f}s"
-        with open(SESSIONS_FILE, "a", encoding="utf-8") as f:
+        path = self.percorso_sessioni()
+        with open(path, "a", encoding="utf-8") as f:
             f.write(riga + "\n")
 
     def carica_sessioni(self):
-        if not os.path.exists(SESSIONS_FILE):
+        path = self.percorso_sessioni()
+        if not os.path.exists(path):
             return []
-        with open(SESSIONS_FILE, "r", encoding="utf-8") as f:
+        with open(path, "r", encoding="utf-8") as f:
             righe = f.readlines()
         ultime = [r.strip() for r in righe if r.strip()]
         return list(reversed(ultime[-6:]))
