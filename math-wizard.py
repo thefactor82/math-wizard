@@ -96,6 +96,9 @@ class Gioco:
 
         self.char_h = self.char_img.get_height()
 
+        self.heart_red = pygame.transform.scale(pygame.image.load("lives.png").convert_alpha(), (35, 35))
+        self.heart_grey = pygame.transform.scale(pygame.image.load("lives_lost.png").convert_alpha(), (35, 35))
+
     def azzera_partita(self):
         self.modalita = "auto"
         self.pool_a = list(range(0, 10))
@@ -620,14 +623,14 @@ class Gioco:
         overlay.fill(BG_DARK)
         self.screen.blit(overlay, (0, 0))
 
-        titolo = self.font_titolo.render("LIVELLO FISSO", True, GOLD)
-        rect = titolo.get_rect(center=(SCREEN_WIDTH // 2, 25))
+        titolo = self.font_titolo.render("OPZIONI - LIVELLO FISSO", True, GOLD)
+        rect = titolo.get_rect(center=(SCREEN_WIDTH // 2, 80))
         self.screen.blit(titolo, rect)
 
         addizione = self.config_operazione == "addizione"
 
         def row_y(r):
-            base = [65, 120, 200, 290, 340, 400, 460]
+            base = [150, 210, 290, 380, 430, 490, 550]
             return base[r]
 
         # Row 0: Operazione
@@ -639,7 +642,7 @@ class Gioco:
         focused = self.config_cursor_row == row
         opzioni_op = ["Moltiplicazione", "Addizione"]
         for i, nome in enumerate(opzioni_op):
-            sx = 280 + i * 220
+            sx = 360 + i * 220
             sel = i == (1 if addizione else 0)
             bg_col = (60, 130, 60) if sel else (60, 60, 70)
             if focused:
@@ -663,7 +666,7 @@ class Gioco:
             if addizione:
                 ncols = 10
                 for col in range(ncols):
-                    sx = 280 + col * 62
+                    sx = 360 + col * 62
                     start = col * 10
                     end = min(start + 9, 99)
                     selected = any(pools[ri][start:start+10])
@@ -678,7 +681,7 @@ class Gioco:
             else:
                 ncols = 13
                 for col in range(ncols):
-                    sx = 280 + col * 68
+                    sx = 360 + col * 68
                     selected = pools[ri][col]
                     focus = self.config_cursor_row == row and self.config_cursor_col == col
                     bg_col = (60, 130, 60) if selected else (60, 60, 70)
@@ -697,7 +700,7 @@ class Gioco:
             rect = label_s.get_rect(midleft=(80, y + 17))
             self.screen.blit(label_s, rect)
             focused = self.config_cursor_row == row
-            sx = 280
+            sx = 360
             if focused:
                 pygame.draw.rect(self.screen, (255, 255, 100), (sx - 2, y - 2, 90, 38), 3, border_radius=4)
             pygame.draw.rect(self.screen, (60, 60, 70), (sx, y, 86, 34), border_radius=4)
@@ -715,7 +718,7 @@ class Gioco:
         rect = label_q.get_rect(midleft=(80, y + 17))
         self.screen.blit(label_q, rect)
         focused = self.config_cursor_row == row
-        qx = 280
+        qx = 360
         if focused:
             pygame.draw.rect(self.screen, (255, 255, 100), (qx - 2, y - 2, 90, 38), 3, border_radius=4)
         pygame.draw.rect(self.screen, (60, 60, 70), (qx, y, 86, 34), border_radius=4)
@@ -731,15 +734,15 @@ class Gioco:
         y = row_y(row)
         swap_sel = self.config_cursor_row == row
         if swap_sel:
-            pygame.draw.rect(self.screen, (255, 255, 100), (270, y - 4, 190, 44), 3, border_radius=6)
+            pygame.draw.rect(self.screen, (255, 255, 100), (350, y - 4, 190, 44), 3, border_radius=6)
         bg_swap = (60, 130, 60) if self.config_swap else (60, 60, 70)
-        pygame.draw.rect(self.screen, bg_swap, (272, y, 186, 36), border_radius=6)
+        pygame.draw.rect(self.screen, bg_swap, (352, y, 186, 36), border_radius=6)
         sw_txt = "ON" if self.config_swap else "OFF"
         swap_label = self.font_medio.render("Commuta A/B", True, WHITE)
         rect_sl = swap_label.get_rect(midleft=(80, y + 18))
         self.screen.blit(swap_label, rect_sl)
         swap_val = self.font_medio.render(sw_txt, True, WHITE)
-        rect_sv = swap_val.get_rect(center=(365, y + 18))
+        rect_sv = swap_val.get_rect(center=(445, y + 18))
         self.screen.blit(swap_val, rect_sv)
 
         # Row 6: CONFERMA
@@ -823,12 +826,9 @@ class Gioco:
         self.screen.blit(mode, rect_m)
 
         for i in range(VITE_MAGO):
-            colore = RED if i < self.vite else DARK
-            pygame.draw.rect(self.screen, colore, (SCREEN_WIDTH - 70 - i * 50, 30, 35, 30), border_radius=4)
-            if i < self.vite:
-                pygame.draw.rect(self.screen, (255, 100, 100), (SCREEN_WIDTH - 70 - i * 50 + 3, 33, 29, 24), border_radius=3)
-            pygame.draw.rect(self.screen, (200, 200, 200) if i < self.vite else (60, 60, 60),
-                           (SCREEN_WIDTH - 70 - i * 50, 30, 35, 30), 2, border_radius=4)
+            cx = SCREEN_WIDTH - 70 - i * 50
+            img = self.heart_red if i < self.vite else self.heart_grey
+            self.screen.blit(img, (cx - 17, 30))
 
         if self.domanda_attiva:
             bar_w = 400
