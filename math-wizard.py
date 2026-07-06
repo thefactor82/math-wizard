@@ -66,7 +66,8 @@ class Gioco:
         pygame.display.set_caption("Math Wizard - Impara le tabelline!")
         self.clock = pygame.time.Clock()
         self.running = True
-        self.state = "menu"
+        self.state = "splash"
+        self.splash_start = pygame.time.get_ticks()
         self.debug = False
         self.debug_buf = ""
 
@@ -98,6 +99,8 @@ class Gioco:
 
         self.heart_red = pygame.transform.scale(pygame.image.load("lives.png").convert_alpha(), (35, 35))
         self.heart_grey = pygame.transform.scale(pygame.image.load("lives_lost.png").convert_alpha(), (35, 35))
+
+        self.logo = pygame.transform.scale(pygame.image.load("logo.png").convert_alpha(), (SCREEN_WIDTH, SCREEN_HEIGHT))
 
     def azzera_partita(self):
         self.modalita = "auto"
@@ -490,6 +493,10 @@ class Gioco:
             self.zap_timer -= 1
         if self.hit_timer > 0:
             self.hit_timer -= 1
+        if self.state == "splash":
+            if pygame.time.get_ticks() - self.splash_start >= 5000:
+                self.state = "menu"
+            return
         if self.state == "gameover":
             return
         if self.state not in ("gioco",):
@@ -513,7 +520,9 @@ class Gioco:
                     self.nuova_domanda()
 
     def disegna(self):
-        if self.state == "gioco" and not self.game_over:
+        if self.state == "splash":
+            self.disegna_splash()
+        elif self.state == "gioco" and not self.game_over:
             self.disegna_gioco()
         else:
             self.screen.blit(self.bg, (0, 0))
@@ -529,6 +538,22 @@ class Gioco:
                 self.disegna_gameover()
 
         pygame.display.flip()
+
+    def disegna_splash(self):
+        elapsed = pygame.time.get_ticks() - self.splash_start
+        logo_rect = self.logo.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
+        self.screen.blit(self.logo, logo_rect)
+
+        if elapsed < 1000:
+            alpha = 255 - int(255 * elapsed / 1000)
+        elif elapsed > 4000:
+            alpha = int(255 * (elapsed - 4000) / 1000)
+        else:
+            alpha = 0
+        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+        overlay.set_alpha(alpha)
+        overlay.fill(BLACK)
+        self.screen.blit(overlay, (0, 0))
 
     def disegna_menu(self):
         overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
