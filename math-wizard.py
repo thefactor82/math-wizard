@@ -10,7 +10,7 @@ from collections import deque
 PROFILES_DIR = "profiles"
 
 VITE_MAGO = 3
-TEMPO_LIMITE = 12
+TEMPO_LIMITE_DEFAULT = 12
 SCREEN_WIDTH = 1280
 SCREEN_HEIGHT = 720
 FPS = 60
@@ -85,24 +85,34 @@ class Gioco:
         self.gestione_profili()
         self.azzera_partita()
 
-    def carica_risorse(self):
-        bg = pygame.image.load("background.png")
-        self.bg = pygame.transform.scale(bg, (SCREEN_WIDTH, SCREEN_HEIGHT))
-
-        char_sheet = pygame.image.load("char.png").convert_alpha()
-        monster_sheet = pygame.image.load("monster.png").convert_alpha()
-
-        cw, ch = 900, 1330
-        mw, mh = 1500, 1619
-        self.char_img = pygame.transform.scale(char_sheet, (160, int(160 / cw * ch)))
-        self.monster_img = pygame.transform.scale(monster_sheet, (200, int(200 / mw * mh)))
-
+    def aggiorna_char_img(self):
+        self.char_img = self.char_imgs.get(self.config_genere, self.char_imgs["F"])
         self.char_h = self.char_img.get_height()
 
-        self.heart_red = pygame.transform.scale(pygame.image.load("lives.png").convert_alpha(), (35, 35))
-        self.heart_grey = pygame.transform.scale(pygame.image.load("lives_lost.png").convert_alpha(), (35, 35))
+    def carica_risorse(self):
+        bg = pygame.image.load("graphics/backgrounds/background.png")
+        self.bg = pygame.transform.scale(bg, (SCREEN_WIDTH, SCREEN_HEIGHT))
 
-        self.logo = pygame.transform.scale(pygame.image.load("logo.png").convert_alpha(), (SCREEN_WIDTH, SCREEN_HEIGHT))
+        pw, ph = 900, 1330
+        self.char_imgs = {
+            "F": pygame.transform.scale(pygame.image.load("graphics/players/playerf.png").convert_alpha(), (160, int(160 / pw * ph))),
+            "M": pygame.transform.scale(pygame.image.load("graphics/players/playerm.png").convert_alpha(), (160, int(160 / pw * ph))),
+        }
+        self.char_img = self.char_imgs["F"]
+        self.char_h = self.char_img.get_height()
+
+        mw, mh = 1500, 1619
+        self.monster_imgs = []
+        for i in range(2, 5):
+            img = pygame.image.load(f"graphics/monsters/monster{i}.png").convert_alpha()
+            flipped = pygame.transform.flip(img, True, False)
+            self.monster_imgs.append(pygame.transform.scale(flipped, (200, int(200 / mw * mh))))
+        self.monster_img = self.monster_imgs[0]
+
+        self.heart_red = pygame.transform.scale(pygame.image.load("graphics/misc/lives.png").convert_alpha(), (35, 35))
+        self.heart_grey = pygame.transform.scale(pygame.image.load("graphics/misc/lives_lost.png").convert_alpha(), (35, 35))
+
+        self.logo = pygame.transform.scale(pygame.image.load("graphics/misc/logo.png").convert_alpha(), (SCREEN_WIDTH, SCREEN_HEIGHT))
 
     def gestione_profili(self):
         os.makedirs(PROFILES_DIR, exist_ok=True)
@@ -110,6 +120,8 @@ class Gioco:
         self.profilo_cursor = 0
         self.profilo_input = ""
         self.profilo_input_mode = False
+        self.profilo_genere_mode = False
+        self.profilo_nuovo_nome = ""
         self.config_operazione = "moltiplicazione"
         self.config_somma_massima = 10
         self.config_pool_a = [n < 10 for n in range(100)]
@@ -117,6 +129,8 @@ class Gioco:
         self.config_domande = 10
         self.config_swap = True
         self.config_differenza_positiva = True
+        self.config_timeout = TEMPO_LIMITE_DEFAULT
+        self.config_genere = "F"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -134,6 +148,7 @@ class Gioco:
                 self.profilo_corrente = ""
         if self.profilo_corrente in self.profili:
             self.carica_config_profilo(self.profilo_corrente)
+            self.aggiorna_char_img()
 
     def salva_profili(self):
         path = os.path.join(PROFILES_DIR, "profiles.json")
@@ -155,6 +170,8 @@ class Gioco:
             "domande": self.config_domande,
             "swap": self.config_swap,
             "differenza_positiva": self.config_differenza_positiva,
+            "timeout": self.config_timeout,
+            "genere": self.config_genere,
         }
         with open(path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
@@ -171,6 +188,8 @@ class Gioco:
             self.config_domande = data.get("domande", self.config_domande)
             self.config_swap = data.get("swap", self.config_swap)
             self.config_differenza_positiva = data.get("differenza_positiva", self.config_differenza_positiva)
+            self.config_timeout = data.get("timeout", self.config_timeout)
+            self.config_genere = data.get("genere", self.config_genere)
 
     def percorso_sessioni(self):
         nome = self.profilo_corrente or "_fallback"
@@ -194,7 +213,7 @@ class Gioco:
         self.risultato_atteso = 0
         self.input_utente = ""
         self.mostro_progresso = 0.0
-        self.mostro_x = SCREEN_WIDTH - 150
+        self.mostro_x = SCREEN_WIDTH + 30
         self.mostro_colpito = False
         self.hit_timer = 0
         self.domanda_attiva = False
@@ -218,6 +237,8 @@ class Gioco:
         self.config_domande = 10
         self.config_swap = True
         self.config_differenza_positiva = True
+        self.config_timeout = 12
+        self.config_genere = "F"
 
         self.tempi_risposta = []
         self.blocco_corrente = []
@@ -233,6 +254,7 @@ class Gioco:
         self.state = "gioco"
         self.game_over = False
         self.vite = VITE_MAGO
+        self.timeout_limite = self.config_timeout
         self.livello = 0
         self.tempi_risposta = []
         self.blocco_corrente = []
@@ -314,6 +336,7 @@ class Gioco:
         self.input_utente = ""
         self.mostro_progresso = 0.0
         self.mostro_colpito = False
+        self.monster_img = random.choice(self.monster_imgs)
         self.domanda_attiva = True
         self.feedback = None
         self.feedback_timer = 0
@@ -343,23 +366,43 @@ class Gioco:
                     self.debug_buf = ""
             if self.state == "profile_select":
                 if self.profilo_input_mode:
-                    if event.key == pygame.K_ESCAPE:
-                        self.profilo_input_mode = False
-                        self.profilo_input = ""
-                    elif event.key == pygame.K_RETURN and self.profilo_input.strip():
-                        nuovo = self.profilo_input.strip()
-                        if nuovo not in self.profili:
+                    if self.profilo_genere_mode:
+                        if event.key == pygame.K_ESCAPE:
+                            self.profilo_genere_mode = False
+                        elif event.key == pygame.K_f:
+                            self.config_genere = "F"
+                            nuovo = self.profilo_input.strip()
                             self.profili.append(nuovo)
                             self.salva_config_profilo(nuovo)
                             self.profilo_corrente = nuovo
+                            self.aggiorna_char_img()
                             self.salva_profili()
                             self.profilo_input = ""
                             self.profilo_input_mode = False
+                            self.profilo_genere_mode = False
                             self.state = "menu"
-                    elif event.key == pygame.K_BACKSPACE:
-                        self.profilo_input = self.profilo_input[:-1]
-                    elif event.unicode and event.unicode.isprintable() and len(self.profilo_input) < 30:
-                        self.profilo_input += event.unicode
+                        elif event.key == pygame.K_m:
+                            self.config_genere = "M"
+                            nuovo = self.profilo_input.strip()
+                            self.profili.append(nuovo)
+                            self.salva_config_profilo(nuovo)
+                            self.profilo_corrente = nuovo
+                            self.aggiorna_char_img()
+                            self.salva_profili()
+                            self.profilo_input = ""
+                            self.profilo_input_mode = False
+                            self.profilo_genere_mode = False
+                            self.state = "menu"
+                    else:
+                        if event.key == pygame.K_ESCAPE:
+                            self.profilo_input_mode = False
+                            self.profilo_input = ""
+                        elif event.key == pygame.K_RETURN and self.profilo_input.strip():
+                            self.profilo_genere_mode = True
+                        elif event.key == pygame.K_BACKSPACE:
+                            self.profilo_input = self.profilo_input[:-1]
+                        elif event.unicode and event.unicode.isprintable() and len(self.profilo_input) < 30:
+                            self.profilo_input += event.unicode
                     return
                 if event.key == pygame.K_UP:
                     self.profilo_cursor = (self.profilo_cursor - 1) % (len(self.profili) + 1)
@@ -369,6 +412,7 @@ class Gioco:
                     if self.profilo_cursor < len(self.profili):
                         self.profilo_corrente = self.profili[self.profilo_cursor]
                         self.carica_config_profilo(self.profilo_corrente)
+                        self.aggiorna_char_img()
                         self.salva_profili()
                         self.state = "menu"
                     else:
@@ -420,7 +464,13 @@ class Gioco:
                 elif event.key == pygame.K_ESCAPE:
                     self.state = "menu"
             elif self.state == "opzioni_auto":
-                if event.key == pygame.K_ESCAPE:
+                if event.key in (pygame.K_PLUS, pygame.K_EQUALS):
+                    self.config_timeout = min(99, self.config_timeout + 1)
+                    self.salva_config_profilo()
+                elif event.key == pygame.K_MINUS:
+                    self.config_timeout = max(3, self.config_timeout - 1)
+                    self.salva_config_profilo()
+                elif event.key == pygame.K_ESCAPE:
                     self.state = "opzioni"
             elif self.state == "config_fisso":
                 self.gestisci_config(event)
@@ -498,7 +548,7 @@ class Gioco:
             row = skip_somma(row, -1)
             self.config_cursor_col = min(col, max_col_for_row(row))
         elif event.key == pygame.K_DOWN:
-            row = min(6, row + 1)
+            row = min(7, row + 1)
             row = skip_somma(row, 1)
             self.config_cursor_col = min(col, max_col_for_row(row))
         elif event.key == pygame.K_LEFT:
@@ -535,11 +585,15 @@ class Gioco:
                 self.config_somma_massima = min(199, self.config_somma_massima + 1)
             elif row == 4:
                 self.config_domande = min(99, self.config_domande + 1)
+            elif row == 6:
+                self.config_timeout = min(99, self.config_timeout + 1)
         elif event.key == pygame.K_MINUS:
             if row == 3 and addizione:
                 self.config_somma_massima = max(1, self.config_somma_massima - 1)
             elif row == 4:
                 self.config_domande = max(1, self.config_domande - 1)
+            elif row == 6:
+                self.config_timeout = max(3, self.config_timeout - 1)
 
         self.config_cursor_row = row
 
@@ -547,7 +601,7 @@ class Gioco:
         if not self.domanda_attiva:
             return
 
-        tempo = min((pygame.time.get_ticks() - self.inizio_domanda) / 1000.0, TEMPO_LIMITE)
+        tempo = min((pygame.time.get_ticks() - self.inizio_domanda) / 1000.0, self.timeout_limite)
         self.tempi_risposta.append(tempo)
 
         livello = 0 if self.modalita == "fisso" else self.livello
@@ -609,7 +663,7 @@ class Gioco:
         if self.timeout_gestito:
             return
         self.timeout_gestito = True
-        tempo = TEMPO_LIMITE
+        tempo = self.timeout_limite
         self.tempi_risposta.append(tempo)
         livello = 0 if self.modalita == "fisso" else self.livello
         self.stats.setdefault(livello, {"corrette": 0, "sbagliate": 0, "tempi": []})
@@ -645,8 +699,10 @@ class Gioco:
 
         if self.domanda_attiva:
             elapsed = (pygame.time.get_ticks() - self.inizio_domanda) / 1000.0
-            self.mostro_progresso = min(elapsed / TEMPO_LIMITE, 1.0)
-            self.mostro_x = (SCREEN_WIDTH - 150) - self.mostro_progresso * (SCREEN_WIDTH - 250)
+            self.mostro_progresso = min(elapsed / self.timeout_limite, 1.0)
+            start_x = SCREEN_WIDTH + 30
+            end_x = 210
+            self.mostro_x = start_x - self.mostro_progresso * (start_x - end_x)
 
             if self.mostro_progresso >= 1.0:
                 self.gestisci_timeout()
@@ -705,30 +761,60 @@ class Gioco:
         self.screen.blit(overlay, (0, 0))
 
         if self.profilo_input_mode:
-            titolo = self.font_titolo.render("NUOVO PROFILO", True, GOLD)
-            rect = titolo.get_rect(center=(SCREEN_WIDTH // 2, 120))
-            self.screen.blit(titolo, rect)
+            if self.profilo_genere_mode:
+                titolo = self.font_titolo.render("NUOVO PROFILO", True, GOLD)
+                rect = titolo.get_rect(center=(SCREEN_WIDTH // 2, 100))
+                self.screen.blit(titolo, rect)
 
-            lbl = self.font_medio.render("Inserisci il nome:", True, WHITE)
-            rect = lbl.get_rect(center=(SCREEN_WIDTH // 2, 260))
-            self.screen.blit(lbl, rect)
+                nome_label = self.font_medio.render(f"Profilo: {self.profilo_input}", True, WHITE)
+                rect = nome_label.get_rect(center=(SCREEN_WIDTH // 2, 200))
+                self.screen.blit(nome_label, rect)
 
-            txt = self.profilo_input + ("|" if pygame.time.get_ticks() % 1000 < 500 else " ")
-            surf = self.font_input.render(txt, True, WHITE)
-            box = surf.get_rect(center=(SCREEN_WIDTH // 2, 330))
-            bg = box.inflate(40, 16)
-            bg.width = max(bg.width, 200)
-            pygame.draw.rect(self.screen, (40, 40, 60), bg, border_radius=8)
-            pygame.draw.rect(self.screen, (100, 100, 180), bg, 2, border_radius=8)
-            self.screen.blit(surf, box)
+                prompt = self.font_grande.render("Seleziona il sesso:", True, WHITE)
+                rect = prompt.get_rect(center=(SCREEN_WIDTH // 2, 300))
+                self.screen.blit(prompt, rect)
 
-            if self.profilo_input:
-                hint = self.font_piccolo.render("INVIO per confermare", True, GRAY)
-                rect = hint.get_rect(center=(SCREEN_WIDTH // 2, 380))
-                self.screen.blit(hint, rect)
-            back = self.font_piccolo.render("ESC: annulla", True, GRAY)
-            rect = back.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 60))
-            self.screen.blit(back, rect)
+                for i, (key, label) in enumerate([("F", "Femmina"), ("M", "Maschio")]):
+                    sx = SCREEN_WIDTH // 2 - 310 + i * 340
+                    y = 370
+                    img_h = int(80 / 900 * 1330)
+                    box_h = max(90, img_h + 20)
+                    pygame.draw.rect(self.screen, (60, 60, 70), (sx, y, 280, box_h), border_radius=8)
+                    if self.char_imgs[key]:
+                        img = pygame.transform.scale(self.char_imgs[key], (80, img_h))
+                        self.screen.blit(img, (sx + 20, y + 10))
+                    txt = self.font_medio.render(label, True, WHITE)
+                    rect = txt.get_rect(midleft=(sx + 120, y + box_h // 2))
+                    self.screen.blit(txt, rect)
+
+                tip = self.font_piccolo.render("Premi F o M per scegliere  |  ESC: annulla", True, GRAY)
+                rect = tip.get_rect(center=(SCREEN_WIDTH // 2, 590))
+                self.screen.blit(tip, rect)
+            else:
+                titolo = self.font_titolo.render("NUOVO PROFILO", True, GOLD)
+                rect = titolo.get_rect(center=(SCREEN_WIDTH // 2, 120))
+                self.screen.blit(titolo, rect)
+
+                lbl = self.font_medio.render("Inserisci il nome:", True, WHITE)
+                rect = lbl.get_rect(center=(SCREEN_WIDTH // 2, 260))
+                self.screen.blit(lbl, rect)
+
+                txt = self.profilo_input + ("|" if pygame.time.get_ticks() % 1000 < 500 else " ")
+                surf = self.font_input.render(txt, True, WHITE)
+                box = surf.get_rect(center=(SCREEN_WIDTH // 2, 330))
+                bg = box.inflate(40, 16)
+                bg.width = max(bg.width, 200)
+                pygame.draw.rect(self.screen, (40, 40, 60), bg, border_radius=8)
+                pygame.draw.rect(self.screen, (100, 100, 180), bg, 2, border_radius=8)
+                self.screen.blit(surf, box)
+
+                if self.profilo_input:
+                    hint = self.font_piccolo.render("INVIO per confermare", True, GRAY)
+                    rect = hint.get_rect(center=(SCREEN_WIDTH // 2, 380))
+                    self.screen.blit(hint, rect)
+                back = self.font_piccolo.render("ESC: annulla", True, GRAY)
+                rect = back.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 60))
+                self.screen.blit(back, rect)
             return
 
         titolo = self.font_titolo.render("SELEZIONA PROFILO", True, GOLD)
@@ -838,9 +924,22 @@ class Gioco:
         rect = titolo.get_rect(center=(SCREEN_WIDTH // 2, 80))
         self.screen.blit(titolo, rect)
 
-        info = self.font_medio.render("Nessuna opzione disponibile al momento.", True, GRAY)
-        rect = info.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
-        self.screen.blit(info, rect)
+        # Timeout
+        y = 220
+        label_t = self.font_medio.render("Timeout (secondi)", True, WHITE)
+        rect = label_t.get_rect(midleft=(SCREEN_WIDTH // 2 - 200, y + 17))
+        self.screen.blit(label_t, rect)
+        focused = self.opzioni_cursor == 0
+        tx = SCREEN_WIDTH // 2 + 20
+        if focused:
+            pygame.draw.rect(self.screen, (255, 255, 100), (tx - 2, y - 2, 100, 38), 3, border_radius=4)
+        pygame.draw.rect(self.screen, (60, 60, 70), (tx, y, 96, 34), border_radius=4)
+        t_surf = self.font_grande.render(str(self.config_timeout), True, WHITE)
+        rect_t = t_surf.get_rect(center=(tx + 48, y + 17))
+        self.screen.blit(t_surf, rect_t)
+        hint_t = self.font_piccolo.render("+ / -", True, GRAY)
+        rect_ht = hint_t.get_rect(midleft=(tx + 110, y + 17))
+        self.screen.blit(hint_t, rect_ht)
 
         back = self.font_piccolo.render("ESC: torna indietro", True, GRAY)
         rect = back.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 60))
@@ -862,7 +961,7 @@ class Gioco:
         sottrazione = self.config_operazione == "sottrazione"
 
         def row_y(r):
-            base = [150, 210, 290, 380, 430, 490, 550]
+            base = [150, 210, 290, 370, 420, 470, 520, 570]
             return base[r]
 
         # Row 0: Operazione
@@ -992,8 +1091,26 @@ class Gioco:
         rect_sv = swap_val.get_rect(center=(445, y + 18))
         self.screen.blit(swap_val, rect_sv)
 
-        # Row 6: CONFERMA
+        # Row 6: Timeout
         row = 6
+        y = row_y(row)
+        label_t = self.font_medio.render("Timeout (secondi)", True, WHITE)
+        rect = label_t.get_rect(midleft=(80, y + 17))
+        self.screen.blit(label_t, rect)
+        focused = self.config_cursor_row == row
+        tx = 360
+        if focused:
+            pygame.draw.rect(self.screen, (255, 255, 100), (tx - 2, y - 2, 100, 38), 3, border_radius=4)
+        pygame.draw.rect(self.screen, (60, 60, 70), (tx, y, 96, 34), border_radius=4)
+        t_surf = self.font_grande.render(str(self.config_timeout), True, WHITE)
+        rect_t = t_surf.get_rect(center=(tx + 48, y + 17))
+        self.screen.blit(t_surf, rect_t)
+        hint_t = self.font_piccolo.render("+ / -", True, GRAY)
+        rect_ht = hint_t.get_rect(midleft=(tx + 110, y + 17))
+        self.screen.blit(hint_t, rect_ht)
+
+        # Row 7: CONFERMA
+        row = 7
         y = row_y(row)
         start_sel = self.config_cursor_row == row
         if start_sel:
@@ -1017,12 +1134,13 @@ class Gioco:
 
         wx = 80 + shake[0]
         wy = SCREEN_HEIGHT // 2 - self.char_h // 2 + 120 + shake[1]
-        self.screen.blit(self.char_img, (wx, wy))
-        self.screen.blit(self.monster_img, (self.mostro_x + shake[0], wy + 50))
+        wy_monster = wy + 50
+        self.screen.blit(self.char_img, (wx, wy_monster))
+        self.screen.blit(self.monster_img, (self.mostro_x + shake[0], wy_monster))
 
         if self.zap_timer > 0:
-            start_x, start_y = 80 + 80, wy + self.char_h // 2
-            end_x, end_y = self.mostro_x + 100, wy + 50 + self.char_h // 2
+            start_x, start_y = 80 + 80, wy_monster + self.char_h // 2
+            end_x, end_y = self.mostro_x + 100, wy_monster + self.char_h // 2
             mid_x = (start_x + end_x) // 2
             segments = 8
             for offset in range(-4, 5, 2):
@@ -1100,7 +1218,7 @@ class Gioco:
                 if w > 0:
                     pygame.draw.rect(self.screen, col_bar, (bar_x, bar_y, w, bar_h), border_radius=8)
 
-            tempo_testo = self.font_piccolo.render(f"{TEMPO_LIMITE * (1 - self.mostro_progresso):.0f}s", True, WHITE)
+            tempo_testo = self.font_piccolo.render(f"{self.timeout_limite * (1 - self.mostro_progresso):.0f}s", True, WHITE)
             rect = tempo_testo.get_rect(midleft=(bar_x + bar_w + 15, bar_y + bar_h // 2))
             self.screen.blit(tempo_testo, rect)
 
