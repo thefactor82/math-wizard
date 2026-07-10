@@ -1,0 +1,6 @@
+Ci sono casini con le opzioni
+Definire il punto di partenza fulmine per entrambi i maghetti
+Far accendere una luce in cima al bastone quando inizi a digitare una risposta
+animazione di mostro che scompare anche con risposta errata
+cambiare cursore mouse
+Aggiungere sezione credits

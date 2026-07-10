@@ -215,11 +215,11 @@ class Gioco:
         self.mostro_progresso = 0.0
         self.mostro_x = SCREEN_WIDTH + 30
         self.mostro_colpito = False
+        self.mostro_fade_start = 0
         self.hit_timer = 0
         self.domanda_attiva = False
         self.feedback = None
         self.feedback_timer = 0
-        self.attendi_invio = False
         self.zap_timer = 0
         self.game_over = False
         self.inizio_domanda = 0
@@ -232,6 +232,7 @@ class Gioco:
         self.config_somma_massima = 10
         self.config_cursor_row = 0
         self.config_cursor_col = 0
+        self.config_cursor_subrow = 0
         self.config_pool_a = [n < 10 for n in range(100)]
         self.config_pool_b = [n < 10 for n in range(100)]
         self.config_domande = 10
@@ -249,6 +250,7 @@ class Gioco:
         self.state = "config_fisso"
         self.config_cursor_row = 0
         self.config_cursor_col = 0
+        self.config_cursor_subrow = 0
 
     def avvia_partita(self):
         self.state = "gioco"
@@ -335,6 +337,7 @@ class Gioco:
             self.risultato_atteso = self.a * self.b
         self.input_utente = ""
         self.mostro_progresso = 0.0
+        self.mostro_x = SCREEN_WIDTH + 30
         self.mostro_colpito = False
         self.monster_img = random.choice(self.monster_imgs)
         self.domanda_attiva = True
@@ -512,24 +515,132 @@ class Gioco:
                 elif event.key == pygame.K_ESCAPE:
                     self.running = False
 
-    def gestisci_config(self, event):
-        if event.key == pygame.K_ESCAPE:
-            self.state = "opzioni"
-            return
-        if event.key == pygame.K_RETURN:
-            self.salva_config_profilo()
-            self.state = "menu"
-            return
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            mx, my = event.pos
+            if self.state == "menu":
+                # Opzione 1: Autoapprendimento (midleft 340, 280)
+                if 340 - 10 <= mx <= 340 + 580 and 280 - 10 <= my <= 280 + 74:
+                    self.modalita = "auto"
+                    self.avvia_partita()
+                # Opzione 2: Livello Fisso (midleft 340, 380)
+                elif 340 - 10 <= mx <= 340 + 580 and 380 - 10 <= my <= 380 + 74:
+                    self.modalita = "fisso"
+                    self.avvia_partita()
+                # Gear icon (centro 1235, 45, raggio 22)
+                elif (mx - 1235) ** 2 + (my - 45) ** 2 <= (22 + 10) ** 2:
+                    self.state = "opzioni"
+                # Profilo (midleft 340, 550)
+                elif 340 - 10 <= mx <= 340 + 400 and 550 - 10 <= my <= 550 + 34:
+                    if self.profilo_corrente in self.profili:
+                        self.profilo_cursor = self.profili.index(self.profilo_corrente)
+                    else:
+                        self.profilo_cursor = 0
+                    self.state = "profile_select"
+            elif self.state == "profile_select":
+                if not self.profilo_input_mode:
+                    # Lista profili
+                    for i, nome in enumerate(self.profili):
+                        y = 170 + i * 60
+                        if 340 - 10 <= mx <= 340 + 400 and y - 10 <= my <= y + 64:
+                            self.profilo_corrente = nome
+                            self.carica_config_profilo(nome)
+                            self.aggiorna_char_img()
+                            self.salva_profili()
+                            self.state = "menu"
+                            break
+                    else:
+                        # "+ Nuovo profilo" (ultima entry)
+                        y = 170 + len(self.profili) * 60
+                        if 340 - 10 <= mx <= 340 + 400 and y - 10 <= my <= y + 64:
+                            self.profilo_input_mode = True
+                            self.profilo_input = ""
+                elif self.profilo_genere_mode:
+                    # Scelta genere
+                    if 330 <= mx <= 610 and 370 - 10 <= my <= 370 + 130:
+                        self.config_genere = "F"
+                        nuovo = self.profilo_input.strip()
+                        self.profili.append(nuovo)
+                        self.salva_config_profilo(nuovo)
+                        self.profilo_corrente = nuovo
+                        self.aggiorna_char_img()
+                        self.salva_profili()
+                        self.profilo_input = ""
+                        self.profilo_input_mode = False
+                        self.profilo_genere_mode = False
+                        self.state = "menu"
+                    elif 670 <= mx <= 950 and 370 - 10 <= my <= 370 + 130:
+                        self.config_genere = "M"
+                        nuovo = self.profilo_input.strip()
+                        self.profili.append(nuovo)
+                        self.salva_config_profilo(nuovo)
+                        self.profilo_corrente = nuovo
+                        self.aggiorna_char_img()
+                        self.salva_profili()
+                        self.profilo_input = ""
+                        self.profilo_input_mode = False
+                        self.profilo_genere_mode = False
+                        self.state = "menu"
+            elif self.state == "opzioni":
+                if SCREEN_WIDTH // 2 - 320 <= mx <= SCREEN_WIDTH // 2 + 320:
+                    if 209 <= my <= 273:
+                        self.state = "opzioni_auto"
+                    elif 289 <= my <= 353:
+                        self.mostra_config()
+            elif self.state == "opzioni_auto":
+                tx = SCREEN_WIDTH // 2 + 20
+                lw = 30
+                if tx - 2 <= mx <= tx + 100 + 2 and 218 <= my <= 256:
+                    if mx < tx + lw:
+                        self.config_timeout = max(3, self.config_timeout - 1)
+                    elif mx >= tx + lw + 40:
+                        self.config_timeout = min(99, self.config_timeout + 1)
+                    self.salva_config_profilo()
+            elif self.state == "config_fisso":
+                try:
+                    self.gestisci_config(event)
+                except Exception as e:
+                    print(f"config mouse error: {e}")
+                    import traceback
+                    traceback.print_exc()
 
+    def gestisci_config(self, event):
         ops = ["moltiplicazione", "addizione", "sottrazione"]
         op_idx = ops.index(self.config_operazione)
         addizione = self.config_operazione == "addizione"
         sottrazione = self.config_operazione == "sottrazione"
-        pools_mode = sottrazione or addizione
+        pools_mode = addizione or sottrazione
+        cols_u = 5
+        items_pool = 10 if pools_mode else 13
+
+        def row_y(r):
+            base = [150, 210, 290, 370, 420, 470, 520, 550]
+            cell_h, gap = 30, 6
+            subrows_pool = (items_pool + 4) // 5
+            pool_extra = max(0, (subrows_pool - 2)) * (cell_h + gap)
+            offset = 0
+            if r >= 2:
+                offset += pool_extra
+            if r >= 3:
+                offset += pool_extra
+            return base[r] + offset
+
+        def pool_ncols():
+            if pools_mode:
+                return (10, 5)
+            return (13, 5)
+
+        def pool_rows():
+            items, cols = pool_ncols()
+            return (items + cols - 1) // cols
+
+        def pool_index(subrow, col):
+            items, cols = pool_ncols()
+            idx = subrow * cols + col
+            return idx if idx < items else -1
 
         def max_col_for_row(r):
             if r in (1, 2):
-                return 12 if not pools_mode else 9
+                return 4
             return 0
 
         def skip_somma(r, step):
@@ -540,25 +651,169 @@ class Gioco:
                     return 2
             return r
 
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            mx, my = event.pos
+
+            # Row 7: CONFERMA
+            y7 = row_y(7)
+            if SCREEN_WIDTH // 2 - 110 <= mx <= SCREEN_WIDTH // 2 + 110 and y7 <= my <= y7 + 46:
+                self.salva_config_profilo()
+                self.state = "menu"
+                return
+
+            # Row 0: operation selector
+            y0 = row_y(0)
+            if y0 - 2 <= my <= y0 + 36:
+                for i in range(3):
+                    sx = 360 + i * 220
+                    if sx <= mx <= sx + 206:
+                        self.config_operazione = ops[i]
+                        self.config_cursor_row = 0
+                        self.config_cursor_col = 0
+                        self.config_cursor_subrow = 0
+                        return
+
+            # Row 1 and 2: pool grid
+            for ri in range(2):
+                r = 1 + ri
+                y_base = row_y(r)
+                subrows = (items_pool + cols_u - 1) // cols_u
+                cell_w, cell_h = 100, 30
+                gap = 6
+                grid_x = 360
+                for sr in range(subrows):
+                    sy = y_base + sr * (cell_h + gap)
+                    for c in range(cols_u):
+                        idx = sr * cols_u + c
+                        if idx >= items_pool:
+                            break
+                        sx = grid_x + c * (cell_w + gap)
+                        if sx - 2 <= mx <= sx + cell_w + 2 and sy - 2 <= my <= sy + cell_h + 2:
+                            self.config_cursor_row = r
+                            self.config_cursor_col = c
+                            self.config_cursor_subrow = sr
+                            pool = self.config_pool_a if r == 1 else self.config_pool_b
+                            if pools_mode:
+                                start = idx * 10
+                                for i in range(start, start + 10):
+                                    pool[i] = not pool[i]
+                                if not any(pool):
+                                    pool[start] = True
+                            else:
+                                pool[idx] = not pool[idx]
+                                if not any(pool):
+                                    pool[idx] = True
+                            return
+
+            # Row 3: somma massima (addizione) / differenza positiva (sottrazione)
+            y3 = row_y(3)
+            if y3 - 2 <= my <= y3 + 36:
+                if addizione:
+                    lw = 30
+                    if 360 - 2 <= mx <= 360 + 100 + 2:
+                        self.config_cursor_row = 3
+                        self.config_cursor_col = 0
+                        if mx < 360 + lw:
+                            self.config_somma_massima = max(1, self.config_somma_massima - 1)
+                        elif mx >= 360 + lw + 40:
+                            self.config_somma_massima = min(199, self.config_somma_massima + 1)
+                        return
+                elif sottrazione:
+                    if 350 <= mx <= 540 and y3 - 4 <= my <= y3 + 40:
+                        self.config_cursor_row = 3
+                        self.config_cursor_col = 0
+                        self.config_differenza_positiva = not self.config_differenza_positiva
+                        return
+
+            # Row 4: domande
+            y4 = row_y(4)
+            if y4 - 2 <= my <= y4 + 36:
+                lw = 30
+                if 360 - 2 <= mx <= 360 + 100 + 2:
+                    self.config_cursor_row = 4
+                    self.config_cursor_col = 0
+                    if mx < 360 + lw:
+                        self.config_domande = max(1, self.config_domande - 1)
+                    elif mx >= 360 + lw + 40:
+                        self.config_domande = min(99, self.config_domande + 1)
+                    return
+
+            # Row 5: swap
+            y5 = row_y(5)
+            if y5 - 4 <= my <= y5 + 40:
+                if 350 <= mx <= 540 and not sottrazione:
+                    self.config_cursor_row = 5
+                    self.config_cursor_col = 0
+                    self.config_swap = not self.config_swap
+                    return
+
+            # Row 6: timeout
+            y6 = row_y(6)
+            if y6 - 2 <= my <= y6 + 36:
+                lw = 30
+                if 360 - 2 <= mx <= 360 + 100 + 2:
+                    self.config_cursor_row = 6
+                    self.config_cursor_col = 0
+                    if mx < 360 + lw:
+                        self.config_timeout = max(3, self.config_timeout - 1)
+                    elif mx >= 360 + lw + 40:
+                        self.config_timeout = min(99, self.config_timeout + 1)
+                    return
+
+            return
+
+        if event.key == pygame.K_ESCAPE:
+            self.state = "opzioni"
+            return
+        if event.key == pygame.K_RETURN:
+            self.salva_config_profilo()
+            self.state = "menu"
+            return
+
         row = self.config_cursor_row
         col = self.config_cursor_col
+        sub = self.config_cursor_subrow
 
         if event.key == pygame.K_UP:
-            row = max(0, row - 1)
-            row = skip_somma(row, -1)
+            if row in (1, 2):
+                if sub > 0:
+                    sub -= 1
+                else:
+                    row = skip_somma(max(0, row - 1), -1)
+            else:
+                row = skip_somma(max(0, row - 1), -1)
             self.config_cursor_col = min(col, max_col_for_row(row))
         elif event.key == pygame.K_DOWN:
-            row = min(7, row + 1)
-            row = skip_somma(row, 1)
+            if row in (1, 2):
+                if sub < pool_rows() - 1:
+                    idx = pool_index(sub + 1, col)
+                    if idx >= 0:
+                        sub += 1
+                    else:
+                        row = skip_somma(min(7, row + 1), 1)
+                else:
+                    row = skip_somma(min(7, row + 1), 1)
+            else:
+                row = skip_somma(min(7, row + 1), 1)
             self.config_cursor_col = min(col, max_col_for_row(row))
         elif event.key == pygame.K_LEFT:
             if row == 0:
                 self.config_operazione = ops[(op_idx - 1) % 3]
+            elif row in (1, 2):
+                if col > 0:
+                    col -= 1
+                else:
+                    col = max_col_for_row(row)
             else:
                 self.config_cursor_col = max(0, col - 1)
         elif event.key == pygame.K_RIGHT:
             if row == 0:
                 self.config_operazione = ops[(op_idx + 1) % 3]
+            elif row in (1, 2):
+                if col < 4:
+                    idx = pool_index(sub, col + 1)
+                    if idx >= 0:
+                        col += 1
             else:
                 self.config_cursor_col = min(max_col_for_row(row), col + 1)
         elif event.key == pygame.K_SPACE:
@@ -566,16 +821,18 @@ class Gioco:
                 self.config_operazione = ops[(op_idx + 1) % 3]
             elif row in (1, 2):
                 pool = self.config_pool_a if row == 1 else self.config_pool_b
-                if pools_mode:
-                    start = col * 10
-                    for i in range(start, start + 10):
-                        pool[i] = not pool[i]
-                    if not any(pool):
-                        pool[start + col] = True
-                else:
-                    pool[col] = not pool[col]
-                    if not any(pool):
-                        pool[col] = True
+                idx = pool_index(sub, col)
+                if idx >= 0:
+                    if pools_mode:
+                        start = idx * 10
+                        for i in range(start, start + 10):
+                            pool[i] = not pool[i]
+                        if not any(pool):
+                            pool[start] = True
+                    else:
+                        pool[idx] = not pool[idx]
+                        if not any(pool):
+                            pool[idx] = True
             elif row == 3 and sottrazione:
                 self.config_differenza_positiva = not self.config_differenza_positiva
             elif row == 5 and not sottrazione:
@@ -596,6 +853,8 @@ class Gioco:
                 self.config_timeout = max(3, self.config_timeout - 1)
 
         self.config_cursor_row = row
+        self.config_cursor_col = col
+        self.config_cursor_subrow = sub
 
     def controlla_risposta(self):
         if not self.domanda_attiva:
@@ -616,6 +875,7 @@ class Gioco:
                 self.corretto = True
                 self.stats[livello]["corrette"] += 1
                 self.mostro_colpito = True
+                self.mostro_fade_start = pygame.time.get_ticks()
                 self.zap_timer = 12
             else:
                 self.corretto = False
@@ -679,6 +939,7 @@ class Gioco:
         self.feedback_timer = pygame.time.get_ticks()
         self.attendi_invio = True
         self.mostro_colpito = True
+        self.mostro_fade_start = pygame.time.get_ticks()
         self.hit_timer = 12
         if self.vite <= 0:
             self.game_over = True
@@ -931,15 +1192,19 @@ class Gioco:
         self.screen.blit(label_t, rect)
         focused = self.opzioni_cursor == 0
         tx = SCREEN_WIDTH // 2 + 20
+        lw, vw, rw = 30, 40, 30
+        total = lw + vw + rw
         if focused:
-            pygame.draw.rect(self.screen, (255, 255, 100), (tx - 2, y - 2, 100, 38), 3, border_radius=4)
-        pygame.draw.rect(self.screen, (60, 60, 70), (tx, y, 96, 34), border_radius=4)
+            pygame.draw.rect(self.screen, (255, 255, 100), (tx - 2, y - 2, total + 4, 38), 3, border_radius=4)
+        pygame.draw.rect(self.screen, (70, 70, 80), (tx, y, lw, 34), border_radius=4)
+        pygame.draw.rect(self.screen, (40, 40, 50), (tx + lw, y, vw, 34))
+        pygame.draw.rect(self.screen, (70, 70, 80), (tx + lw + vw, y, rw, 34), border_radius=4)
+        minus = self.font_medio.render("-", True, WHITE)
+        plus = self.font_medio.render("+", True, WHITE)
+        self.screen.blit(minus, minus.get_rect(center=(tx + lw // 2, y + 17)))
+        self.screen.blit(plus, plus.get_rect(center=(tx + lw + vw + rw // 2, y + 17)))
         t_surf = self.font_grande.render(str(self.config_timeout), True, WHITE)
-        rect_t = t_surf.get_rect(center=(tx + 48, y + 17))
-        self.screen.blit(t_surf, rect_t)
-        hint_t = self.font_piccolo.render("+ / -", True, GRAY)
-        rect_ht = hint_t.get_rect(midleft=(tx + 110, y + 17))
-        self.screen.blit(hint_t, rect_ht)
+        self.screen.blit(t_surf, t_surf.get_rect(center=(tx + lw + vw // 2, y + 17)))
 
         back = self.font_piccolo.render("ESC: torna indietro", True, GRAY)
         rect = back.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 60))
@@ -961,13 +1226,23 @@ class Gioco:
         sottrazione = self.config_operazione == "sottrazione"
 
         def row_y(r):
-            base = [150, 210, 290, 370, 420, 470, 520, 570]
-            return base[r]
+            base = [150, 210, 290, 370, 420, 470, 520, 550]
+            pools_mode = addizione or sottrazione
+            cell_h, gap = 30, 6
+            items_pool = 10 if pools_mode else 13
+            subrows_pool = (items_pool + 4) // 5
+            pool_extra = max(0, (subrows_pool - 2)) * (cell_h + gap)
+            offset = 0
+            if r >= 2:
+                offset += pool_extra
+            if r >= 3:
+                offset += pool_extra
+            return base[r] + offset
 
         # Row 0: Operazione
         row = 0
         y = row_y(row)
-        label_op = self.font_medio.render("Operazione", True, WHITE)
+        label_op = self.font_tiny.render("Operazione", True, WHITE)
         rect = label_op.get_rect(midleft=(80, y + 17))
         self.screen.blit(label_op, rect)
         focused = self.config_cursor_row == row
@@ -980,71 +1255,76 @@ class Gioco:
                 col_b = (255, 255, 100) if sel else (80, 80, 90)
                 pygame.draw.rect(self.screen, col_b, (sx - 2, y - 2, 210, 38), 3, border_radius=4)
             pygame.draw.rect(self.screen, bg_col, (sx, y, 206, 34), border_radius=4)
-            txt = self.font_medio.render(nome, True, WHITE)
+            txt = self.font_tiny.render(nome, True, WHITE)
             rect_t = txt.get_rect(center=(sx + 103, y + 17))
             self.screen.blit(txt, rect_t)
 
-        # Row 1-2: Pool A / Pool B
+        # Row 1-2: Pool A / Pool B (unified 5-col grid)
         labels = ["Operando A", "Operando B"]
         pools = [self.config_pool_a, self.config_pool_b]
+        cols_u = 5
+        pools_mode = addizione or sottrazione
         for ri in range(2):
             row = 1 + ri
-            y = row_y(row)
-            label = self.font_medio.render(labels[ri], True, WHITE)
-            rect = label.get_rect(midleft=(80, y + 17))
+            y_base = row_y(row)
+            label = self.font_tiny.render(labels[ri], True, WHITE)
+            rect = label.get_rect(midleft=(80, y_base + 17))
             self.screen.blit(label, rect)
 
-            pools_mode = addizione or sottrazione
-            if pools_mode:
-                ncols = 10
-                for col in range(ncols):
-                    sx = 360 + col * 62
-                    start = col * 10
-                    end = min(start + 9, 99)
-                    selected = any(pools[ri][start:start+10])
-                    focus = self.config_cursor_row == row and self.config_cursor_col == col
+            items = 10 if pools_mode else 13
+            subrows = (items + cols_u - 1) // cols_u
+            cell_w, cell_h = 100, 30
+            gap = 6
+            grid_x = 360
+            for sr in range(subrows):
+                sy = y_base + sr * (cell_h + gap)
+                for c in range(cols_u):
+                    idx = sr * cols_u + c
+                    if idx >= items:
+                        break
+                    sx = grid_x + c * (cell_w + gap)
+                    if pools_mode:
+                        start = idx * 10
+                        end = min(start + 9, 99)
+                        selected = any(pools[ri][start:start+10])
+                        txt = f"{start}-{end}"
+                    else:
+                        selected = pools[ri][idx]
+                        txt = str(idx)
+                    focus = self.config_cursor_row == row and self.config_cursor_col == c and self.config_cursor_subrow == sr
                     bg_col = (60, 130, 60) if selected else (60, 60, 70)
                     if focus:
-                        pygame.draw.rect(self.screen, (255, 255, 100), (sx - 2, y - 2, 54, 34), 3, border_radius=4)
-                    pygame.draw.rect(self.screen, bg_col, (sx, y, 50, 30), border_radius=4)
-                    txt = self.font_tiny.render(f"{start}-{end}", True, WHITE)
-                    rect_t = txt.get_rect(center=(sx + 25, y + 15))
-                    self.screen.blit(txt, rect_t)
-            else:
-                ncols = 13
-                for col in range(ncols):
-                    sx = 360 + col * 68
-                    selected = pools[ri][col]
-                    focus = self.config_cursor_row == row and self.config_cursor_col == col
-                    bg_col = (60, 130, 60) if selected else (60, 60, 70)
-                    if focus:
-                        pygame.draw.rect(self.screen, (255, 255, 100), (sx - 2, y - 2, 58, 38), 3, border_radius=4)
-                    pygame.draw.rect(self.screen, bg_col, (sx, y, 54, 34), border_radius=4)
-                    num = self.font_num.render(str(col), True, WHITE)
-                    rect_n = num.get_rect(center=(sx + 27, y + 17))
-                    self.screen.blit(num, rect_n)
+                        pygame.draw.rect(self.screen, (255, 255, 100), (sx - 2, sy - 2, cell_w + 4, cell_h + 4), 3, border_radius=4)
+                    pygame.draw.rect(self.screen, bg_col, (sx, sy, cell_w, cell_h), border_radius=4)
+                    t = self.font_tiny.render(txt, True, WHITE)
+                    rt = t.get_rect(center=(sx + cell_w // 2, sy + cell_h // 2))
+                    self.screen.blit(t, rt)
 
         # Row 3: Somma massima / Differenza positiva
         row = 3
         y = row_y(row)
         if addizione:
-            label_s = self.font_medio.render("Somma massima", True, WHITE)
+            label_s = self.font_tiny.render("Somma massima", True, WHITE)
             rect = label_s.get_rect(midleft=(80, y + 17))
             self.screen.blit(label_s, rect)
             focused = self.config_cursor_row == row
             sx = 360
+            lw, vw, rw = 30, 40, 30
+            total = lw + vw + rw
             if focused:
-                pygame.draw.rect(self.screen, (255, 255, 100), (sx - 2, y - 2, 90, 38), 3, border_radius=4)
-            pygame.draw.rect(self.screen, (60, 60, 70), (sx, y, 86, 34), border_radius=4)
-            s_surf = self.font_grande.render(str(self.config_somma_massima), True, WHITE)
-            rect_s = s_surf.get_rect(center=(sx + 43, y + 17))
-            self.screen.blit(s_surf, rect_s)
-            hint_s = self.font_piccolo.render("+ / -", True, GRAY)
-            rect_hs = hint_s.get_rect(midleft=(sx + 100, y + 17))
-            self.screen.blit(hint_s, rect_hs)
+                pygame.draw.rect(self.screen, (255, 255, 100), (sx - 2, y - 2, total + 4, 38), 3, border_radius=4)
+            pygame.draw.rect(self.screen, (70, 70, 80), (sx, y, lw, 34), border_radius=4)
+            pygame.draw.rect(self.screen, (40, 40, 50), (sx + lw, y, vw, 34))
+            pygame.draw.rect(self.screen, (70, 70, 80), (sx + lw + vw, y, rw, 34), border_radius=4)
+            minus = self.font_tiny.render("-", True, WHITE)
+            plus = self.font_tiny.render("+", True, WHITE)
+            self.screen.blit(minus, minus.get_rect(center=(sx + lw // 2, y + 17)))
+            self.screen.blit(plus, plus.get_rect(center=(sx + lw + vw + rw // 2, y + 17)))
+            s_surf = self.font_tiny.render(str(self.config_somma_massima), True, WHITE)
+            self.screen.blit(s_surf, s_surf.get_rect(center=(sx + lw + vw // 2, y + 17)))
         elif sottrazione:
             focused = self.config_cursor_row == row
-            label_d = self.font_medio.render("Differenza positiva", True, WHITE)
+            label_d = self.font_tiny.render("Differenza positiva", True, WHITE)
             rect = label_d.get_rect(midleft=(80, y + 17))
             self.screen.blit(label_d, rect)
             if focused:
@@ -1052,27 +1332,31 @@ class Gioco:
             bg_d = (60, 130, 60) if self.config_differenza_positiva else (60, 60, 70)
             pygame.draw.rect(self.screen, bg_d, (352, y, 186, 36), border_radius=6)
             dp_txt = "ON" if self.config_differenza_positiva else "OFF"
-            dp_val = self.font_medio.render(dp_txt, True, WHITE)
+            dp_val = self.font_tiny.render(dp_txt, True, WHITE)
             rect_dv = dp_val.get_rect(center=(445, y + 18))
             self.screen.blit(dp_val, rect_dv)
 
         # Row 4: Domande
         row = 4
         y = row_y(row)
-        label_q = self.font_medio.render("Domande", True, WHITE)
+        label_q = self.font_tiny.render("Domande", True, WHITE)
         rect = label_q.get_rect(midleft=(80, y + 17))
         self.screen.blit(label_q, rect)
         focused = self.config_cursor_row == row
         qx = 360
+        lw, vw, rw = 30, 40, 30
+        total = lw + vw + rw
         if focused:
-            pygame.draw.rect(self.screen, (255, 255, 100), (qx - 2, y - 2, 90, 38), 3, border_radius=4)
-        pygame.draw.rect(self.screen, (60, 60, 70), (qx, y, 86, 34), border_radius=4)
-        q_surf = self.font_grande.render(str(self.config_domande), True, WHITE)
-        rect_q = q_surf.get_rect(center=(qx + 43, y + 17))
-        self.screen.blit(q_surf, rect_q)
-        hint = self.font_piccolo.render("+ / -", True, GRAY)
-        rect_h = hint.get_rect(midleft=(qx + 100, y + 17))
-        self.screen.blit(hint, rect_h)
+            pygame.draw.rect(self.screen, (255, 255, 100), (qx - 2, y - 2, total + 4, 38), 3, border_radius=4)
+        pygame.draw.rect(self.screen, (70, 70, 80), (qx, y, lw, 34), border_radius=4)
+        pygame.draw.rect(self.screen, (40, 40, 50), (qx + lw, y, vw, 34))
+        pygame.draw.rect(self.screen, (70, 70, 80), (qx + lw + vw, y, rw, 34), border_radius=4)
+        minus = self.font_tiny.render("-", True, WHITE)
+        plus = self.font_tiny.render("+", True, WHITE)
+        self.screen.blit(minus, minus.get_rect(center=(qx + lw // 2, y + 17)))
+        self.screen.blit(plus, plus.get_rect(center=(qx + lw + vw + rw // 2, y + 17)))
+        q_surf = self.font_tiny.render(str(self.config_domande), True, WHITE)
+        self.screen.blit(q_surf, q_surf.get_rect(center=(qx + lw + vw // 2, y + 17)))
 
         # Row 5: Commutazione
         row = 5
@@ -1084,30 +1368,34 @@ class Gioco:
         bg_swap = (60, 130, 60) if (self.config_swap or swap_locked) else (60, 60, 70)
         pygame.draw.rect(self.screen, bg_swap, (352, y, 186, 36), border_radius=6)
         sw_txt = "ON" if (self.config_swap or swap_locked) else "OFF"
-        swap_label = self.font_medio.render("Commuta A/B", True, WHITE)
+        swap_label = self.font_tiny.render("Commuta A/B", True, WHITE)
         rect_sl = swap_label.get_rect(midleft=(80, y + 18))
         self.screen.blit(swap_label, rect_sl)
-        swap_val = self.font_medio.render(sw_txt, True, WHITE)
+        swap_val = self.font_tiny.render(sw_txt, True, WHITE)
         rect_sv = swap_val.get_rect(center=(445, y + 18))
         self.screen.blit(swap_val, rect_sv)
 
         # Row 6: Timeout
         row = 6
         y = row_y(row)
-        label_t = self.font_medio.render("Timeout (secondi)", True, WHITE)
+        label_t = self.font_tiny.render("Timeout (secondi)", True, WHITE)
         rect = label_t.get_rect(midleft=(80, y + 17))
         self.screen.blit(label_t, rect)
         focused = self.config_cursor_row == row
         tx = 360
+        lw, vw, rw = 30, 40, 30
+        total = lw + vw + rw
         if focused:
-            pygame.draw.rect(self.screen, (255, 255, 100), (tx - 2, y - 2, 100, 38), 3, border_radius=4)
-        pygame.draw.rect(self.screen, (60, 60, 70), (tx, y, 96, 34), border_radius=4)
-        t_surf = self.font_grande.render(str(self.config_timeout), True, WHITE)
-        rect_t = t_surf.get_rect(center=(tx + 48, y + 17))
-        self.screen.blit(t_surf, rect_t)
-        hint_t = self.font_piccolo.render("+ / -", True, GRAY)
-        rect_ht = hint_t.get_rect(midleft=(tx + 110, y + 17))
-        self.screen.blit(hint_t, rect_ht)
+            pygame.draw.rect(self.screen, (255, 255, 100), (tx - 2, y - 2, total + 4, 38), 3, border_radius=4)
+        pygame.draw.rect(self.screen, (70, 70, 80), (tx, y, lw, 34), border_radius=4)
+        pygame.draw.rect(self.screen, (40, 40, 50), (tx + lw, y, vw, 34))
+        pygame.draw.rect(self.screen, (70, 70, 80), (tx + lw + vw, y, rw, 34), border_radius=4)
+        minus = self.font_tiny.render("-", True, WHITE)
+        plus = self.font_tiny.render("+", True, WHITE)
+        self.screen.blit(minus, minus.get_rect(center=(tx + lw // 2, y + 17)))
+        self.screen.blit(plus, plus.get_rect(center=(tx + lw + vw + rw // 2, y + 17)))
+        t_surf = self.font_tiny.render(str(self.config_timeout), True, WHITE)
+        self.screen.blit(t_surf, t_surf.get_rect(center=(tx + lw + vw // 2, y + 17)))
 
         # Row 7: CONFERMA
         row = 7
@@ -1116,12 +1404,12 @@ class Gioco:
         if start_sel:
             pygame.draw.rect(self.screen, (255, 255, 100), (SCREEN_WIDTH // 2 - 112, y - 4, 224, 54), 3, border_radius=8)
         pygame.draw.rect(self.screen, (40, 120, 40), (SCREEN_WIDTH // 2 - 110, y, 220, 46), border_radius=8)
-        start_txt = self.font_medio.render("CONFERMA", True, WHITE)
+        start_txt = self.font_tiny.render("CONFERMA", True, WHITE)
         rect_s = start_txt.get_rect(center=(SCREEN_WIDTH // 2, y + 23))
         self.screen.blit(start_txt, rect_s)
 
         help = self.font_piccolo.render("Freccette: naviga  |  SPACE: attiva/disattiva  |  INVIO: conferma  |  ESC: indietro", True, GRAY)
-        rect_h2 = help.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 30))
+        rect_h2 = help.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 15))
         self.screen.blit(help, rect_h2)
 
     def disegna_gioco(self):
@@ -1136,10 +1424,19 @@ class Gioco:
         wy = SCREEN_HEIGHT // 2 - self.char_h // 2 + 120 + shake[1]
         wy_monster = wy + 50
         self.screen.blit(self.char_img, (wx, wy_monster))
-        self.screen.blit(self.monster_img, (self.mostro_x + shake[0], wy_monster))
+
+        if self.mostro_colpito:
+            elapsed = pygame.time.get_ticks() - self.mostro_fade_start
+            alpha = max(0, 255 - int(elapsed / 500 * 255))
+            if alpha > 0:
+                faded = self.monster_img.copy()
+                faded.set_alpha(alpha)
+                self.screen.blit(faded, (self.mostro_x + shake[0], wy_monster))
+        else:
+            self.screen.blit(self.monster_img, (self.mostro_x + shake[0], wy_monster))
 
         if self.zap_timer > 0:
-            start_x, start_y = 80 + 80, wy_monster + self.char_h // 2
+            start_x, start_y = wx + 25, wy_monster + 20
             end_x, end_y = self.mostro_x + 100, wy_monster + self.char_h // 2
             mid_x = (start_x + end_x) // 2
             segments = 8
@@ -1238,6 +1535,15 @@ class Gioco:
             self.screen.blit(fb, rect)
             rect = prossimo.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 30))
             self.screen.blit(prossimo, rect)
+
+        if self.mostro_colpito:
+            elapsed = pygame.time.get_ticks() - self.mostro_fade_start
+            white_alpha = max(0, 150 - int(elapsed / 200 * 150))
+            if white_alpha > 0:
+                flash = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+                flash.set_alpha(white_alpha)
+                flash.fill(WHITE)
+                self.screen.blit(flash, (0, 0))
 
         if self.hit_timer > 0:
             alpha = int(120 * self.hit_timer / 12)
