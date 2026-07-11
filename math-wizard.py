@@ -88,15 +88,31 @@ class Gioco:
 
     def imposta_cursore(self):
         try:
-            import ctypes, os
+            import struct, io, os
             path = os.path.join("graphics", "misc", "wand.cur")
-            if os.path.exists(path):
-                h = ctypes.windll.user32.LoadCursorFromFileW(os.path.abspath(path))
-                if h:
-                    hwnd = pygame.display.get_wm_info()["window"]
-                    ctypes.windll.user32.SetClassLongW(hwnd, -12, h)
-                    ctypes.windll.user32.SetCursor(h)
-                    pygame.mouse.set_visible(False)
+            if not os.path.exists(path):
+                return
+            with open(path, "rb") as f:
+                data = f.read()
+            _, _, count = struct.unpack("<HHH", data[:6])
+            # Pick the best entry: prefer 32x32, fallback to largest
+            best = None
+            for i in range(count):
+                w, h, _, _, _, _, sz, off = struct.unpack("<BBBBHHII", data[6 + i * 16 : 22 + i * 16])
+                if w == 32:
+                    best = (off, sz, w, h)
+                    break
+                if best is None or w > best[2]:
+                    best = (off, sz, w, h)
+            if best is None:
+                return
+            off, sz, w, h = best
+            buf = io.BytesIO(data[off : off + sz])
+            surf = pygame.image.load(buf)
+            if not (surf.get_flags() & pygame.SRCALPHA):
+                surf = surf.convert_alpha()
+            cursor = pygame.cursors.Cursor((0, 0), surf)
+            pygame.mouse.set_cursor(cursor)
         except Exception:
             pass
 
@@ -147,7 +163,7 @@ class Gioco:
         self.config_timeout = TEMPO_LIMITE_DEFAULT
         self.config_genere = "F"
 
-        self.version = "0.2.002"
+        self.version = "0.2.003"
 
         self.profili = []
         self.profilo_corrente = ""
