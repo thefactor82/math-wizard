@@ -132,6 +132,8 @@ class Gioco:
         self.config_timeout = TEMPO_LIMITE_DEFAULT
         self.config_genere = "F"
 
+        self.version = "0.2.001"
+
         self.profili = []
         self.profilo_corrente = ""
         if os.path.exists(idx_file):
@@ -1152,6 +1154,10 @@ class Gioco:
         info = self.font_piccolo.render("Freccette: seleziona  |  INVIO: conferma  |  O: Opzioni  |  ESC: Esci", True, WHITE)
         rect = info.get_rect(center=(SCREEN_WIDTH // 2, 620))
         self.screen.blit(info, rect)
+
+        version_surf = self.font_tiny.render(f"v{self.version}", True, GRAY)
+        rect = version_surf.get_rect(bottomright=(SCREEN_WIDTH - 8, SCREEN_HEIGHT - 8))
+        self.screen.blit(version_surf, rect)
 
     def disegna_opzioni(self):
         overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
