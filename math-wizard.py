@@ -2,7 +2,6 @@ import pygame
 import random
 import sys
 import os
-import math
 import json
 from datetime import datetime
 from collections import deque
@@ -111,6 +110,7 @@ class Gioco:
             surf = pygame.image.load(buf)
             if not (surf.get_flags() & pygame.SRCALPHA):
                 surf = surf.convert_alpha()
+            surf = pygame.transform.scale_by(surf, 3)
             cursor = pygame.cursors.Cursor((0, 0), surf)
             pygame.mouse.set_cursor(cursor)
         except Exception:
@@ -144,6 +144,7 @@ class Gioco:
         self.heart_grey = pygame.transform.scale(pygame.image.load("graphics/misc/lives_lost.png").convert_alpha(), (35, 35))
 
         self.logo = pygame.transform.scale(pygame.image.load("graphics/misc/logo.png").convert_alpha(), (SCREEN_WIDTH, SCREEN_HEIGHT))
+        self.gear_img = pygame.image.load("graphics/misc/gear.png").convert_alpha()
 
     def gestione_profili(self):
         os.makedirs(PROFILES_DIR, exist_ok=True)
@@ -163,7 +164,7 @@ class Gioco:
         self.config_timeout = TEMPO_LIMITE_DEFAULT
         self.config_genere = "F"
 
-        self.version = "0.2.003"
+        self.version = "0.2.004"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -1162,19 +1163,11 @@ class Gioco:
             self.screen.blit(desc_surf, rect)
 
         # gear icon
-        cx, cy, r = SCREEN_WIDTH - 45, 45, 22
-        pygame.draw.circle(self.screen, GRAY, (cx, cy), r, 3)
-        pygame.draw.circle(self.screen, GRAY, (cx, cy), r - 7, 3)
-        for angle in range(0, 360, 30):
-            rad = math.radians(angle)
-            x1 = cx + (r - 5) * math.cos(rad)
-            y1 = cy + (r - 5) * math.sin(rad)
-            x2 = cx + (r + 5) * math.cos(rad)
-            y2 = cy + (r + 5) * math.sin(rad)
-            pygame.draw.line(self.screen, GRAY, (x1, y1), (x2, y2), 4)
-        gear_label = self.font_piccolo.render("O", True, GRAY)
-        rect = gear_label.get_rect(center=(cx, cy))
-        self.screen.blit(gear_label, rect)
+        cx, cy = SCREEN_WIDTH - 45, 45
+        gear_size = 44
+        gear_scaled = pygame.transform.scale(self.gear_img, (gear_size, gear_size))
+        rect = gear_scaled.get_rect(center=(cx, cy))
+        self.screen.blit(gear_scaled, rect)
 
         profilo_lbl = self.font_piccolo.render(f"Profilo: {self.profilo_corrente}", True, GRAY)
         rect = profilo_lbl.get_rect(midleft=(SCREEN_WIDTH // 2 - 300, 550))
