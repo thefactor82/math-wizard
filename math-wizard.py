@@ -65,6 +65,7 @@ class Gioco:
         self.flags = pygame.SCALED
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), self.flags)
         pygame.display.set_caption("Math Wizard - Impara la matematica")
+        self.imposta_cursore()
         self.clock = pygame.time.Clock()
         self.running = True
         self.state = "splash"
@@ -84,6 +85,20 @@ class Gioco:
         self.carica_risorse()
         self.gestione_profili()
         self.azzera_partita()
+
+    def imposta_cursore(self):
+        try:
+            import ctypes, os
+            path = os.path.join("graphics", "misc", "wand.cur")
+            if os.path.exists(path):
+                h = ctypes.windll.user32.LoadCursorFromFileW(os.path.abspath(path))
+                if h:
+                    hwnd = pygame.display.get_wm_info()["window"]
+                    ctypes.windll.user32.SetClassLongW(hwnd, -12, h)
+                    ctypes.windll.user32.SetCursor(h)
+                    pygame.mouse.set_visible(False)
+        except Exception:
+            pass
 
     def aggiorna_char_img(self):
         self.char_img = self.char_imgs.get(self.config_genere, self.char_imgs["F"])
@@ -132,7 +147,7 @@ class Gioco:
         self.config_timeout = TEMPO_LIMITE_DEFAULT
         self.config_genere = "F"
 
-        self.version = "0.2.001"
+        self.version = "0.2.002"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -363,6 +378,7 @@ class Gioco:
                 if self.fullscreen:
                     flags |= pygame.FULLSCREEN
                 self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), flags)
+                self.imposta_cursore()
                 return
             if event.unicode and event.unicode.isalpha():
                 self.debug_buf = (self.debug_buf + event.unicode.lower())[-5:]
