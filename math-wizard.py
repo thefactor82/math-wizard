@@ -164,7 +164,7 @@ class Gioco:
         self.config_timeout = TEMPO_LIMITE_DEFAULT
         self.config_genere = "F"
 
-        self.version = "0.2.004"
+        self.version = "0.2.005"
 
         self.profili = []
         self.profilo_corrente = ""

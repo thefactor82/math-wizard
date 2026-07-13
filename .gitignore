@@ -14,3 +14,7 @@ build/
 # OS
 Thumbs.db
 .DS_Store
+
+archived/
+profiles/
+ToDo.txt
