@@ -132,19 +132,26 @@ class Gioco:
         self.char_img = self.char_imgs["F"]
         self.char_h = self.char_img.get_height()
 
-        mw, mh = 1500, 1619
-        self.monster_imgs = []
-        for i in range(2, 5):
-            img = pygame.image.load(f"graphics/monsters/monster{i}.png").convert_alpha()
-            flipped = pygame.transform.flip(img, True, False)
-            self.monster_imgs.append(pygame.transform.scale(flipped, (200, int(200 / mw * mh))))
-        self.monster_img = self.monster_imgs[0]
+        self.monster_frames = self.carica_spritesheet("graphics/monsters/monster1.png", 200, 4)
+        self.monster_img = self.monster_frames[0]
+        self.monster_anim_speed = 150
 
         self.heart_red = pygame.transform.scale(pygame.image.load("graphics/misc/lives.png").convert_alpha(), (35, 35))
         self.heart_grey = pygame.transform.scale(pygame.image.load("graphics/misc/lives_lost.png").convert_alpha(), (35, 35))
 
         self.logo = pygame.transform.scale(pygame.image.load("graphics/misc/logo.png").convert_alpha(), (SCREEN_WIDTH, SCREEN_HEIGHT))
         self.gear_img = pygame.image.load("graphics/misc/gear.png").convert_alpha()
+
+    def carica_spritesheet(self, path, target_w, frame_count):
+        sheet = pygame.image.load(path).convert_alpha()
+        sheet = pygame.transform.flip(sheet, True, False)
+        fw = sheet.get_width() // frame_count
+        fh = sheet.get_height()
+        frames = []
+        for i in range(frame_count):
+            frame = sheet.subsurface((i * fw, 0, fw, fh))
+            frames.append(pygame.transform.scale(frame, (target_w, int(target_w / fw * fh))))
+        return frames
 
     def gestione_profili(self):
         os.makedirs(PROFILES_DIR, exist_ok=True)
@@ -250,6 +257,7 @@ class Gioco:
         self.mostro_x = SCREEN_WIDTH + 30
         self.mostro_colpito = False
         self.mostro_fade_start = 0
+        self.monster_anim_frame = 0
         self.hit_timer = 0
         self.domanda_attiva = False
         self.feedback = None
@@ -373,7 +381,7 @@ class Gioco:
         self.mostro_progresso = 0.0
         self.mostro_x = SCREEN_WIDTH + 30
         self.mostro_colpito = False
-        self.monster_img = random.choice(self.monster_imgs)
+        self.monster_anim_frame = 0
         self.domanda_attiva = True
         self.feedback = None
         self.feedback_timer = 0
@@ -911,6 +919,7 @@ class Gioco:
                 self.stats[livello]["corrette"] += 1
                 self.mostro_colpito = True
                 self.mostro_fade_start = pygame.time.get_ticks()
+                self.monster_img = self.monster_frames[self.monster_anim_frame]
                 self.zap_timer = 12
             else:
                 self.corretto = False
@@ -975,6 +984,7 @@ class Gioco:
         self.attendi_invio = True
         self.mostro_colpito = True
         self.mostro_fade_start = pygame.time.get_ticks()
+        self.monster_img = self.monster_frames[self.monster_anim_frame]
         self.hit_timer = 12
         if self.vite <= 0:
             self.game_over = True
@@ -1451,10 +1461,10 @@ class Gioco:
         else:
             self.screen.blit(self.bg, (0, 0))
 
-        wx = 80 + shake[0]
-        wy = SCREEN_HEIGHT // 2 - self.char_h // 2 + 120 + shake[1]
-        wy_monster = wy + 50
-        self.screen.blit(self.char_img, (wx, wy_monster))
+        wx = 100 + shake[0]
+        wy = SCREEN_HEIGHT // 2 - self.char_h // 2 + 170 + shake[1]
+        wy_monster = wy + 35
+        self.screen.blit(self.char_img, (wx, wy))
 
         if self.mostro_colpito:
             elapsed = pygame.time.get_ticks() - self.mostro_fade_start
@@ -1464,10 +1474,12 @@ class Gioco:
                 faded.set_alpha(alpha)
                 self.screen.blit(faded, (self.mostro_x + shake[0], wy_monster))
         else:
-            self.screen.blit(self.monster_img, (self.mostro_x + shake[0], wy_monster))
+            n_frames = len(self.monster_frames)
+            self.monster_anim_frame = (pygame.time.get_ticks() // self.monster_anim_speed) % n_frames
+            self.screen.blit(self.monster_frames[self.monster_anim_frame], (self.mostro_x + shake[0], wy_monster))
 
         if self.zap_timer > 0:
-            start_x, start_y = wx + 25, wy_monster + 20
+            start_x, start_y = wx + 25, wy + 20
             end_x, end_y = self.mostro_x + 100, wy_monster + self.char_h // 2
             mid_x = (start_x + end_x) // 2
             segments = 8
