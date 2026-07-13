@@ -122,8 +122,12 @@ class Gioco:
         self.char_h = self.char_img.get_height()
 
     def carica_risorse(self):
-        bg = pygame.image.load("graphics/backgrounds/background.png")
-        self.bg = pygame.transform.scale(bg, (SCREEN_WIDTH, SCREEN_HEIGHT))
+        bg_game = pygame.image.load("graphics/backgrounds/background.png")
+        self.bg = pygame.transform.scale(bg_game, (SCREEN_WIDTH, SCREEN_HEIGHT))
+        bg_menu = pygame.image.load("graphics/backgrounds/background_menu.png")
+        self.bg_menu = pygame.transform.scale(bg_menu, (SCREEN_WIDTH, SCREEN_HEIGHT))
+        bg_opt = pygame.image.load("graphics/backgrounds/background_options.png")
+        self.bg_options = pygame.transform.scale(bg_opt, (SCREEN_WIDTH, SCREEN_HEIGHT))
 
         pw, ph = 900, 1330
         self.char_imgs = {
@@ -172,7 +176,7 @@ class Gioco:
         self.config_timeout = TEMPO_LIMITE_DEFAULT
         self.config_genere = "F"
 
-        self.version = "0.2.008"
+        self.version = "0.2.009"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -1033,11 +1037,15 @@ class Gioco:
         if self.state == "splash":
             self.disegna_splash()
         elif self.state == "profile_select":
+            self.screen.blit(self.bg_menu, (0, 0))
             self.disegna_profilo()
         elif self.state == "gioco" and not self.game_over:
             self.disegna_gioco()
         else:
-            self.screen.blit(self.bg, (0, 0))
+            if self.state in ("opzioni", "opzioni_auto", "config_fisso"):
+                self.screen.blit(self.bg_options, (0, 0))
+            else:
+                self.screen.blit(self.bg_menu, (0, 0))
             if self.state == "menu":
                 self.disegna_menu()
             elif self.state == "opzioni":
