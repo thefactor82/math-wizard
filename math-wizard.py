@@ -69,6 +69,7 @@ class Gioco:
         self.running = True
         self.state = "splash"
         self.splash_start = pygame.time.get_ticks()
+        self.splash_skip = False
         self.debug = False
         self.debug_buf = ""
 
@@ -171,7 +172,7 @@ class Gioco:
         self.config_timeout = TEMPO_LIMITE_DEFAULT
         self.config_genere = "F"
 
-        self.version = "0.2.007"
+        self.version = "0.2.008"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -405,8 +406,9 @@ class Gioco:
             self.imposta_cursore()
             return
         if self.state == "splash":
-            if event.type in (pygame.KEYDOWN, pygame.MOUSEBUTTONDOWN):
-                self.state = "profile_select"
+            if event.type in (pygame.KEYDOWN, pygame.MOUSEBUTTONDOWN) and not self.splash_skip:
+                self.splash_skip = True
+                self.splash_start = pygame.time.get_ticks()
             return
         if event.type == pygame.KEYDOWN:
             if event.unicode and event.unicode.isalpha():
@@ -999,7 +1001,8 @@ class Gioco:
         if self.hit_timer > 0:
             self.hit_timer -= 1
         if self.state == "splash":
-            if pygame.time.get_ticks() - self.splash_start >= 5000:
+            elapsed = pygame.time.get_ticks() - self.splash_start
+            if (self.splash_skip and elapsed >= 500) or elapsed >= 5000:
                 self.state = "profile_select"
             return
         if self.state == "gameover":
@@ -1053,7 +1056,9 @@ class Gioco:
         logo_rect = self.logo.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
         self.screen.blit(self.logo, logo_rect)
 
-        if elapsed < 1000:
+        if self.splash_skip:
+            alpha = min(255, int(elapsed / 500 * 255))
+        elif elapsed < 1000:
             alpha = 255 - int(255 * elapsed / 1000)
         elif elapsed > 4000:
             alpha = int(255 * (elapsed - 4000) / 1000)
