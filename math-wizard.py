@@ -171,7 +171,7 @@ class Gioco:
         self.config_timeout = TEMPO_LIMITE_DEFAULT
         self.config_genere = "F"
 
-        self.version = "0.2.005"
+        self.version = "0.2.006"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -396,16 +396,19 @@ class Gioco:
             self.domande_mancanti = max(richieste - fatte, 0)
 
     def gestisci_input(self, event):
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_F11:
-                self.fullscreen = not self.fullscreen
-                flags = self.flags
-                if self.fullscreen:
-                    flags |= pygame.FULLSCREEN
-                self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), flags)
-                self.imposta_cursore()
-                return
-            if event.unicode and event.unicode.isalpha():
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_F11:
+            self.fullscreen = not self.fullscreen
+            flags = self.flags
+            if self.fullscreen:
+                flags |= pygame.FULLSCREEN
+            self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), flags)
+            self.imposta_cursore()
+            return
+        if self.state == "splash":
+            if event.type in (pygame.KEYDOWN, pygame.MOUSEBUTTONDOWN):
+                self.state = "profile_select"
+            return
+        if event.unicode and event.unicode.isalpha():
                 self.debug_buf = (self.debug_buf + event.unicode.lower())[-5:]
                 if self.debug_buf == "debug":
                     self.debug = not self.debug
