@@ -171,7 +171,7 @@ class Gioco:
         self.config_timeout = TEMPO_LIMITE_DEFAULT
         self.config_genere = "F"
 
-        self.version = "0.2.006"
+        self.version = "0.2.007"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -408,7 +408,8 @@ class Gioco:
             if event.type in (pygame.KEYDOWN, pygame.MOUSEBUTTONDOWN):
                 self.state = "profile_select"
             return
-        if event.unicode and event.unicode.isalpha():
+        if event.type == pygame.KEYDOWN:
+            if event.unicode and event.unicode.isalpha():
                 self.debug_buf = (self.debug_buf + event.unicode.lower())[-5:]
                 if self.debug_buf == "debug":
                     self.debug = not self.debug
