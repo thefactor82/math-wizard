@@ -137,9 +137,11 @@ class Gioco:
         self.char_img = self.char_imgs["F"]
         self.char_h = self.char_img.get_height()
 
-        self.monster_frames = self.carica_spritesheet("graphics/monsters/monster1.png", 200, 4)
+        self.monster_frames = self.carica_spritesheet("graphics/monsters/monster1.png", 200, 4, row=0, rows=2, cols=4)
+        self.monster_hit_img = self.carica_spritesheet("graphics/monsters/monster1.png", 200, 1, row=1, rows=2, cols=4, frame_offset=3)[0]
         self.monster_img = self.monster_frames[0]
         self.monster_anim_speed = 150
+        self.mostro_hit_delay = 150
 
         self.heart_red = pygame.transform.scale(pygame.image.load("graphics/misc/lives.png").convert_alpha(), (35, 35))
         self.heart_grey = pygame.transform.scale(pygame.image.load("graphics/misc/lives_lost.png").convert_alpha(), (35, 35))
@@ -147,14 +149,15 @@ class Gioco:
         self.logo = pygame.transform.scale(pygame.image.load("graphics/misc/logo.png").convert_alpha(), (SCREEN_WIDTH, SCREEN_HEIGHT))
         self.gear_img = pygame.image.load("graphics/misc/gear.png").convert_alpha()
 
-    def carica_spritesheet(self, path, target_w, frame_count):
+    def carica_spritesheet(self, path, target_w, frame_count, row=0, rows=1, cols=None, frame_offset=0):
         sheet = pygame.image.load(path).convert_alpha()
         sheet = pygame.transform.flip(sheet, True, False)
-        fw = sheet.get_width() // frame_count
-        fh = sheet.get_height()
+        ncols = cols if cols is not None else frame_count
+        fw = sheet.get_width() // ncols
+        fh = sheet.get_height() // rows
         frames = []
         for i in range(frame_count):
-            frame = sheet.subsurface((i * fw, 0, fw, fh))
+            frame = sheet.subsurface(((i + frame_offset) * fw, row * fh, fw, fh))
             frames.append(pygame.transform.scale(frame, (target_w, int(target_w / fw * fh))))
         return frames
 
@@ -176,7 +179,7 @@ class Gioco:
         self.config_timeout = TEMPO_LIMITE_DEFAULT
         self.config_genere = "F"
 
-        self.version = "0.2.010"
+        self.version = "0.2.011"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -931,7 +934,7 @@ class Gioco:
                 self.stats[livello]["corrette"] += 1
                 self.mostro_colpito = True
                 self.mostro_fade_start = pygame.time.get_ticks()
-                self.monster_img = self.monster_frames[self.monster_anim_frame]
+                self.monster_img = self.monster_hit_img
                 self.zap_timer = 12
             else:
                 self.corretto = False
@@ -939,7 +942,7 @@ class Gioco:
                 self.vite -= 1
                 self.mostro_colpito = True
                 self.mostro_fade_start = pygame.time.get_ticks()
-                self.monster_img = self.monster_frames[self.monster_anim_frame]
+                self.monster_img = self.monster_hit_img
                 self.zap_timer = 12
                 self.zap_reverse = True
                 self.blocco_corrente.clear()
@@ -952,7 +955,7 @@ class Gioco:
             self.vite -= 1
             self.mostro_colpito = True
             self.mostro_fade_start = pygame.time.get_ticks()
-            self.monster_img = self.monster_frames[self.monster_anim_frame]
+            self.monster_img = self.monster_hit_img
             self.zap_timer = 12
             self.zap_reverse = True
             self.blocco_corrente.clear()
@@ -1006,7 +1009,7 @@ class Gioco:
         self.attendi_invio = True
         self.mostro_colpito = True
         self.mostro_fade_start = pygame.time.get_ticks()
-        self.monster_img = self.monster_frames[self.monster_anim_frame]
+        self.monster_img = self.monster_hit_img
         self.zap_timer = 12
         self.zap_reverse = True
         self.hit_timer = 12
@@ -1501,11 +1504,15 @@ class Gioco:
 
         if self.mostro_colpito:
             elapsed = pygame.time.get_ticks() - self.mostro_fade_start
-            alpha = max(0, 255 - int(elapsed / 500 * 255))
-            if alpha > 0:
-                faded = self.monster_img.copy()
-                faded.set_alpha(alpha)
-                self.screen.blit(faded, (self.mostro_x + shake[0], wy_monster))
+            if elapsed < self.mostro_hit_delay:
+                self.screen.blit(self.monster_img, (self.mostro_x + shake[0], wy_monster))
+            else:
+                fade_elapsed = elapsed - self.mostro_hit_delay
+                alpha = max(0, 255 - int(fade_elapsed / 500 * 255))
+                if alpha > 0:
+                    faded = self.monster_img.copy()
+                    faded.set_alpha(alpha)
+                    self.screen.blit(faded, (self.mostro_x + shake[0], wy_monster))
         else:
             n_frames = len(self.monster_frames)
             self.monster_anim_frame = (pygame.time.get_ticks() // self.monster_anim_speed) % n_frames
