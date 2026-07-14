@@ -176,7 +176,7 @@ class Gioco:
         self.config_timeout = TEMPO_LIMITE_DEFAULT
         self.config_genere = "F"
 
-        self.version = "0.2.009"
+        self.version = "0.2.010"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -268,6 +268,7 @@ class Gioco:
         self.feedback = None
         self.feedback_timer = 0
         self.zap_timer = 0
+        self.zap_reverse = False
         self.game_over = False
         self.inizio_domanda = 0
         self.timeout_gestito = False
@@ -391,6 +392,7 @@ class Gioco:
         self.feedback = None
         self.feedback_timer = 0
         self.zap_timer = 0
+        self.zap_reverse = False
         self.attendi_invio = False
         self.timeout_gestito = False
         self.inizio_domanda = pygame.time.get_ticks()
@@ -935,6 +937,11 @@ class Gioco:
                 self.corretto = False
                 self.stats[livello]["sbagliate"] += 1
                 self.vite -= 1
+                self.mostro_colpito = True
+                self.mostro_fade_start = pygame.time.get_ticks()
+                self.monster_img = self.monster_frames[self.monster_anim_frame]
+                self.zap_timer = 12
+                self.zap_reverse = True
                 self.blocco_corrente.clear()
                 for _ in range(3):
                     self.coda_rinforzo.append((self.a, self.b))
@@ -943,6 +950,11 @@ class Gioco:
             self.corretto = False
             self.stats[livello]["sbagliate"] += 1
             self.vite -= 1
+            self.mostro_colpito = True
+            self.mostro_fade_start = pygame.time.get_ticks()
+            self.monster_img = self.monster_frames[self.monster_anim_frame]
+            self.zap_timer = 12
+            self.zap_reverse = True
             self.blocco_corrente.clear()
             for _ in range(3):
                 self.coda_rinforzo.append((self.a, self.b))
@@ -995,6 +1007,8 @@ class Gioco:
         self.mostro_colpito = True
         self.mostro_fade_start = pygame.time.get_ticks()
         self.monster_img = self.monster_frames[self.monster_anim_frame]
+        self.zap_timer = 12
+        self.zap_reverse = True
         self.hit_timer = 12
         if self.vite <= 0:
             self.game_over = True
@@ -1002,6 +1016,8 @@ class Gioco:
     def aggiorna(self):
         if self.zap_timer > 0:
             self.zap_timer -= 1
+            if self.zap_timer == 0:
+                self.zap_reverse = False
         if self.hit_timer > 0:
             self.hit_timer -= 1
         if self.state == "splash":
@@ -1497,7 +1513,10 @@ class Gioco:
 
         if self.zap_timer > 0:
             start_x, start_y = wx + 25, wy + 20
-            end_x, end_y = self.mostro_x + 100, wy_monster + self.char_h // 2
+            if self.zap_reverse:
+                end_x, end_y = wx + 80, wy + self.char_h // 2
+            else:
+                end_x, end_y = self.mostro_x + 100, wy_monster + self.char_h // 2
             mid_x = (start_x + end_x) // 2
             segments = 8
             for offset in range(-4, 5, 2):
