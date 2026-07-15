@@ -118,7 +118,8 @@ class Gioco:
             pass
 
     def aggiorna_char_img(self):
-        self.char_img = self.char_imgs.get(self.config_genere, self.char_imgs["F"])
+        data = self.char_data.get(self.config_genere, self.char_data["F"])
+        self.char_img = data["idle"][0]
         self.char_h = self.char_img.get_height()
 
     def carica_risorse(self):
@@ -130,12 +131,19 @@ class Gioco:
         self.bg_options = pygame.transform.scale(bg_opt, (SCREEN_WIDTH, SCREEN_HEIGHT))
 
         pw, ph = 900, 1330
-        self.char_imgs = {
-            "F": pygame.transform.scale(pygame.image.load("graphics/players/playerf.png").convert_alpha(), (160, int(160 / pw * ph))),
-            "M": pygame.transform.scale(pygame.image.load("graphics/players/playerm.png").convert_alpha(), (160, int(160 / pw * ph))),
-        }
-        self.char_img = self.char_imgs["F"]
+        target_w = 160
+        target_h = int(target_w / pw * ph)
+        self.char_data = {}
+        for key, path in [("F", "graphics/players/playerf.png"), ("M", "graphics/players/playerm.png")]:
+            idle_frames = self.carica_spritesheet(path, target_w, 2, row=1, rows=2, cols=4, frame_offset=0, flip_x=False)
+            profile_img = self.carica_spritesheet(path, target_w, 1, row=1, rows=2, cols=4, frame_offset=0, flip_x=False)[0]
+            hit_frame = self.carica_spritesheet(path, target_w, 1, row=1, rows=2, cols=4, frame_offset=3, flip_x=False)[0]
+            charge_frame = self.carica_spritesheet(path, target_w, 1, row=1, rows=2, cols=4, frame_offset=2, flip_x=False)[0]
+            self.char_data[key] = {"idle": idle_frames, "profile": profile_img, "hit": hit_frame, "charge": charge_frame}
+        self.char_img = self.char_data["F"]["idle"][0]
         self.char_h = self.char_img.get_height()
+        self.char_anim_timer = 0
+        self.char_anim_frame = 0
 
         self.monster_frames = self.carica_spritesheet("graphics/monsters/monster1.png", 200, 4, row=0, rows=2, cols=4)
         self.monster_hit_img = self.carica_spritesheet("graphics/monsters/monster1.png", 200, 1, row=1, rows=2, cols=4, frame_offset=3)[0]
@@ -149,9 +157,10 @@ class Gioco:
         self.logo = pygame.transform.scale(pygame.image.load("graphics/misc/logo.png").convert_alpha(), (SCREEN_WIDTH, SCREEN_HEIGHT))
         self.gear_img = pygame.image.load("graphics/misc/gear.png").convert_alpha()
 
-    def carica_spritesheet(self, path, target_w, frame_count, row=0, rows=1, cols=None, frame_offset=0):
+    def carica_spritesheet(self, path, target_w, frame_count, row=0, rows=1, cols=None, frame_offset=0, flip_x=True):
         sheet = pygame.image.load(path).convert_alpha()
-        sheet = pygame.transform.flip(sheet, True, False)
+        if flip_x:
+            sheet = pygame.transform.flip(sheet, True, False)
         ncols = cols if cols is not None else frame_count
         fw = sheet.get_width() // ncols
         fh = sheet.get_height() // rows
@@ -179,7 +188,7 @@ class Gioco:
         self.config_timeout = TEMPO_LIMITE_DEFAULT
         self.config_genere = "F"
 
-        self.version = "0.2.011"
+        self.version = "0.2.012"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -272,6 +281,7 @@ class Gioco:
         self.feedback_timer = 0
         self.zap_timer = 0
         self.zap_reverse = False
+        self.player_hit = False
         self.game_over = False
         self.inizio_domanda = 0
         self.timeout_gestito = False
@@ -390,6 +400,7 @@ class Gioco:
         self.mostro_progresso = 0.0
         self.mostro_x = SCREEN_WIDTH + 30
         self.mostro_colpito = False
+        self.player_hit = False
         self.monster_anim_frame = 0
         self.domanda_attiva = True
         self.feedback = None
@@ -945,6 +956,7 @@ class Gioco:
                 self.monster_img = self.monster_hit_img
                 self.zap_timer = 12
                 self.zap_reverse = True
+                self.player_hit = True
                 self.blocco_corrente.clear()
                 for _ in range(3):
                     self.coda_rinforzo.append((self.a, self.b))
@@ -958,6 +970,7 @@ class Gioco:
             self.monster_img = self.monster_hit_img
             self.zap_timer = 12
             self.zap_reverse = True
+            self.player_hit = True
             self.blocco_corrente.clear()
             for _ in range(3):
                 self.coda_rinforzo.append((self.a, self.b))
@@ -1012,6 +1025,7 @@ class Gioco:
         self.monster_img = self.monster_hit_img
         self.zap_timer = 12
         self.zap_reverse = True
+        self.player_hit = True
         self.hit_timer = 12
         if self.vite <= 0:
             self.game_over = True
@@ -1112,19 +1126,19 @@ class Gioco:
                 rect = nome_label.get_rect(center=(SCREEN_WIDTH // 2, 200))
                 self.screen.blit(nome_label, rect)
 
-                prompt = self.font_grande.render("Seleziona il sesso:", True, WHITE)
+                prompt = self.font_grande.render("Seleziona il personaggio:", True, WHITE)
                 rect = prompt.get_rect(center=(SCREEN_WIDTH // 2, 300))
                 self.screen.blit(prompt, rect)
 
                 for i, (key, label) in enumerate([("F", "Femmina"), ("M", "Maschio")]):
                     sx = SCREEN_WIDTH // 2 - 310 + i * 340
                     y = 370
-                    img_h = int(80 / 900 * 1330)
+                    prof_img = self.char_data[key]["profile"]
+                    img_h = prof_img.get_height()
                     box_h = max(90, img_h + 20)
                     pygame.draw.rect(self.screen, (60, 60, 70), (sx, y, 280, box_h), border_radius=8)
-                    if self.char_imgs[key]:
-                        img = pygame.transform.scale(self.char_imgs[key], (80, img_h))
-                        self.screen.blit(img, (sx + 20, y + 10))
+                    if prof_img:
+                        self.screen.blit(prof_img, (sx + 2, y + 10))
                     txt = self.font_medio.render(label, True, WHITE)
                     rect = txt.get_rect(midleft=(sx + 120, y + box_h // 2))
                     self.screen.blit(txt, rect)
@@ -1497,10 +1511,35 @@ class Gioco:
         else:
             self.screen.blit(self.bg, (0, 0))
 
-        wx = 100 + shake[0]
-        wy = SCREEN_HEIGHT // 2 - self.char_h // 2 + 170 + shake[1]
-        wy_monster = wy + 35
-        self.screen.blit(self.char_img, (wx, wy))
+        wx = 85 + shake[0]
+        data = self.char_data.get(self.config_genere, self.char_data["F"])
+        if self.player_hit:
+            char_img = data["hit"]
+        elif (self.domanda_attiva and self.input_utente) or self.zap_timer > 0:
+            char_img = data["charge"]
+        else:
+            frame_idx = (pygame.time.get_ticks() // 400) % 2
+            char_img = data["idle"][frame_idx]
+        cw, ch = char_img.get_size()
+        char_scale = 1.7
+        scaled_char = pygame.transform.scale(char_img, (int(cw * char_scale), int(ch * char_scale)))
+        base_y = SCREEN_HEIGHT // 2 - scaled_char.get_height() // 2
+        wy = base_y + 140 + shake[1]
+        wy_monster = base_y + 170 + 35
+        self.screen.blit(scaled_char, (wx, wy))
+
+        if self.domanda_attiva and self.input_utente:
+            glow_x, glow_y = wx + 30, wy + 40
+            base_col = (235, 220, 255) if self.config_genere == "F" else (220, 255, 220)
+            t = pygame.time.get_ticks()
+            radius = 12 + int(4 * abs((t % 600) / 300 - 1))
+            for r in range(radius, 0, -3):
+                alpha = max(0, 200 - int(200 * (radius - r) / radius))
+                ratio = (radius - r) / radius
+                col = tuple(max(0, int(c * (1 - ratio * 0.3))) for c in base_col)
+                surf = pygame.Surface((r * 2, r * 2), pygame.SRCALPHA)
+                pygame.draw.circle(surf, (*col, alpha), (r, r), r)
+                self.screen.blit(surf, (glow_x - r, glow_y - r))
 
         if self.mostro_colpito:
             elapsed = pygame.time.get_ticks() - self.mostro_fade_start
@@ -1519,9 +1558,9 @@ class Gioco:
             self.screen.blit(self.monster_frames[self.monster_anim_frame], (self.mostro_x + shake[0], wy_monster))
 
         if self.zap_timer > 0:
-            start_x, start_y = wx + 25, wy + 20
+            start_x, start_y = wx + 30, wy + 40
             if self.zap_reverse:
-                end_x, end_y = wx + 80, wy + self.char_h // 2
+                end_x, end_y = wx + scaled_char.get_width() // 2, wy + scaled_char.get_height() // 2
             else:
                 end_x, end_y = self.mostro_x + 100, wy_monster + self.char_h // 2
             mid_x = (start_x + end_x) // 2
