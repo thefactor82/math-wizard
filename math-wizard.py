@@ -197,7 +197,7 @@ class Gioco:
         self.cfg = self.config_per_op[self.config_operazione]
         self.auto_timeout = TEMPO_LIMITE_DEFAULT
 
-        self.version = "0.2.014"
+        self.version = "0.2.015"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -582,6 +582,14 @@ class Gioco:
 
         if event.type == pygame.MOUSEBUTTONDOWN:
             mx, my = event.pos
+            if self.state == "gameover":
+                if hasattr(self, 'gameover_buttons'):
+                    if self.gameover_buttons.get("restart") and self.gameover_buttons["restart"].collidepoint(mx, my):
+                        self.avvia_partita()
+                        return
+                    if self.gameover_buttons.get("menu") and self.gameover_buttons["menu"].collidepoint(mx, my):
+                        self.state = "menu"
+                        return
             if self.state == "menu":
                 # Opzione 1: Autoapprendimento (midleft 340, 280)
                 if 340 - 10 <= mx <= 340 + 580 and 280 - 10 <= my <= 280 + 74:
@@ -1774,7 +1782,20 @@ class Gioco:
                 self.screen.blit(surf, rect)
                 y += 24
 
+        mx, my = pygame.mouse.get_pos()
         y = max(y + 20, SCREEN_HEIGHT - 100)
+        self.gameover_buttons = {}
+        for i, (label, action) in enumerate([("Ricomincia", "restart"), ("Menu principale", "menu")]):
+            bx = SCREEN_WIDTH // 2 - 100 + i * 210
+            btn_rect = pygame.Rect(bx, y, 180, 36)
+            hovered = btn_rect.collidepoint(mx, my)
+            bg_col = (80, 90, 100) if hovered else (60, 60, 70)
+            pygame.draw.rect(self.screen, bg_col, btn_rect, border_radius=6)
+            if hovered:
+                pygame.draw.rect(self.screen, GOLD, btn_rect, 2, border_radius=6)
+            surf = self.font_piccolo.render(label, True, WHITE)
+            self.screen.blit(surf, surf.get_rect(center=btn_rect.center))
+            self.gameover_buttons[action] = btn_rect
 
     def salva_sessione(self):
         tot_corrette = sum(v["corrette"] for v in self.stats.values())
