@@ -178,17 +178,26 @@ class Gioco:
         self.profilo_input_mode = False
         self.profilo_genere_mode = False
         self.profilo_nuovo_nome = ""
-        self.config_operazione = "moltiplicazione"
-        self.config_somma_massima = 10
-        self.config_pool_a = [n < 10 for n in range(100)]
-        self.config_pool_b = [n < 10 for n in range(100)]
-        self.config_domande = 10
-        self.config_swap = True
-        self.config_differenza_positiva = True
-        self.config_timeout = TEMPO_LIMITE_DEFAULT
         self.config_genere = "F"
+        self.config_operazione = "moltiplicazione"
+        self.config_cursor_row = 0
+        self.config_cursor_col = 0
+        self.config_cursor_subrow = 0
+        self.config_per_op = {}
+        for op in ["moltiplicazione", "addizione", "sottrazione"]:
+            self.config_per_op[op] = {
+                "pool_a": [n < 10 for n in range(100)],
+                "pool_b": [n < 10 for n in range(100)],
+                "domande": 10,
+                "swap": True,
+                "timeout": TEMPO_LIMITE_DEFAULT,
+            }
+        self.config_per_op["addizione"]["somma_massima"] = 10
+        self.config_per_op["sottrazione"]["differenza_positiva"] = True
+        self.cfg = self.config_per_op[self.config_operazione]
+        self.auto_timeout = TEMPO_LIMITE_DEFAULT
 
-        self.version = "0.2.013"
+        self.version = "0.2.014"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -221,16 +230,11 @@ class Gioco:
         os.makedirs(prof_dir, exist_ok=True)
         path = os.path.join(prof_dir, "config.json")
         data = {
-            "operazione": self.config_operazione,
-            "somma_massima": self.config_somma_massima,
-            "pool_a": self.config_pool_a,
-            "pool_b": self.config_pool_b,
-            "domande": self.config_domande,
-            "swap": self.config_swap,
-            "differenza_positiva": self.config_differenza_positiva,
-            "timeout": self.config_timeout,
             "genere": self.config_genere,
+            "auto_timeout": self.auto_timeout,
         }
+        for op in ["moltiplicazione", "addizione", "sottrazione"]:
+            data[op] = dict(self.config_per_op[op])
         with open(path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
 
@@ -239,15 +243,25 @@ class Gioco:
         if os.path.exists(path):
             with open(path, "r", encoding="utf-8") as f:
                 data = json.load(f)
-            self.config_operazione = data.get("operazione", self.config_operazione)
-            self.config_somma_massima = data.get("somma_massima", self.config_somma_massima)
-            self.config_pool_a = data.get("pool_a", self.config_pool_a)
-            self.config_pool_b = data.get("pool_b", self.config_pool_b)
-            self.config_domande = data.get("domande", self.config_domande)
-            self.config_swap = data.get("swap", self.config_swap)
-            self.config_differenza_positiva = data.get("differenza_positiva", self.config_differenza_positiva)
-            self.config_timeout = data.get("timeout", self.config_timeout)
-            self.config_genere = data.get("genere", self.config_genere)
+            if "moltiplicazione" in data and isinstance(data["moltiplicazione"], dict):
+                for op in ["moltiplicazione", "addizione", "sottrazione"]:
+                    if op in data:
+                        self.config_per_op[op].update(data[op])
+                self.config_genere = data.get("genere", self.config_genere)
+                self.auto_timeout = data.get("auto_timeout", self.auto_timeout)
+            else:
+                # Legacy format
+                self.config_genere = data.get("genere", self.config_genere)
+                self.auto_timeout = data.get("timeout", self.auto_timeout)
+                for op in self.config_per_op:
+                    self.config_per_op[op]["pool_a"] = list(data.get("pool_a", self.config_per_op[op]["pool_a"]))
+                    self.config_per_op[op]["pool_b"] = list(data.get("pool_b", self.config_per_op[op]["pool_b"]))
+                    self.config_per_op[op]["domande"] = data.get("domande", self.config_per_op[op]["domande"])
+                    self.config_per_op[op]["swap"] = data.get("swap", self.config_per_op[op]["swap"])
+                    self.config_per_op[op]["timeout"] = data.get("timeout", self.config_per_op[op]["timeout"])
+                self.config_per_op["addizione"]["somma_massima"] = data.get("somma_massima", self.config_per_op["addizione"]["somma_massima"])
+                self.config_per_op["sottrazione"]["differenza_positiva"] = data.get("differenza_positiva", self.config_per_op["sottrazione"]["differenza_positiva"])
+            self.cfg = self.config_per_op[self.config_operazione]
 
     def percorso_sessioni(self):
         nome = self.profilo_corrente or "_fallback"
@@ -289,18 +303,9 @@ class Gioco:
         self.menu_cursor = 0
         self.opzioni_cursor = 0
 
-        self.config_operazione = "moltiplicazione"
-        self.config_somma_massima = 10
         self.config_cursor_row = 0
         self.config_cursor_col = 0
         self.config_cursor_subrow = 0
-        self.config_pool_a = [n < 10 for n in range(100)]
-        self.config_pool_b = [n < 10 for n in range(100)]
-        self.config_domande = 10
-        self.config_swap = True
-        self.config_differenza_positiva = True
-        self.config_timeout = 12
-        self.config_genere = "F"
 
         self.tempi_risposta = []
         self.blocco_corrente = []
@@ -309,6 +314,7 @@ class Gioco:
 
     def mostra_config(self):
         self.state = "config_fisso"
+        self.cfg = self.config_per_op[self.config_operazione]
         self.config_cursor_row = 0
         self.config_cursor_col = 0
         self.config_cursor_subrow = 0
@@ -317,7 +323,7 @@ class Gioco:
         self.state = "gioco"
         self.game_over = False
         self.vite = VITE_MAGO
-        self.timeout_limite = self.config_timeout
+        self.timeout_limite = self.auto_timeout if self.modalita == "auto" else self.cfg["timeout"]
         self.livello = 0
         self.tempi_risposta = []
         self.blocco_corrente = []
@@ -332,17 +338,17 @@ class Gioco:
         self.game_over = False
         if self.modalita == "fisso":
             self.operazione = self.config_operazione
-            self.somma_massima = self.config_somma_massima
-            self.differenza_positiva = self.config_differenza_positiva
+            self.somma_massima = self.cfg.get("somma_massima", 10)
+            self.differenza_positiva = self.cfg.get("differenza_positiva", True)
             pool_range = range(13) if self.config_operazione == "moltiplicazione" else range(100)
-            self.pool_a = [n for n in pool_range if self.config_pool_a[n]]
-            self.pool_b = [n for n in pool_range if self.config_pool_b[n]]
+            self.pool_a = [n for n in pool_range if self.cfg["pool_a"][n]]
+            self.pool_b = [n for n in pool_range if self.cfg["pool_b"][n]]
             if not self.pool_a:
                 self.pool_a = [0]
             if not self.pool_b:
                 self.pool_b = [0]
-            self.domande_totali = self.config_domande
-            self.swap_operandi = True if self.operazione == "sottrazione" else self.config_swap
+            self.domande_totali = self.cfg["domande"]
+            self.swap_operandi = True if self.operazione == "sottrazione" else self.cfg["swap"]
         self.nuova_domanda()
 
     def nuova_domanda(self):
@@ -385,6 +391,8 @@ class Gioco:
                     self.b = random.choice(pool)
             else:
                 self.a, self.b = self.b, self.a
+                if self.operazione == "sottrazione" and self.differenza_positiva and self.a < self.b:
+                    self.a, self.b = self.b, self.a
         self.prev_a, self.prev_b = self.a, self.b
 
         if self.modalita == "fisso":
@@ -525,10 +533,10 @@ class Gioco:
                     self.state = "menu"
             elif self.state == "opzioni_auto":
                 if event.key in (pygame.K_PLUS, pygame.K_EQUALS):
-                    self.config_timeout = min(99, self.config_timeout + 1)
+                    self.auto_timeout = min(99, self.auto_timeout + 1)
                     self.salva_config_profilo()
                 elif event.key == pygame.K_MINUS:
-                    self.config_timeout = max(3, self.config_timeout - 1)
+                    self.auto_timeout = max(3, self.auto_timeout - 1)
                     self.salva_config_profilo()
                 elif event.key == pygame.K_ESCAPE:
                     self.state = "opzioni"
@@ -648,9 +656,9 @@ class Gioco:
                 lw = 30
                 if tx - 2 <= mx <= tx + 100 + 2 and 218 <= my <= 256:
                     if mx < tx + lw:
-                        self.config_timeout = max(3, self.config_timeout - 1)
+                        self.auto_timeout = max(3, self.auto_timeout - 1)
                     elif mx >= tx + lw + 40:
-                        self.config_timeout = min(99, self.config_timeout + 1)
+                        self.auto_timeout = min(99, self.auto_timeout + 1)
                     self.salva_config_profilo()
             elif self.state == "config_fisso":
                 try:
@@ -725,6 +733,7 @@ class Gioco:
                     sx = 360 + i * 220
                     if sx <= mx <= sx + 206:
                         self.config_operazione = ops[i]
+                        self.cfg = self.config_per_op[self.config_operazione]
                         self.config_cursor_row = 0
                         self.config_cursor_col = 0
                         self.config_cursor_subrow = 0
@@ -749,7 +758,7 @@ class Gioco:
                             self.config_cursor_row = r
                             self.config_cursor_col = c
                             self.config_cursor_subrow = sr
-                            pool = self.config_pool_a if r == 1 else self.config_pool_b
+                            pool = self.cfg["pool_a"] if r == 1 else self.cfg["pool_b"]
                             if pools_mode:
                                 start = idx * 10
                                 for i in range(start, start + 10):
@@ -771,15 +780,15 @@ class Gioco:
                         self.config_cursor_row = 3
                         self.config_cursor_col = 0
                         if mx < 360 + lw:
-                            self.config_somma_massima = max(1, self.config_somma_massima - 1)
+                            self.cfg["somma_massima"] = max(1, self.cfg["somma_massima"] - 1)
                         elif mx >= 360 + lw + 40:
-                            self.config_somma_massima = min(199, self.config_somma_massima + 1)
+                            self.cfg["somma_massima"] = min(199, self.cfg["somma_massima"] + 1)
                         return
                 elif sottrazione:
                     if 350 <= mx <= 540 and y3 - 4 <= my <= y3 + 40:
                         self.config_cursor_row = 3
                         self.config_cursor_col = 0
-                        self.config_differenza_positiva = not self.config_differenza_positiva
+                        self.cfg["differenza_positiva"] = not self.cfg["differenza_positiva"]
                         return
 
             # Row 4: domande
@@ -790,9 +799,9 @@ class Gioco:
                     self.config_cursor_row = 4
                     self.config_cursor_col = 0
                     if mx < 360 + lw:
-                        self.config_domande = max(1, self.config_domande - 1)
+                        self.cfg["domande"] = max(1, self.cfg["domande"] - 1)
                     elif mx >= 360 + lw + 40:
-                        self.config_domande = min(99, self.config_domande + 1)
+                        self.cfg["domande"] = min(99, self.cfg["domande"] + 1)
                     return
 
             # Row 5: swap
@@ -801,7 +810,7 @@ class Gioco:
                 if 350 <= mx <= 540 and not sottrazione:
                     self.config_cursor_row = 5
                     self.config_cursor_col = 0
-                    self.config_swap = not self.config_swap
+                    self.cfg["swap"] = not self.cfg["swap"]
                     return
 
             # Row 6: timeout
@@ -812,9 +821,9 @@ class Gioco:
                     self.config_cursor_row = 6
                     self.config_cursor_col = 0
                     if mx < 360 + lw:
-                        self.config_timeout = max(3, self.config_timeout - 1)
+                        self.cfg["timeout"] = max(3, self.cfg["timeout"] - 1)
                     elif mx >= 360 + lw + 40:
-                        self.config_timeout = min(99, self.config_timeout + 1)
+                        self.cfg["timeout"] = min(99, self.cfg["timeout"] + 1)
                     return
 
             return
@@ -856,6 +865,7 @@ class Gioco:
         elif event.key == pygame.K_LEFT:
             if row == 0:
                 self.config_operazione = ops[(op_idx - 1) % 3]
+                self.cfg = self.config_per_op[self.config_operazione]
             elif row in (1, 2):
                 if col > 0:
                     col -= 1
@@ -866,6 +876,7 @@ class Gioco:
         elif event.key == pygame.K_RIGHT:
             if row == 0:
                 self.config_operazione = ops[(op_idx + 1) % 3]
+                self.cfg = self.config_per_op[self.config_operazione]
             elif row in (1, 2):
                 if col < 4:
                     idx = pool_index(sub, col + 1)
@@ -876,8 +887,9 @@ class Gioco:
         elif event.key == pygame.K_SPACE:
             if row == 0:
                 self.config_operazione = ops[(op_idx + 1) % 3]
+                self.cfg = self.config_per_op[self.config_operazione]
             elif row in (1, 2):
-                pool = self.config_pool_a if row == 1 else self.config_pool_b
+                pool = self.cfg["pool_a"] if row == 1 else self.cfg["pool_b"]
                 idx = pool_index(sub, col)
                 if idx >= 0:
                     if pools_mode:
@@ -891,23 +903,23 @@ class Gioco:
                         if not any(pool):
                             pool[idx] = True
             elif row == 3 and sottrazione:
-                self.config_differenza_positiva = not self.config_differenza_positiva
+                self.cfg["differenza_positiva"] = not self.cfg["differenza_positiva"]
             elif row == 5 and not sottrazione:
-                self.config_swap = not self.config_swap
+                self.cfg["swap"] = not self.cfg["swap"]
         elif event.key in (pygame.K_PLUS, pygame.K_EQUALS):
             if row == 3 and addizione:
-                self.config_somma_massima = min(199, self.config_somma_massima + 1)
+                self.cfg["somma_massima"] = min(199, self.cfg["somma_massima"] + 1)
             elif row == 4:
-                self.config_domande = min(99, self.config_domande + 1)
+                self.cfg["domande"] = min(99, self.cfg["domande"] + 1)
             elif row == 6:
-                self.config_timeout = min(99, self.config_timeout + 1)
+                self.cfg["timeout"] = min(99, self.cfg["timeout"] + 1)
         elif event.key == pygame.K_MINUS:
             if row == 3 and addizione:
-                self.config_somma_massima = max(1, self.config_somma_massima - 1)
+                self.cfg["somma_massima"] = max(1, self.cfg["somma_massima"] - 1)
             elif row == 4:
-                self.config_domande = max(1, self.config_domande - 1)
+                self.cfg["domande"] = max(1, self.cfg["domande"] - 1)
             elif row == 6:
-                self.config_timeout = max(3, self.config_timeout - 1)
+                self.cfg["timeout"] = max(3, self.cfg["timeout"] - 1)
 
         self.config_cursor_row = row
         self.config_cursor_col = col
@@ -1282,11 +1294,15 @@ class Gioco:
         pygame.draw.rect(self.screen, (90, 90, 100) if hover_minus else (70, 70, 80), minus_rect, border_radius=4)
         pygame.draw.rect(self.screen, (40, 40, 50), (tx + lw, y, vw, 34))
         pygame.draw.rect(self.screen, (90, 90, 100) if hover_plus else (70, 70, 80), plus_rect, border_radius=4)
+        if hover_minus:
+            pygame.draw.rect(self.screen, GOLD, minus_rect, 2, border_radius=4)
+        if hover_plus:
+            pygame.draw.rect(self.screen, GOLD, plus_rect, 2, border_radius=4)
         minus = self.font_medio.render("-", True, WHITE)
         plus = self.font_medio.render("+", True, WHITE)
         self.screen.blit(minus, minus.get_rect(center=(tx + lw // 2, y + 17)))
         self.screen.blit(plus, plus.get_rect(center=(tx + lw + vw + rw // 2, y + 17)))
-        t_surf = self.font_grande.render(str(self.config_timeout), True, WHITE)
+        t_surf = self.font_grande.render(str(self.auto_timeout), True, WHITE)
         self.screen.blit(t_surf, t_surf.get_rect(center=(tx + lw + vw // 2, y + 17)))
 
     def disegna_config(self):
@@ -1341,7 +1357,7 @@ class Gioco:
 
         # Row 1-2: Pool A / Pool B (unified 5-col grid)
         labels = ["Operando A", "Operando B"]
-        pools = [self.config_pool_a, self.config_pool_b]
+        pools = [self.cfg["pool_a"], self.cfg["pool_b"]]
         cols_u = 5
         pools_mode = addizione or sottrazione
         for ri in range(2):
@@ -1405,7 +1421,7 @@ class Gioco:
             plus = self.font_tiny.render("+", True, WHITE)
             self.screen.blit(minus, minus.get_rect(center=(sx + lw // 2, y + 17)))
             self.screen.blit(plus, plus.get_rect(center=(sx + lw + vw + rw // 2, y + 17)))
-            s_surf = self.font_tiny.render(str(self.config_somma_massima), True, WHITE)
+            s_surf = self.font_tiny.render(str(self.cfg["somma_massima"]), True, WHITE)
             self.screen.blit(s_surf, s_surf.get_rect(center=(sx + lw + vw // 2, y + 17)))
         elif sottrazione:
             label_d = self.font_tiny.render("Differenza positiva", True, WHITE)
@@ -1413,11 +1429,11 @@ class Gioco:
             self.screen.blit(label_d, rect)
             toggle_rect = pygame.Rect(352, y, 186, 36)
             hover_toggle = toggle_rect.collidepoint(mx, my)
-            bg_d = (80, 120, 80) if self.config_differenza_positiva and hover_toggle else (60, 130, 60) if self.config_differenza_positiva else (80, 80, 90) if hover_toggle else (60, 60, 70)
+            bg_d = (80, 120, 80) if self.cfg["differenza_positiva"] and hover_toggle else (60, 130, 60) if self.cfg["differenza_positiva"] else (80, 80, 90) if hover_toggle else (60, 60, 70)
             pygame.draw.rect(self.screen, bg_d, toggle_rect, border_radius=6)
             if hover_toggle:
                 pygame.draw.rect(self.screen, GOLD, toggle_rect, 2, border_radius=6)
-            dp_txt = "ON" if self.config_differenza_positiva else "OFF"
+            dp_txt = "ON" if self.cfg["differenza_positiva"] else "OFF"
             dp_val = self.font_tiny.render(dp_txt, True, WHITE)
             rect_dv = dp_val.get_rect(center=(445, y + 18))
             self.screen.blit(dp_val, rect_dv)
@@ -1445,7 +1461,7 @@ class Gioco:
         plus = self.font_tiny.render("+", True, WHITE)
         self.screen.blit(minus, minus.get_rect(center=(qx + lw // 2, y + 17)))
         self.screen.blit(plus, plus.get_rect(center=(qx + lw + vw + rw // 2, y + 17)))
-        q_surf = self.font_tiny.render(str(self.config_domande), True, WHITE)
+        q_surf = self.font_tiny.render(str(self.cfg["domande"]), True, WHITE)
         self.screen.blit(q_surf, q_surf.get_rect(center=(qx + lw + vw // 2, y + 17)))
 
         # Row 5: Commutazione
@@ -1454,13 +1470,13 @@ class Gioco:
         swap_locked = sottrazione
         toggle_rect = pygame.Rect(352, y, 186, 36)
         hover_toggle = toggle_rect.collidepoint(mx, my) and not swap_locked
-        bg_swap = (80, 120, 80) if (self.config_swap and hover_toggle) else (60, 130, 60) if self.config_swap else (80, 80, 90) if hover_toggle else (60, 60, 70) if not swap_locked else (60, 60, 70)
+        bg_swap = (80, 120, 80) if (self.cfg["swap"] and hover_toggle) else (60, 130, 60) if self.cfg["swap"] else (80, 80, 90) if hover_toggle else (60, 60, 70) if not swap_locked else (60, 60, 70)
         if swap_locked:
             bg_swap = (60, 60, 70)
         pygame.draw.rect(self.screen, bg_swap, toggle_rect, border_radius=6)
         if hover_toggle:
             pygame.draw.rect(self.screen, GOLD, toggle_rect, 2, border_radius=6)
-        sw_txt = "ON" if (self.config_swap or swap_locked) else "OFF"
+        sw_txt = "ON" if (self.cfg["swap"] or swap_locked) else "OFF"
         swap_label = self.font_tiny.render("Commuta A/B", True, WHITE)
         rect_sl = swap_label.get_rect(midleft=(80, y + 18))
         self.screen.blit(swap_label, rect_sl)
@@ -1491,7 +1507,7 @@ class Gioco:
         plus = self.font_tiny.render("+", True, WHITE)
         self.screen.blit(minus, minus.get_rect(center=(tx + lw // 2, y + 17)))
         self.screen.blit(plus, plus.get_rect(center=(tx + lw + vw + rw // 2, y + 17)))
-        t_surf = self.font_tiny.render(str(self.config_timeout), True, WHITE)
+        t_surf = self.font_tiny.render(str(self.cfg["timeout"]), True, WHITE)
         self.screen.blit(t_surf, t_surf.get_rect(center=(tx + lw + vw // 2, y + 17)))
 
         # Row 7: CONFERMA
