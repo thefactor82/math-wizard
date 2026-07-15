@@ -140,6 +140,8 @@ class Gioco:
             hit_frame = self.carica_spritesheet(path, target_w, 1, row=1, rows=2, cols=4, frame_offset=3, flip_x=False)[0]
             charge_frame = self.carica_spritesheet(path, target_w, 1, row=1, rows=2, cols=4, frame_offset=2, flip_x=False)[0]
             self.char_data[key] = {"idle": idle_frames, "profile": profile_img, "hit": hit_frame, "charge": charge_frame}
+            run_frames = self.carica_spritesheet(path, target_w, 4, row=0, rows=2, cols=4, frame_offset=0, flip_x=False)
+            self.char_data[key]["run"] = run_frames
         self.char_img = self.char_data["F"]["idle"][0]
         self.char_h = self.char_img.get_height()
         self.char_anim_timer = 0
@@ -197,7 +199,7 @@ class Gioco:
         self.cfg = self.config_per_op[self.config_operazione]
         self.auto_timeout = TEMPO_LIMITE_DEFAULT
 
-        self.version = "0.2.015"
+        self.version = "0.2.016"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -360,7 +362,9 @@ class Gioco:
         else:
             if self.domande_fatte >= self.domande_totali:
                 self.salva_sessione()
-                self.state = "gameover"
+                self.player_exit_start = pygame.time.get_ticks()
+                self.player_exit_x = 85
+                self.state = "player_exit"
                 return
             if self.coda_rinforzo and random.random() < 0.4:
                 self.a, self.b = self.coda_rinforzo.popleft()
@@ -1052,6 +1056,11 @@ class Gioco:
             return
         if self.state == "gameover":
             return
+        if self.state == "player_exit":
+            elapsed = pygame.time.get_ticks() - self.player_exit_start
+            if elapsed >= 4000:
+                self.state = "gameover"
+            return
         if self.state not in ("gioco",):
             return
 
@@ -1082,6 +1091,8 @@ class Gioco:
             self.disegna_profilo()
         elif self.state == "gioco" and not self.game_over:
             self.disegna_gioco()
+        elif self.state == "player_exit":
+            self.disegna_player_exit()
         else:
             if self.state in ("opzioni", "opzioni_auto", "config_fisso"):
                 self.screen.blit(self.bg_options, (0, 0))
@@ -1735,6 +1746,23 @@ class Gioco:
                 rect = surf.get_rect(topleft=(dx, dy))
                 self.screen.blit(surf, rect)
                 dy += 22
+
+    def disegna_player_exit(self):
+        self.screen.blit(self.bg, (0, 0))
+        elapsed = pygame.time.get_ticks() - self.player_exit_start
+        progress = min(elapsed / 4000, 1.0)
+        start_x = 85
+        end_x = SCREEN_WIDTH + 200
+        self.player_exit_x = start_x + (end_x - start_x) * progress
+        frame_idx = (elapsed // 200) % 4
+        data = self.char_data.get(self.config_genere, self.char_data["F"])
+        char_img = data["run"][frame_idx]
+        cw, ch = char_img.get_size()
+        char_scale = 1.7
+        scaled_char = pygame.transform.scale(char_img, (int(cw * char_scale), int(ch * char_scale)))
+        base_y = SCREEN_HEIGHT // 2 - scaled_char.get_height() // 2
+        wy = base_y + 140
+        self.screen.blit(scaled_char, (self.player_exit_x, wy))
 
     def disegna_gameover(self):
         self.screen.blit(self.bg, (0, 0))
