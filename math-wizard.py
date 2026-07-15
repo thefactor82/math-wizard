@@ -188,7 +188,7 @@ class Gioco:
         self.config_timeout = TEMPO_LIMITE_DEFAULT
         self.config_genere = "F"
 
-        self.version = "0.2.012"
+        self.version = "0.2.013"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -476,11 +476,7 @@ class Gioco:
                         elif event.unicode and event.unicode.isprintable() and len(self.profilo_input) < 30:
                             self.profilo_input += event.unicode
                     return
-                if event.key == pygame.K_UP:
-                    self.profilo_cursor = (self.profilo_cursor - 1) % (len(self.profili) + 1)
-                elif event.key == pygame.K_DOWN:
-                    self.profilo_cursor = (self.profilo_cursor + 1) % (len(self.profili) + 1)
-                elif event.key == pygame.K_RETURN:
+                if event.key == pygame.K_RETURN:
                     if self.profilo_cursor < len(self.profili):
                         self.profilo_corrente = self.profili[self.profilo_cursor]
                         self.carica_config_profilo(self.profilo_corrente)
@@ -496,11 +492,7 @@ class Gioco:
                     else:
                         self.running = False
             elif self.state == "menu":
-                if event.key == pygame.K_UP:
-                    self.menu_cursor = 0
-                elif event.key == pygame.K_DOWN:
-                    self.menu_cursor = 1
-                elif event.key == pygame.K_RETURN:
+                if event.key == pygame.K_RETURN:
                     self.modalita = "auto" if self.menu_cursor == 0 else "fisso"
                     self.avvia_partita()
                 elif event.key == pygame.K_1:
@@ -524,10 +516,6 @@ class Gioco:
                     self.state = "opzioni_auto"
                 elif event.key == pygame.K_2:
                     self.mostra_config()
-                elif event.key == pygame.K_UP:
-                    self.opzioni_cursor = max(0, self.opzioni_cursor - 1)
-                elif event.key == pygame.K_DOWN:
-                    self.opzioni_cursor = min(1, self.opzioni_cursor + 1)
                 elif event.key == pygame.K_RETURN:
                     if self.opzioni_cursor == 0:
                         self.state = "opzioni_auto"
@@ -607,22 +595,22 @@ class Gioco:
                     self.state = "profile_select"
             elif self.state == "profile_select":
                 if not self.profilo_input_mode:
-                    # Lista profili
-                    for i, nome in enumerate(self.profili):
+                    voci = self.profili + ["Nuovo profilo"]
+                    for i, voce in enumerate(voci):
                         y = 170 + i * 60
-                        if 340 - 10 <= mx <= 340 + 400 and y - 10 <= my <= y + 64:
-                            self.profilo_corrente = nome
-                            self.carica_config_profilo(nome)
-                            self.aggiorna_char_img()
-                            self.salva_profili()
-                            self.state = "menu"
+                        txt = self.font_grande.render(voce, True, WHITE)
+                        rect = txt.get_rect(midleft=(SCREEN_WIDTH // 2 - 200, y))
+                        if rect.collidepoint(mx, my):
+                            if i < len(self.profili):
+                                self.profilo_corrente = self.profili[i]
+                                self.carica_config_profilo(self.profili[i])
+                                self.aggiorna_char_img()
+                                self.salva_profili()
+                                self.state = "menu"
+                            else:
+                                self.profilo_input_mode = True
+                                self.profilo_input = ""
                             break
-                    else:
-                        # "+ Nuovo profilo" (ultima entry)
-                        y = 170 + len(self.profili) * 60
-                        if 340 - 10 <= mx <= 340 + 400 and y - 10 <= my <= y + 64:
-                            self.profilo_input_mode = True
-                            self.profilo_input = ""
                 elif self.profilo_genere_mode:
                     # Scelta genere
                     if 330 <= mx <= 610 and 370 - 10 <= my <= 370 + 130:
@@ -1111,6 +1099,7 @@ class Gioco:
         self.screen.blit(overlay, (0, 0))
 
     def disegna_profilo(self):
+        mx, my = pygame.mouse.get_pos()
         overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
         overlay.set_alpha(200)
         overlay.fill(BG_DARK)
@@ -1130,22 +1119,23 @@ class Gioco:
                 rect = prompt.get_rect(center=(SCREEN_WIDTH // 2, 300))
                 self.screen.blit(prompt, rect)
 
-                for i, (key, label) in enumerate([("F", "Femmina"), ("M", "Maschio")]):
+                for i, key in enumerate(("F", "M")):
                     sx = SCREEN_WIDTH // 2 - 310 + i * 340
                     y = 370
                     prof_img = self.char_data[key]["profile"]
-                    img_h = prof_img.get_height()
+                    img_w, img_h = prof_img.get_size()
                     box_h = max(90, img_h + 20)
-                    pygame.draw.rect(self.screen, (60, 60, 70), (sx, y, 280, box_h), border_radius=8)
+                    box_rect = pygame.Rect(sx, y, 280, box_h)
+                    hovered = box_rect.collidepoint(mx, my)
+                    bg_col = (80, 80, 100) if hovered else (60, 60, 70)
+                    pygame.draw.rect(self.screen, bg_col, box_rect, border_radius=8)
+                    if hovered:
+                        pygame.draw.rect(self.screen, GOLD, box_rect, 2, border_radius=8)
                     if prof_img:
-                        self.screen.blit(prof_img, (sx + 2, y + 10))
-                    txt = self.font_medio.render(label, True, WHITE)
-                    rect = txt.get_rect(midleft=(sx + 120, y + box_h // 2))
-                    self.screen.blit(txt, rect)
+                        cx = sx + (280 - img_w) // 2
+                        cy = y + (box_h - img_h) // 2
+                        self.screen.blit(prof_img, (cx, cy))
 
-                tip = self.font_piccolo.render("Premi F o M per scegliere  |  ESC: annulla", True, GRAY)
-                rect = tip.get_rect(center=(SCREEN_WIDTH // 2, 590))
-                self.screen.blit(tip, rect)
             else:
                 titolo = self.font_titolo.render("NUOVO PROFILO", True, GOLD)
                 rect = titolo.get_rect(center=(SCREEN_WIDTH // 2, 120))
@@ -1165,10 +1155,10 @@ class Gioco:
                 self.screen.blit(surf, box)
 
                 if self.profilo_input:
-                    hint = self.font_piccolo.render("INVIO per confermare", True, GRAY)
+                    hint = self.font_piccolo.render("", True, GRAY)
                     rect = hint.get_rect(center=(SCREEN_WIDTH // 2, 380))
                     self.screen.blit(hint, rect)
-                back = self.font_piccolo.render("ESC: annulla", True, GRAY)
+                back = self.font_piccolo.render("", True, GRAY)
                 rect = back.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 60))
                 self.screen.blit(back, rect)
             return
@@ -1177,24 +1167,23 @@ class Gioco:
         rect = titolo.get_rect(center=(SCREEN_WIDTH // 2, 80))
         self.screen.blit(titolo, rect)
 
-        voci = self.profili + ["+ Nuovo profilo"]
+        voci = self.profili + ["Nuovo profilo"]
         nuovo_idx = len(self.profili)
         for i, voce in enumerate(voci):
             y = 170 + i * 60
-            col = GOLD if i == self.profilo_cursor else WHITE
-            txt = self.font_grande.render(voce, True, col)
+            txt = self.font_grande.render(voce, True, WHITE)
             rect = txt.get_rect(midleft=(SCREEN_WIDTH // 2 - 200, y))
+            if rect.collidepoint(mx, my):
+                self.profilo_cursor = i
+                txt = self.font_grande.render(voce, True, GOLD)
             self.screen.blit(txt, rect)
             if i < nuovo_idx and voce == self.profilo_corrente:
                 ok = self.font_piccolo.render("(attivo)", True, GRAY)
                 rect = ok.get_rect(midleft=(SCREEN_WIDTH // 2 + 150, y + 20))
                 self.screen.blit(ok, rect)
 
-        info = self.font_piccolo.render("Freccette: naviga  |  INVIO: seleziona  |  ESC: esci", True, GRAY)
-        rect = info.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 60))
-        self.screen.blit(info, rect)
-
     def disegna_menu(self):
+        mx, my = pygame.mouse.get_pos()
         overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
         overlay.set_alpha(180)
         overlay.fill(BG_DARK)
@@ -1209,14 +1198,16 @@ class Gioco:
         self.screen.blit(sottotitolo, rect)
 
         opzioni = [
-            ("1  Autoapprendimento", "Livelli progressivi automatici, operandi 0-12, level-up basato su precisione e velocita"),
-            ("2  Livello Fisso", "Scegli operandi, numero domande e sfida a difficolta costante"),
+            ("Autoapprendimento", "Livelli progressivi automatici, operandi 0-12, level-up basato su precisione e velocita"),
+            ("Livello Fisso", "Scegli operandi, numero domande e sfida a difficolta costante"),
         ]
         for i, (tit, desc) in enumerate(opzioni):
             y = 280 + i * 100
-            col = GOLD if i == self.menu_cursor else WHITE
-            opt = self.font_grande.render(tit, True, col)
+            opt = self.font_grande.render(tit, True, WHITE)
             rect = opt.get_rect(midleft=(SCREEN_WIDTH // 2 - 300, y))
+            if rect.collidepoint(mx, my):
+                self.menu_cursor = i
+                opt = self.font_grande.render(tit, True, GOLD)
             self.screen.blit(opt, rect)
             desc_surf = self.font_piccolo.render(desc, True, GRAY)
             rect = desc_surf.get_rect(midleft=(SCREEN_WIDTH // 2 - 300, y + 40))
@@ -1227,24 +1218,22 @@ class Gioco:
         gear_size = 44
         gear_scaled = pygame.transform.scale(self.gear_img, (gear_size, gear_size))
         rect = gear_scaled.get_rect(center=(cx, cy))
+        if rect.collidepoint(mx, my):
+            pygame.draw.rect(self.screen, GOLD, rect.inflate(8, 8), 2, border_radius=6)
         self.screen.blit(gear_scaled, rect)
 
         profilo_lbl = self.font_piccolo.render(f"Profilo: {self.profilo_corrente}", True, GRAY)
         rect = profilo_lbl.get_rect(midleft=(SCREEN_WIDTH // 2 - 300, 550))
+        if rect.collidepoint(mx, my):
+            profilo_lbl = self.font_piccolo.render(f"Profilo: {self.profilo_corrente}", True, GOLD)
         self.screen.blit(profilo_lbl, rect)
-        cambia_lbl = self.font_piccolo.render("P: Cambia profilo", True, GRAY)
-        rect = cambia_lbl.get_rect(midleft=(SCREEN_WIDTH // 2 - 300, 575))
-        self.screen.blit(cambia_lbl, rect)
-
-        info = self.font_piccolo.render("Freccette: seleziona  |  INVIO: conferma  |  O: Opzioni  |  ESC: Esci", True, WHITE)
-        rect = info.get_rect(center=(SCREEN_WIDTH // 2, 620))
-        self.screen.blit(info, rect)
 
         version_surf = self.font_tiny.render(f"v{self.version}", True, GRAY)
         rect = version_surf.get_rect(bottomright=(SCREEN_WIDTH - 8, SCREEN_HEIGHT - 8))
         self.screen.blit(version_surf, rect)
 
     def disegna_opzioni(self):
+        mx, my = pygame.mouse.get_pos()
         overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
         overlay.set_alpha(200)
         overlay.fill(BG_DARK)
@@ -1254,19 +1243,18 @@ class Gioco:
         rect = titolo.get_rect(center=(SCREEN_WIDTH // 2, 80))
         self.screen.blit(titolo, rect)
 
-        voci = [("1", "Autoapprendimento"), ("2", "Livello Fisso")]
-        for i, (num, voce) in enumerate(voci):
+        voci = ["Autoapprendimento", "Livello Fisso"]
+        for i, voce in enumerate(voci):
             y = 220 + i * 80
-            col = GOLD if i == self.opzioni_cursor else WHITE
-            txt = self.font_grande.render(f"{num}  {voce}", True, col)
+            txt = self.font_grande.render(voce, True, WHITE)
             rect = txt.get_rect(center=(SCREEN_WIDTH // 2, y + 21))
+            if rect.collidepoint(mx, my):
+                self.opzioni_cursor = i
+                txt = self.font_grande.render(voce, True, GOLD)
             self.screen.blit(txt, rect)
 
-        info = self.font_piccolo.render("1/2 o Freccette: naviga  |  INVIO: seleziona  |  ESC: indietro", True, GRAY)
-        rect = info.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 60))
-        self.screen.blit(info, rect)
-
     def disegna_opzioni_auto(self):
+        mx, my = pygame.mouse.get_pos()
         overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
         overlay.set_alpha(200)
         overlay.fill(BG_DARK)
@@ -1285,11 +1273,15 @@ class Gioco:
         tx = SCREEN_WIDTH // 2 + 20
         lw, vw, rw = 30, 40, 30
         total = lw + vw + rw
+        minus_rect = pygame.Rect(tx, y, lw, 34)
+        plus_rect = pygame.Rect(tx + lw + vw, y, rw, 34)
         if focused:
             pygame.draw.rect(self.screen, (255, 255, 100), (tx - 2, y - 2, total + 4, 38), 3, border_radius=4)
-        pygame.draw.rect(self.screen, (70, 70, 80), (tx, y, lw, 34), border_radius=4)
+        hover_minus = minus_rect.collidepoint(mx, my)
+        hover_plus = plus_rect.collidepoint(mx, my)
+        pygame.draw.rect(self.screen, (90, 90, 100) if hover_minus else (70, 70, 80), minus_rect, border_radius=4)
         pygame.draw.rect(self.screen, (40, 40, 50), (tx + lw, y, vw, 34))
-        pygame.draw.rect(self.screen, (70, 70, 80), (tx + lw + vw, y, rw, 34), border_radius=4)
+        pygame.draw.rect(self.screen, (90, 90, 100) if hover_plus else (70, 70, 80), plus_rect, border_radius=4)
         minus = self.font_medio.render("-", True, WHITE)
         plus = self.font_medio.render("+", True, WHITE)
         self.screen.blit(minus, minus.get_rect(center=(tx + lw // 2, y + 17)))
@@ -1297,11 +1289,8 @@ class Gioco:
         t_surf = self.font_grande.render(str(self.config_timeout), True, WHITE)
         self.screen.blit(t_surf, t_surf.get_rect(center=(tx + lw + vw // 2, y + 17)))
 
-        back = self.font_piccolo.render("ESC: torna indietro", True, GRAY)
-        rect = back.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 60))
-        self.screen.blit(back, rect)
-
     def disegna_config(self):
+        mx, my = pygame.mouse.get_pos()
         overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
         overlay.set_alpha(200)
         overlay.fill(BG_DARK)
@@ -1336,16 +1325,16 @@ class Gioco:
         label_op = self.font_tiny.render("Operazione", True, WHITE)
         rect = label_op.get_rect(midleft=(80, y + 17))
         self.screen.blit(label_op, rect)
-        focused = self.config_cursor_row == row
         opzioni_op = ["Moltiplicazione", "Addizione", "Sottrazione"]
         for i, nome in enumerate(opzioni_op):
             sx = 360 + i * 220
             sel = i == op_idx
-            bg_col = (60, 130, 60) if sel else (60, 60, 70)
-            if focused:
-                col_b = (255, 255, 100) if sel else (80, 80, 90)
-                pygame.draw.rect(self.screen, col_b, (sx - 2, y - 2, 210, 38), 3, border_radius=4)
-            pygame.draw.rect(self.screen, bg_col, (sx, y, 206, 34), border_radius=4)
+            btn_rect = pygame.Rect(sx, y, 206, 34)
+            hovered = btn_rect.collidepoint(mx, my)
+            bg_col = (80, 120, 80) if sel and hovered else (60, 130, 60) if sel else (80, 80, 90) if hovered else (60, 60, 70)
+            pygame.draw.rect(self.screen, bg_col, btn_rect, border_radius=4)
+            if hovered:
+                pygame.draw.rect(self.screen, GOLD, btn_rect, 2, border_radius=4)
             txt = self.font_tiny.render(nome, True, WHITE)
             rect_t = txt.get_rect(center=(sx + 103, y + 17))
             self.screen.blit(txt, rect_t)
@@ -1382,11 +1371,12 @@ class Gioco:
                     else:
                         selected = pools[ri][idx]
                         txt = str(idx)
-                    focus = self.config_cursor_row == row and self.config_cursor_col == c and self.config_cursor_subrow == sr
-                    bg_col = (60, 130, 60) if selected else (60, 60, 70)
-                    if focus:
-                        pygame.draw.rect(self.screen, (255, 255, 100), (sx - 2, sy - 2, cell_w + 4, cell_h + 4), 3, border_radius=4)
-                    pygame.draw.rect(self.screen, bg_col, (sx, sy, cell_w, cell_h), border_radius=4)
+                    cell_rect = pygame.Rect(sx, sy, cell_w, cell_h)
+                    hovered_cell = cell_rect.collidepoint(mx, my)
+                    bg_col = (80, 120, 80) if selected and hovered_cell else (60, 130, 60) if selected else (80, 80, 90) if hovered_cell else (60, 60, 70)
+                    pygame.draw.rect(self.screen, bg_col, cell_rect, border_radius=4)
+                    if hovered_cell:
+                        pygame.draw.rect(self.screen, GOLD, cell_rect, 2, border_radius=4)
                     t = self.font_tiny.render(txt, True, WHITE)
                     rt = t.get_rect(center=(sx + cell_w // 2, sy + cell_h // 2))
                     self.screen.blit(t, rt)
@@ -1398,15 +1388,19 @@ class Gioco:
             label_s = self.font_tiny.render("Somma massima", True, WHITE)
             rect = label_s.get_rect(midleft=(80, y + 17))
             self.screen.blit(label_s, rect)
-            focused = self.config_cursor_row == row
             sx = 360
             lw, vw, rw = 30, 40, 30
-            total = lw + vw + rw
-            if focused:
-                pygame.draw.rect(self.screen, (255, 255, 100), (sx - 2, y - 2, total + 4, 38), 3, border_radius=4)
-            pygame.draw.rect(self.screen, (70, 70, 80), (sx, y, lw, 34), border_radius=4)
+            minus_rect = pygame.Rect(sx, y, lw, 34)
+            plus_rect = pygame.Rect(sx + lw + vw, y, rw, 34)
+            hover_minus = minus_rect.collidepoint(mx, my)
+            hover_plus = plus_rect.collidepoint(mx, my)
+            pygame.draw.rect(self.screen, (90, 90, 100) if hover_minus else (70, 70, 80), minus_rect, border_radius=4)
             pygame.draw.rect(self.screen, (40, 40, 50), (sx + lw, y, vw, 34))
-            pygame.draw.rect(self.screen, (70, 70, 80), (sx + lw + vw, y, rw, 34), border_radius=4)
+            pygame.draw.rect(self.screen, (90, 90, 100) if hover_plus else (70, 70, 80), plus_rect, border_radius=4)
+            if hover_minus:
+                pygame.draw.rect(self.screen, GOLD, minus_rect, 2, border_radius=4)
+            if hover_plus:
+                pygame.draw.rect(self.screen, GOLD, plus_rect, 2, border_radius=4)
             minus = self.font_tiny.render("-", True, WHITE)
             plus = self.font_tiny.render("+", True, WHITE)
             self.screen.blit(minus, minus.get_rect(center=(sx + lw // 2, y + 17)))
@@ -1414,14 +1408,15 @@ class Gioco:
             s_surf = self.font_tiny.render(str(self.config_somma_massima), True, WHITE)
             self.screen.blit(s_surf, s_surf.get_rect(center=(sx + lw + vw // 2, y + 17)))
         elif sottrazione:
-            focused = self.config_cursor_row == row
             label_d = self.font_tiny.render("Differenza positiva", True, WHITE)
             rect = label_d.get_rect(midleft=(80, y + 17))
             self.screen.blit(label_d, rect)
-            if focused:
-                pygame.draw.rect(self.screen, (255, 255, 100), (350, y - 4, 190, 44), 3, border_radius=6)
-            bg_d = (60, 130, 60) if self.config_differenza_positiva else (60, 60, 70)
-            pygame.draw.rect(self.screen, bg_d, (352, y, 186, 36), border_radius=6)
+            toggle_rect = pygame.Rect(352, y, 186, 36)
+            hover_toggle = toggle_rect.collidepoint(mx, my)
+            bg_d = (80, 120, 80) if self.config_differenza_positiva and hover_toggle else (60, 130, 60) if self.config_differenza_positiva else (80, 80, 90) if hover_toggle else (60, 60, 70)
+            pygame.draw.rect(self.screen, bg_d, toggle_rect, border_radius=6)
+            if hover_toggle:
+                pygame.draw.rect(self.screen, GOLD, toggle_rect, 2, border_radius=6)
             dp_txt = "ON" if self.config_differenza_positiva else "OFF"
             dp_val = self.font_tiny.render(dp_txt, True, WHITE)
             rect_dv = dp_val.get_rect(center=(445, y + 18))
@@ -1433,15 +1428,19 @@ class Gioco:
         label_q = self.font_tiny.render("Domande", True, WHITE)
         rect = label_q.get_rect(midleft=(80, y + 17))
         self.screen.blit(label_q, rect)
-        focused = self.config_cursor_row == row
         qx = 360
         lw, vw, rw = 30, 40, 30
-        total = lw + vw + rw
-        if focused:
-            pygame.draw.rect(self.screen, (255, 255, 100), (qx - 2, y - 2, total + 4, 38), 3, border_radius=4)
-        pygame.draw.rect(self.screen, (70, 70, 80), (qx, y, lw, 34), border_radius=4)
+        minus_rect = pygame.Rect(qx, y, lw, 34)
+        plus_rect = pygame.Rect(qx + lw + vw, y, rw, 34)
+        hover_minus = minus_rect.collidepoint(mx, my)
+        hover_plus = plus_rect.collidepoint(mx, my)
+        pygame.draw.rect(self.screen, (90, 90, 100) if hover_minus else (70, 70, 80), minus_rect, border_radius=4)
         pygame.draw.rect(self.screen, (40, 40, 50), (qx + lw, y, vw, 34))
-        pygame.draw.rect(self.screen, (70, 70, 80), (qx + lw + vw, y, rw, 34), border_radius=4)
+        pygame.draw.rect(self.screen, (90, 90, 100) if hover_plus else (70, 70, 80), plus_rect, border_radius=4)
+        if hover_minus:
+            pygame.draw.rect(self.screen, GOLD, minus_rect, 2, border_radius=4)
+        if hover_plus:
+            pygame.draw.rect(self.screen, GOLD, plus_rect, 2, border_radius=4)
         minus = self.font_tiny.render("-", True, WHITE)
         plus = self.font_tiny.render("+", True, WHITE)
         self.screen.blit(minus, minus.get_rect(center=(qx + lw // 2, y + 17)))
@@ -1453,11 +1452,14 @@ class Gioco:
         row = 5
         y = row_y(row)
         swap_locked = sottrazione
-        swap_sel = self.config_cursor_row == row and not swap_locked
-        if swap_sel:
-            pygame.draw.rect(self.screen, (255, 255, 100), (350, y - 4, 190, 44), 3, border_radius=6)
-        bg_swap = (60, 130, 60) if (self.config_swap or swap_locked) else (60, 60, 70)
-        pygame.draw.rect(self.screen, bg_swap, (352, y, 186, 36), border_radius=6)
+        toggle_rect = pygame.Rect(352, y, 186, 36)
+        hover_toggle = toggle_rect.collidepoint(mx, my) and not swap_locked
+        bg_swap = (80, 120, 80) if (self.config_swap and hover_toggle) else (60, 130, 60) if self.config_swap else (80, 80, 90) if hover_toggle else (60, 60, 70) if not swap_locked else (60, 60, 70)
+        if swap_locked:
+            bg_swap = (60, 60, 70)
+        pygame.draw.rect(self.screen, bg_swap, toggle_rect, border_radius=6)
+        if hover_toggle:
+            pygame.draw.rect(self.screen, GOLD, toggle_rect, 2, border_radius=6)
         sw_txt = "ON" if (self.config_swap or swap_locked) else "OFF"
         swap_label = self.font_tiny.render("Commuta A/B", True, WHITE)
         rect_sl = swap_label.get_rect(midleft=(80, y + 18))
@@ -1472,15 +1474,19 @@ class Gioco:
         label_t = self.font_tiny.render("Timeout (secondi)", True, WHITE)
         rect = label_t.get_rect(midleft=(80, y + 17))
         self.screen.blit(label_t, rect)
-        focused = self.config_cursor_row == row
         tx = 360
         lw, vw, rw = 30, 40, 30
-        total = lw + vw + rw
-        if focused:
-            pygame.draw.rect(self.screen, (255, 255, 100), (tx - 2, y - 2, total + 4, 38), 3, border_radius=4)
-        pygame.draw.rect(self.screen, (70, 70, 80), (tx, y, lw, 34), border_radius=4)
+        minus_rect = pygame.Rect(tx, y, lw, 34)
+        plus_rect = pygame.Rect(tx + lw + vw, y, rw, 34)
+        hover_minus = minus_rect.collidepoint(mx, my)
+        hover_plus = plus_rect.collidepoint(mx, my)
+        pygame.draw.rect(self.screen, (90, 90, 100) if hover_minus else (70, 70, 80), minus_rect, border_radius=4)
         pygame.draw.rect(self.screen, (40, 40, 50), (tx + lw, y, vw, 34))
-        pygame.draw.rect(self.screen, (70, 70, 80), (tx + lw + vw, y, rw, 34), border_radius=4)
+        pygame.draw.rect(self.screen, (90, 90, 100) if hover_plus else (70, 70, 80), plus_rect, border_radius=4)
+        if hover_minus:
+            pygame.draw.rect(self.screen, GOLD, minus_rect, 2, border_radius=4)
+        if hover_plus:
+            pygame.draw.rect(self.screen, GOLD, plus_rect, 2, border_radius=4)
         minus = self.font_tiny.render("-", True, WHITE)
         plus = self.font_tiny.render("+", True, WHITE)
         self.screen.blit(minus, minus.get_rect(center=(tx + lw // 2, y + 17)))
@@ -1491,17 +1497,15 @@ class Gioco:
         # Row 7: CONFERMA
         row = 7
         y = row_y(row)
-        start_sel = self.config_cursor_row == row
-        if start_sel:
-            pygame.draw.rect(self.screen, (255, 255, 100), (SCREEN_WIDTH // 2 - 112, y - 4, 224, 54), 3, border_radius=8)
-        pygame.draw.rect(self.screen, (40, 120, 40), (SCREEN_WIDTH // 2 - 110, y, 220, 46), border_radius=8)
+        conf_rect = pygame.Rect(SCREEN_WIDTH // 2 - 110, y, 220, 46)
+        hover_conf = conf_rect.collidepoint(mx, my)
+        bg_conf = (50, 140, 50) if hover_conf else (40, 120, 40)
+        if hover_conf:
+            pygame.draw.rect(self.screen, GOLD, (SCREEN_WIDTH // 2 - 112, y - 2, 224, 50), 3, border_radius=8)
+        pygame.draw.rect(self.screen, bg_conf, conf_rect, border_radius=8)
         start_txt = self.font_tiny.render("CONFERMA", True, WHITE)
         rect_s = start_txt.get_rect(center=(SCREEN_WIDTH // 2, y + 23))
         self.screen.blit(start_txt, rect_s)
-
-        help = self.font_piccolo.render("Freccette: naviga  |  SPACE: attiva/disattiva  |  INVIO: conferma  |  ESC: indietro", True, GRAY)
-        rect_h2 = help.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 15))
-        self.screen.blit(help, rect_h2)
 
     def disegna_gioco(self):
         shake = (0, 0)
@@ -1598,11 +1602,6 @@ class Gioco:
             pygame.draw.rect(self.screen, (100, 100, 180), box_rect, 2, border_radius=8)
             self.screen.blit(input_surf, input_rect)
 
-            if self.input_utente:
-                preview = self.font_piccolo.render(f"INVIO per confermare", True, GRAY)
-                rect = preview.get_rect(center=(SCREEN_WIDTH // 2, 200))
-                self.screen.blit(preview, rect)
-
         if self.modalita == "auto":
             richieste = 5 + sum(range(1, self.livello + 1))
             corr = sum(1 for esito, _ in self.blocco_corrente if esito)
@@ -1655,7 +1654,7 @@ class Gioco:
                 prossimo = self.font_piccolo.render("Prossima domanda...", True, GRAY)
             else:
                 fb = self.font_grande.render(f"SBAGLIATO! Era {self.risultato_atteso}", True, RED)
-                prossimo = self.font_piccolo.render("Premi INVIO per continuare", True, GRAY)
+                prossimo = self.font_piccolo.render("", True, GRAY)
             rect = fb.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 30))
             self.screen.blit(fb, rect)
             rect = prossimo.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 30))
@@ -1760,9 +1759,6 @@ class Gioco:
                 y += 24
 
         y = max(y + 20, SCREEN_HEIGHT - 100)
-        restart = self.font_medio.render("Premi R per rigiocare  |  M per menu  |  ESC per uscire", True, WHITE)
-        rect = restart.get_rect(center=(SCREEN_WIDTH // 2, y))
-        self.screen.blit(restart, rect)
 
     def salva_sessione(self):
         tot_corrette = sum(v["corrette"] for v in self.stats.values())
