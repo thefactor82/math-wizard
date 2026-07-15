@@ -199,7 +199,7 @@ class Gioco:
         self.cfg = self.config_per_op[self.config_operazione]
         self.auto_timeout = TEMPO_LIMITE_DEFAULT
 
-        self.version = "0.2.017"
+        self.version = "0.2.018"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -1288,6 +1288,18 @@ class Gioco:
                 self.opzioni_cursor = i
                 txt = self.font_grande.render(voce, True, GOLD)
             self.screen.blit(txt, rect)
+
+        credits = [
+            f"v{self.version}",
+            "Concept, development, and organization: TheFactor82",
+            "Graphics: Elena",
+        ]
+        y = SCREEN_HEIGHT - 10 - len(credits) * 22
+        for line in credits:
+            surf = self.font_tiny.render(line, True, GRAY)
+            rect = surf.get_rect(bottomright=(SCREEN_WIDTH - 20, y))
+            self.screen.blit(surf, rect)
+            y += 22
 
     def disegna_opzioni_auto(self):
         mx, my = pygame.mouse.get_pos()
