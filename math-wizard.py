@@ -199,7 +199,7 @@ class Gioco:
         self.cfg = self.config_per_op[self.config_operazione]
         self.auto_timeout = TEMPO_LIMITE_DEFAULT
 
-        self.version = "0.2.016"
+        self.version = "0.2.017"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -536,10 +536,10 @@ class Gioco:
                 elif event.key == pygame.K_ESCAPE:
                     self.state = "menu"
             elif self.state == "opzioni_auto":
-                if event.key in (pygame.K_PLUS, pygame.K_EQUALS):
+                if event.key in (pygame.K_PLUS, pygame.K_EQUALS, pygame.K_KP_PLUS):
                     self.auto_timeout = min(99, self.auto_timeout + 1)
                     self.salva_config_profilo()
-                elif event.key == pygame.K_MINUS:
+                elif event.key in (pygame.K_MINUS, pygame.K_KP_MINUS):
                     self.auto_timeout = max(3, self.auto_timeout - 1)
                     self.salva_config_profilo()
                 elif event.key == pygame.K_ESCAPE:
@@ -568,10 +568,15 @@ class Gioco:
                     else:
                         self.nuova_domanda()
                 elif self.domanda_attiva:
-                    if event.key == pygame.K_RETURN and self.input_utente:
+                    if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER) and self.input_utente:
                         self.controlla_risposta()
                     elif event.key == pygame.K_BACKSPACE:
                         self.input_utente = self.input_utente[:-1]
+                    elif event.key in (pygame.K_KP0, pygame.K_KP1, pygame.K_KP2, pygame.K_KP3, pygame.K_KP4, pygame.K_KP5, pygame.K_KP6, pygame.K_KP7, pygame.K_KP8, pygame.K_KP9):
+                        if len(self.input_utente) < 6:
+                            self.input_utente += str(event.key - pygame.K_KP0)
+                    elif event.key == pygame.K_KP_MINUS and not self.input_utente:
+                        self.input_utente += "-"
                     elif event.unicode.isdigit() and len(self.input_utente) < 6:
                         self.input_utente += event.unicode
                     elif event.unicode == "-" and not self.input_utente:
@@ -918,14 +923,14 @@ class Gioco:
                 self.cfg["differenza_positiva"] = not self.cfg["differenza_positiva"]
             elif row == 5 and not sottrazione:
                 self.cfg["swap"] = not self.cfg["swap"]
-        elif event.key in (pygame.K_PLUS, pygame.K_EQUALS):
+        elif event.key in (pygame.K_PLUS, pygame.K_EQUALS, pygame.K_KP_PLUS):
             if row == 3 and addizione:
                 self.cfg["somma_massima"] = min(199, self.cfg["somma_massima"] + 1)
             elif row == 4:
                 self.cfg["domande"] = min(99, self.cfg["domande"] + 1)
             elif row == 6:
                 self.cfg["timeout"] = min(99, self.cfg["timeout"] + 1)
-        elif event.key == pygame.K_MINUS:
+        elif event.key in (pygame.K_MINUS, pygame.K_KP_MINUS):
             if row == 3 and addizione:
                 self.cfg["somma_massima"] = max(1, self.cfg["somma_massima"] - 1)
             elif row == 4:
