@@ -132,26 +132,32 @@ class Gioco:
 
         pw, ph = 900, 1330
         target_w = 160
-        target_h = int(target_w / pw * ph)
         self.char_data = {}
         for key, path in [("F", "graphics/players/playerf.png"), ("M", "graphics/players/playerm.png")]:
-            idle_frames = self.carica_spritesheet(path, target_w, 2, row=1, rows=2, cols=4, frame_offset=0, flip_x=False)
-            profile_img = self.carica_spritesheet(path, target_w, 1, row=1, rows=2, cols=4, frame_offset=0, flip_x=False)[0]
-            hit_frame = self.carica_spritesheet(path, target_w, 1, row=1, rows=2, cols=4, frame_offset=3, flip_x=False)[0]
-            charge_frame = self.carica_spritesheet(path, target_w, 1, row=1, rows=2, cols=4, frame_offset=2, flip_x=False)[0]
+            idle_frames = self.carica_spritesheet(path, 160, 2, row=1, rows=2, cols=4, frame_offset=0, flip_x=False, scale=False)
+            profile_img = self.carica_spritesheet(path, 160, 1, row=1, rows=2, cols=4, frame_offset=0, flip_x=False, scale=False)[0]
+            hit_frame = self.carica_spritesheet(path, 160, 1, row=1, rows=2, cols=4, frame_offset=3, flip_x=False, scale=False)[0]
+            charge_frame = self.carica_spritesheet(path, 160, 1, row=1, rows=2, cols=4, frame_offset=2, flip_x=False, scale=False)[0]
             self.char_data[key] = {"idle": idle_frames, "profile": profile_img, "hit": hit_frame, "charge": charge_frame}
-            run_frames = self.carica_spritesheet(path, target_w, 4, row=0, rows=2, cols=4, frame_offset=0, flip_x=False)
+            run_frames = self.carica_spritesheet(path, 160, 4, row=0, rows=2, cols=4, frame_offset=0, flip_x=False, scale=False)
             self.char_data[key]["run"] = run_frames
         self.char_img = self.char_data["F"]["idle"][0]
         self.char_h = self.char_img.get_height()
         self.char_anim_timer = 0
         self.char_anim_frame = 0
 
-        self.monster_frames = self.carica_spritesheet("graphics/monsters/monster1.png", 200, 4, row=0, rows=2, cols=4)
-        self.monster_hit_img = self.carica_spritesheet("graphics/monsters/monster1.png", 200, 1, row=1, rows=2, cols=4, frame_offset=3)[0]
+        self.mostri = []
+        for mi in range(1, 9):
+            path = f"graphics/monsters/monster{mi}.png"
+            frames = self.carica_spritesheet(path, 200, 4, row=0, rows=2, cols=4)
+            hit = self.carica_spritesheet(path, 200, 1, row=1, rows=2, cols=4, frame_offset=3)[0]
+            self.mostri.append({"frames": frames, "hit": hit})
+        self.monster_frames = self.mostri[0]["frames"]
+        self.monster_hit_img = self.mostri[0]["hit"]
         self.monster_img = self.monster_frames[0]
         self.monster_anim_speed = 150
         self.mostro_hit_delay = 150
+        self.mostro_precedente = None
 
         self.heart_red = pygame.transform.scale(pygame.image.load("graphics/misc/lives.png").convert_alpha(), (35, 35))
         self.heart_grey = pygame.transform.scale(pygame.image.load("graphics/misc/lives_lost.png").convert_alpha(), (35, 35))
@@ -159,7 +165,7 @@ class Gioco:
         self.logo = pygame.transform.scale(pygame.image.load("graphics/misc/logo.png").convert_alpha(), (SCREEN_WIDTH, SCREEN_HEIGHT))
         self.gear_img = pygame.image.load("graphics/misc/gear.png").convert_alpha()
 
-    def carica_spritesheet(self, path, target_w, frame_count, row=0, rows=1, cols=None, frame_offset=0, flip_x=True):
+    def carica_spritesheet(self, path, target_w, frame_count, row=0, rows=1, cols=None, frame_offset=0, flip_x=True, scale=True):
         sheet = pygame.image.load(path).convert_alpha()
         if flip_x:
             sheet = pygame.transform.flip(sheet, True, False)
@@ -169,7 +175,10 @@ class Gioco:
         frames = []
         for i in range(frame_count):
             frame = sheet.subsurface(((i + frame_offset) * fw, row * fh, fw, fh))
-            frames.append(pygame.transform.scale(frame, (target_w, int(target_w / fw * fh))))
+            if scale:
+                frames.append(pygame.transform.scale(frame, (target_w, int(target_w / fw * fh))))
+            else:
+                frames.append(frame)
         return frames
 
     def gestione_profili(self):
@@ -199,7 +208,7 @@ class Gioco:
         self.cfg = self.config_per_op[self.config_operazione]
         self.auto_timeout = TEMPO_LIMITE_DEFAULT
 
-        self.version = "0.2.018"
+        self.version = "0.2.019"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -326,7 +335,9 @@ class Gioco:
         self.game_over = False
         self.vite = VITE_MAGO
         self.timeout_limite = self.auto_timeout if self.modalita == "auto" else self.cfg["timeout"]
-        self.livello = 0
+        if self.modalita == "auto":
+            self.tempo_limite_iniziale = self.auto_timeout
+            self.livello = 0
         self.tempi_risposta = []
         self.blocco_corrente = []
         self.coda_rinforzo = deque()
@@ -351,19 +362,34 @@ class Gioco:
                 self.pool_b = [0]
             self.domande_totali = self.cfg["domande"]
             self.swap_operandi = True if self.operazione == "sottrazione" else self.cfg["swap"]
+        self.avvia_livello()
+
+    def avvia_livello(self):
+        if self.modalita == "auto":
+            self.domande_livello = random.randint(15, 30)
+        self.domande_fatte = 0
+        self.tempi_risposta = []
+        self.blocco_corrente = []
+        self.coda_rinforzo.clear()
+        self.timeout_gestito = False
         self.nuova_domanda()
 
     def nuova_domanda(self):
         if self.vite <= 0:
             return
         if self.modalita == "auto":
+            if self.domande_fatte >= self.domande_livello:
+                self.salva_sessione()
+                self.state = "level_complete"
+                return
             pool = get_pool(self.livello)
             self.a, self.b = genera_operandi(pool, self.livello, self.coda_rinforzo)
+            self.domande_fatte += 1
         else:
             if self.domande_fatte >= self.domande_totali:
                 self.salva_sessione()
                 self.player_exit_start = pygame.time.get_ticks()
-                self.player_exit_x = 85
+                self.player_exit_x = 75
                 self.state = "player_exit"
                 return
             if self.coda_rinforzo and random.random() < 0.4:
@@ -408,6 +434,11 @@ class Gioco:
                 self.risultato_atteso = self.a * self.b
         else:
             self.risultato_atteso = self.a * self.b
+        scelto = random.choice([m for m in self.mostri if m is not self.mostro_precedente]) if len(self.mostri) > 1 else self.mostri[0]
+        self.mostro_precedente = scelto
+        self.monster_frames = scelto["frames"]
+        self.monster_hit_img = scelto["hit"]
+        self.monster_img = self.monster_frames[0]
         self.input_utente = ""
         self.mostro_progresso = 0.0
         self.mostro_x = SCREEN_WIDTH + 30
@@ -588,6 +619,20 @@ class Gioco:
                     self.state = "menu"
                 elif event.key == pygame.K_ESCAPE:
                     self.running = False
+            elif self.state == "level_complete":
+                if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                    self.ritorno_gioco = True
+                    richieste = 5 + self.livello
+                    corrette = self.stats.get(self.livello, {}).get("corrette", 0)
+                    ultimi = self.tempi_risposta[-richieste:]
+                    media = sum(ultimi) / len(ultimi) if ultimi else 0
+                    if corrette >= richieste and media < 6 and self.livello < len(LIVELLI) - 1:
+                        self.livello += 1
+                        if media < self.tempo_limite_iniziale / 2:
+                            self.timeout_limite = max(3, self.timeout_limite - 1)
+                    self.player_exit_start = pygame.time.get_ticks()
+                    self.player_exit_x = 75
+                    self.state = "player_exit"
 
         if event.type == pygame.MOUSEBUTTONDOWN:
             mx, my = event.pos
@@ -600,7 +645,7 @@ class Gioco:
                         self.state = "menu"
                         return
             if self.state == "menu":
-                # Opzione 1: Autoapprendimento (midleft 340, 280)
+                # Opzione 1: Storia (midleft 340, 280)
                 if 340 - 10 <= mx <= 340 + 580 and 280 - 10 <= my <= 280 + 74:
                     self.modalita = "auto"
                     self.avvia_partita()
@@ -1004,20 +1049,6 @@ class Gioco:
         if not self.corretto:
             self.attendi_invio = True
 
-        if self.modalita == "auto" and self.corretto:
-            richieste = 5 + sum(range(1, self.livello + 1))
-            ultimi = self.blocco_corrente[-richieste:]
-            corrette_blocco = sum(1 for esito, _ in ultimi if esito)
-            tempi_blocco = [t for _, t in ultimi]
-            if (
-                corrette_blocco == richieste
-                and sum(tempi_blocco) / richieste < 5
-                and self.livello < len(LIVELLI) - 1
-            ):
-                self.livello += 1
-                self.blocco_corrente.clear()
-                self.coda_rinforzo.clear()
-
     def gestisci_timeout(self):
         if self.timeout_gestito:
             return
@@ -1064,7 +1095,14 @@ class Gioco:
         if self.state == "player_exit":
             elapsed = pygame.time.get_ticks() - self.player_exit_start
             if elapsed >= 4000:
-                self.state = "gameover"
+                if self.modalita == "auto" and self.ritorno_gioco:
+                    self.state = "gioco"
+                    self.ritorno_gioco = False
+                    self.avvia_livello()
+                else:
+                    self.state = "gameover"
+            return
+        if self.state == "level_complete":
             return
         if self.state not in ("gioco",):
             return
@@ -1073,7 +1111,7 @@ class Gioco:
             elapsed = (pygame.time.get_ticks() - self.inizio_domanda) / 1000.0
             self.mostro_progresso = min(elapsed / self.timeout_limite, 1.0)
             start_x = SCREEN_WIDTH + 30
-            end_x = 210
+            end_x = 225
             self.mostro_x = start_x - self.mostro_progresso * (start_x - end_x)
 
             if self.mostro_progresso >= 1.0:
@@ -1098,6 +1136,8 @@ class Gioco:
             self.disegna_gioco()
         elif self.state == "player_exit":
             self.disegna_player_exit()
+        elif self.state == "level_complete":
+            self.disegna_level_complete()
         else:
             if self.state in ("opzioni", "opzioni_auto", "config_fisso"):
                 self.screen.blit(self.bg_options, (0, 0))
@@ -1234,7 +1274,7 @@ class Gioco:
         self.screen.blit(sottotitolo, rect)
 
         opzioni = [
-            ("Autoapprendimento", "Livelli progressivi automatici, operandi 0-12, level-up basato su precisione e velocita"),
+            ("Storia", "Livelli progressivi automatici, operandi 0-12, level-up basato su precisione e velocita"),
             ("Livello Fisso", "Scegli operandi, numero domande e sfida a difficolta costante"),
         ]
         for i, (tit, desc) in enumerate(opzioni):
@@ -1279,7 +1319,7 @@ class Gioco:
         rect = titolo.get_rect(center=(SCREEN_WIDTH // 2, 80))
         self.screen.blit(titolo, rect)
 
-        voci = ["Autoapprendimento", "Livello Fisso"]
+        voci = ["Storia", "Livello Fisso"]
         for i, voce in enumerate(voci):
             y = 220 + i * 80
             txt = self.font_grande.render(voce, True, WHITE)
@@ -1567,7 +1607,7 @@ class Gioco:
         else:
             self.screen.blit(self.bg, (0, 0))
 
-        wx = 85 + shake[0]
+        wx = 75 + shake[0]
         data = self.char_data.get(self.config_genere, self.char_data["F"])
         if self.player_hit:
             char_img = data["hit"]
@@ -1577,12 +1617,10 @@ class Gioco:
             frame_idx = (pygame.time.get_ticks() // 400) % 2
             char_img = data["idle"][frame_idx]
         cw, ch = char_img.get_size()
-        char_scale = 1.7
-        scaled_char = pygame.transform.scale(char_img, (int(cw * char_scale), int(ch * char_scale)))
-        base_y = SCREEN_HEIGHT // 2 - scaled_char.get_height() // 2
-        wy = base_y + 140 + shake[1]
+        base_y = SCREEN_HEIGHT // 2 - ch // 2
+        wy = base_y + 130 + shake[1]
         wy_monster = base_y + 170 + 35
-        self.screen.blit(scaled_char, (wx, wy))
+        self.screen.blit(char_img, (wx, wy))
 
         if self.domanda_attiva and self.input_utente:
             glow_x, glow_y = wx + 30, wy + 40
@@ -1616,7 +1654,7 @@ class Gioco:
         if self.zap_timer > 0:
             start_x, start_y = wx + 30, wy + 40
             if self.zap_reverse:
-                end_x, end_y = wx + scaled_char.get_width() // 2, wy + scaled_char.get_height() // 2
+                end_x, end_y = wx + cw // 2, wy + ch // 2
             else:
                 end_x, end_y = self.mostro_x + 100, wy_monster + self.char_h // 2
             mid_x = (start_x + end_x) // 2
@@ -1659,7 +1697,7 @@ class Gioco:
             corr = sum(1 for esito, _ in self.blocco_corrente if esito)
             stato = self.font_piccolo.render(f"Livello {self.livello + 1}/{len(LIVELLI)} - {corr}/{richieste} corrette", True, WHITE)
             self.screen.blit(stato, (20, 20))
-            mode_txt = "Autoapprendimento"
+            mode_txt = "Storia"
         else:
             stato = self.font_piccolo.render(f"Domanda {self.domande_fatte}/{self.domande_totali}", True, WHITE)
             self.screen.blit(stato, (20, 20))
@@ -1764,22 +1802,62 @@ class Gioco:
                 self.screen.blit(surf, rect)
                 dy += 22
 
+    def disegna_level_complete(self):
+        self.screen.blit(self.bg, (0, 0))
+        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+        overlay.set_alpha(200)
+        overlay.fill(BG_DARK)
+        self.screen.blit(overlay, (0, 0))
+
+        titolo = self.font_titolo.render(f"LIVELLO {self.livello + 1} COMPLETATO", True, GOLD)
+        rect = titolo.get_rect(center=(SCREEN_WIDTH // 2, 80))
+        self.screen.blit(titolo, rect)
+
+        tot = len(self.tempi_risposta)
+        corrette = self.stats.get(self.livello, {}).get("corrette", 0)
+        media = sum(self.tempi_risposta) / tot if tot else 0
+        righe = [
+            (f"Domande: {tot}", WHITE),
+            (f"Corrette: {corrette}", GREEN),
+            (f"Tempo medio: {media:.1f}s", WHITE),
+        ]
+        richieste = 5 + self.livello
+        if corrette >= richieste and media < 6:
+            righe.append(("Livello superato!", GOLD))
+            if media < self.tempo_limite_iniziale / 2:
+                righe.append(("Timeout ridotto di 1s per il prossimo livello!", YELLOW))
+        else:
+            righe.append(("Riprova questo livello!", (255, 200, 0)))
+            if corrette < richieste:
+                righe.append((f"Servono almeno {richieste} corrette", GRAY))
+            if media >= 6:
+                righe.append((f"Media deve essere < 6s (attuale: {media:.1f}s)", GRAY))
+
+        y = 180
+        for testo, colore in righe:
+            surf = self.font_medio.render(testo, True, colore)
+            rect = surf.get_rect(center=(SCREEN_WIDTH // 2, y))
+            self.screen.blit(surf, rect)
+            y += 46
+
+        prompt = self.font_piccolo.render("Premi INVIO per continuare", True, WHITE)
+        rect = prompt.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 80))
+        self.screen.blit(prompt, rect)
+
     def disegna_player_exit(self):
         self.screen.blit(self.bg, (0, 0))
         elapsed = pygame.time.get_ticks() - self.player_exit_start
         progress = min(elapsed / 4000, 1.0)
-        start_x = 85
+        start_x = 75
         end_x = SCREEN_WIDTH + 200
         self.player_exit_x = start_x + (end_x - start_x) * progress
         frame_idx = (elapsed // 200) % 4
         data = self.char_data.get(self.config_genere, self.char_data["F"])
         char_img = data["run"][frame_idx]
         cw, ch = char_img.get_size()
-        char_scale = 1.7
-        scaled_char = pygame.transform.scale(char_img, (int(cw * char_scale), int(ch * char_scale)))
-        base_y = SCREEN_HEIGHT // 2 - scaled_char.get_height() // 2
-        wy = base_y + 140
-        self.screen.blit(scaled_char, (self.player_exit_x, wy))
+        base_y = SCREEN_HEIGHT // 2 - ch // 2
+        wy = base_y + 130
+        self.screen.blit(char_img, (self.player_exit_x, wy))
 
     def disegna_gameover(self):
         self.screen.blit(self.bg, (0, 0))
@@ -1848,7 +1926,7 @@ class Gioco:
         tempo_medio = sum(self.tempi_risposta) / len(self.tempi_risposta) if self.tempi_risposta else 0
         now = datetime.now().strftime("%Y-%m-%d %H:%M")
         if self.modalita == "auto":
-            riga = f"{now} | Autoapprendimento | Corrette: {tot_corrette} | Sbagliate: {tot_sbagliate} | Livello: {self.livello + 1}/{len(LIVELLI)} | Tempo medio: {tempo_medio:.1f}s"
+            riga = f"{now} | Storia | Corrette: {tot_corrette} | Sbagliate: {tot_sbagliate} | Livello: {self.livello + 1}/{len(LIVELLI)} | Tempo medio: {tempo_medio:.1f}s"
         else:
             op_txt = self.operazione.capitalize() if hasattr(self, 'operazione') else "Moltiplicazione"
             pool_a_txt = ",".join(str(n) for n in self.pool_a)
