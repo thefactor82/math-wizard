@@ -10,6 +10,10 @@ from collections import deque
 def resource_path(relative):
     return os.path.join(getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__))), relative)
 
+def data_path(relative):
+    base = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(base, relative)
+
 PROFILES_DIR = "profiles"
 
 VITE_MAGO = 3
@@ -45,17 +49,20 @@ def parse_pool(val):
     return val
 
 LIVELLI = {}
-levels_path = resource_path("data/levels.json")
-if os.path.exists(levels_path):
-    try:
-        with open(levels_path, "r", encoding="utf-8") as f:
-            LIVELLI = json.load(f)
-            for op in LIVELLI:
-                for lv in LIVELLI[op]:
-                    lv["pool_a"] = parse_pool(lv["pool_a"])
-                    lv["pool_b"] = parse_pool(lv["pool_b"])
-    except (json.JSONDecodeError, Exception):
-        LIVELLI = {}
+for src in (data_path, resource_path):
+    levels_path = src("data/levels.json")
+    if os.path.exists(levels_path):
+        try:
+            with open(levels_path, "r", encoding="utf-8") as f:
+                LIVELLI = json.load(f)
+                for op in LIVELLI:
+                    for lv in LIVELLI[op]:
+                        lv["pool_a"] = parse_pool(lv["pool_a"])
+                        lv["pool_b"] = parse_pool(lv["pool_b"])
+        except (json.JSONDecodeError, Exception):
+            LIVELLI = {}
+        if LIVELLI:
+            break
 if not LIVELLI:
     LIVELLI = {"moltiplicazione": [], "addizione": [], "sottrazione": []}
 default_level = {"pool_a": [0,1,2,3,4,5,6,7,8,9], "pool_b": [0,1,2,3,4,5,6,7,8,9]}
@@ -250,16 +257,19 @@ class Gioco:
         self.livello_iniziale = 0
 
         self.storia_entries = []
-        story_path = resource_path("data/story.json")
-        if os.path.exists(story_path):
-            try:
-                with open(story_path, "r", encoding="utf-8") as f:
-                    self.storia_entries = json.load(f)
-            except (json.JSONDecodeError, Exception):
-                self.storia_entries = []
+        for src in (data_path, resource_path):
+            story_path = src("data/story.json")
+            if os.path.exists(story_path):
+                try:
+                    with open(story_path, "r", encoding="utf-8") as f:
+                        self.storia_entries = json.load(f)
+                except (json.JSONDecodeError, Exception):
+                    self.storia_entries = []
+                if self.storia_entries:
+                    break
         self.storia_idx = 0
 
-        self.version = "0.5.002"
+        self.version = "0.5.003"
 
         self.profili = []
         self.profilo_corrente = ""
