@@ -84,6 +84,8 @@ class Gioco:
         self.state = "splash"
         self.splash_start = pygame.time.get_ticks()
         self.splash_skip = False
+        self.player_exit_retry = False
+        self.ritorno_gioco = False
         self.debug = False
         self.debug_buf = ""
 
@@ -246,7 +248,7 @@ class Gioco:
                 self.storia_entries = []
         self.storia_idx = 0
 
-        self.version = "0.2.020"
+        self.version = "0.3.000"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -464,6 +466,11 @@ class Gioco:
                 self.storia_fase = "enter"
                 self.storia_fade_speed = 1
                 self.storia_primo_step = False
+            elif self.storia_fade_alpha >= 255 and self.storia_fade_color == (255, 255, 255):
+                self.storia_fade_alpha = 255
+                self.storia_fade_color = (255, 255, 255)
+                self.storia_fase = "enter"
+                self.storia_fade_speed = 3
             else:
                 self.storia_fade_alpha = 80
                 self.storia_fade_color = (0, 0, 0)
@@ -748,6 +755,7 @@ class Gioco:
                         if self.storia_caratteri_mostrati < len(self.storia_testo_completo):
                             self.storia_caratteri_mostrati = len(self.storia_testo_completo)
                         else:
+                            self.storia_fade_speed = 3
                             self.storia_fase = "exit"
 
         if event.type == pygame.MOUSEBUTTONDOWN:
@@ -757,11 +765,15 @@ class Gioco:
                     if self.storia_caratteri_mostrati < len(self.storia_testo_completo):
                         self.storia_caratteri_mostrati = len(self.storia_testo_completo)
                     else:
+                        self.storia_fade_speed = 3
                         self.storia_fase = "exit"
             elif self.state == "gameover":
                 if hasattr(self, 'gameover_buttons'):
                     if self.gameover_buttons.get("restart") and self.gameover_buttons["restart"].collidepoint(mx, my):
-                        self.avvia_partita()
+                        self.player_exit_retry = True
+                        self.player_exit_start = pygame.time.get_ticks()
+                        self.player_exit_x = 75
+                        self.state = "player_exit"
                         return
                     if self.gameover_buttons.get("menu") and self.gameover_buttons["menu"].collidepoint(mx, my):
                         self.state = "menu"
@@ -771,7 +783,7 @@ class Gioco:
                 if 340 - 10 <= mx <= 340 + 580 and 280 - 10 <= my <= 280 + 74:
                     self.modalita = "auto"
                     self.avvia_partita()
-                # Opzione 2: Livello Fisso (midleft 340, 380)
+                # Opzione 2: Allenamento (midleft 340, 380)
                 elif 340 - 10 <= mx <= 340 + 580 and 380 - 10 <= my <= 380 + 74:
                     self.modalita = "fisso"
                     self.avvia_partita()
@@ -831,22 +843,22 @@ class Gioco:
                     elif 289 <= my <= 353:
                         self.mostra_config()
             elif self.state == "opzioni_auto":
-                tx = SCREEN_WIDTH // 2 + 20
+                sx = 360
                 lw, vw, rw = 30, 40, 30
                 # Timeout
-                if tx - 2 <= mx <= tx + lw + vw + rw + 2 and 218 <= my <= 256:
+                if sx - 2 <= mx <= sx + lw + vw + rw + 2 and 198 <= my <= 236:
                     self.opzioni_cursor = 0
-                    if mx < tx + lw:
+                    if mx < sx + lw:
                         self.auto_timeout = max(3, self.auto_timeout - 1)
-                    elif mx >= tx + lw + vw:
+                    elif mx >= sx + lw + vw:
                         self.auto_timeout = min(99, self.auto_timeout + 1)
                     self.salva_config_profilo()
                 # Livello iniziale
-                elif tx - 2 <= mx <= tx + lw + vw + rw + 2 and 288 <= my <= 326:
+                elif sx - 2 <= mx <= sx + lw + vw + rw + 2 and 268 <= my <= 306:
                     self.opzioni_cursor = 1
-                    if mx < tx + lw:
+                    if mx < sx + lw:
                         self.livello_iniziale = max(0, self.livello_iniziale - 1)
-                    elif mx >= tx + lw + vw:
+                    elif mx >= sx + lw + vw:
                         self.livello_iniziale = min(len(LIVELLI) - 1, self.livello_iniziale + 1)
                     self.salva_config_profilo()
                 # CONFERMA
@@ -1226,7 +1238,15 @@ class Gioco:
         if self.state == "player_exit":
             elapsed = pygame.time.get_ticks() - self.player_exit_start
             if elapsed >= 4000:
-                if self.modalita == "auto" and self.ritorno_gioco:
+                if self.player_exit_retry:
+                    self.player_exit_retry = False
+                    self.vite = VITE_MAGO
+                    self.game_over = False
+                    self.corretto = 0
+                    self.stats = {}
+                    self.state = "gioco"
+                    self.avvia_livello()
+                elif self.modalita == "auto" and self.ritorno_gioco:
                     self.ritorno_gioco = False
                     if self.storia_entries:
                         self.storia_idx += 1
@@ -1294,7 +1314,7 @@ class Gioco:
         elif self.state == "profile_select":
             self.screen.blit(self.bg_menu, (0, 0))
             self.disegna_profilo()
-        elif self.state == "gioco" and not self.game_over:
+        elif self.state == "gioco":
             self.disegna_gioco()
         elif self.state == "player_exit":
             self.disegna_player_exit()
@@ -1327,8 +1347,8 @@ class Gioco:
 
         if self.splash_skip:
             alpha = min(255, int(elapsed / 500 * 255))
-        elif elapsed < 1000:
-            alpha = 255 - int(255 * elapsed / 1000)
+        elif elapsed < 2000:
+            alpha = 255 - int(255 * elapsed / 2000)
         elif elapsed > 4000:
             alpha = int(255 * (elapsed - 4000) / 1000)
         else:
@@ -1439,7 +1459,7 @@ class Gioco:
 
         opzioni = [
             ("Storia", "Livelli progressivi automatici, operandi 0-12, level-up basato su precisione e velocita"),
-            ("Livello Fisso", "Scegli operandi, numero domande e sfida a difficolta costante"),
+            ("Allenamento", "Scegli operandi, numero domande e sfida a difficolta costante"),
         ]
         for i, (tit, desc) in enumerate(opzioni):
             y = 280 + i * 100
@@ -1483,7 +1503,7 @@ class Gioco:
         rect = titolo.get_rect(center=(SCREEN_WIDTH // 2, 80))
         self.screen.blit(titolo, rect)
 
-        voci = ["Storia", "Livello Fisso"]
+        voci = ["Storia", "Allenamento"]
         for i, voce in enumerate(voci):
             y = 220 + i * 80
             txt = self.font_grande.render(voce, True, WHITE)
@@ -1517,61 +1537,58 @@ class Gioco:
         self.screen.blit(titolo, rect)
 
         # Timeout
-        y = 220
-        label_t = self.font_medio.render("Timeout (secondi)", True, WHITE)
-        rect = label_t.get_rect(midleft=(SCREEN_WIDTH // 2 - 200, y + 17))
+        y = 200
+        label_t = self.font_tiny.render("Timeout (secondi)", True, WHITE)
+        rect = label_t.get_rect(midleft=(80, y + 17))
         self.screen.blit(label_t, rect)
         focused = self.opzioni_cursor == 0
-        tx = SCREEN_WIDTH // 2 + 20
+        sx = 360
         lw, vw, rw = 30, 40, 30
-        total = lw + vw + rw
-        minus_rect = pygame.Rect(tx, y, lw, 34)
-        plus_rect = pygame.Rect(tx + lw + vw, y, rw, 34)
-        if focused:
-            pygame.draw.rect(self.screen, (255, 255, 100), (tx - 2, y - 2, total + 4, 38), 3, border_radius=4)
+        minus_rect = pygame.Rect(sx, y, lw, 34)
+        plus_rect = pygame.Rect(sx + lw + vw, y, rw, 34)
         hover_minus = minus_rect.collidepoint(mx, my)
         hover_plus = plus_rect.collidepoint(mx, my)
+        if focused:
+            pygame.draw.rect(self.screen, (255, 255, 100), (sx - 2, y - 2, lw + vw + rw + 4, 38), 3, border_radius=4)
         pygame.draw.rect(self.screen, (90, 90, 100) if hover_minus else (70, 70, 80), minus_rect, border_radius=4)
-        pygame.draw.rect(self.screen, (40, 40, 50), (tx + lw, y, vw, 34))
+        pygame.draw.rect(self.screen, (40, 40, 50), (sx + lw, y, vw, 34))
         pygame.draw.rect(self.screen, (90, 90, 100) if hover_plus else (70, 70, 80), plus_rect, border_radius=4)
         if hover_minus:
             pygame.draw.rect(self.screen, GOLD, minus_rect, 2, border_radius=4)
         if hover_plus:
             pygame.draw.rect(self.screen, GOLD, plus_rect, 2, border_radius=4)
-        minus = self.font_medio.render("-", True, WHITE)
-        plus = self.font_medio.render("+", True, WHITE)
-        self.screen.blit(minus, minus.get_rect(center=(tx + lw // 2, y + 17)))
-        self.screen.blit(plus, plus.get_rect(center=(tx + lw + vw + rw // 2, y + 17)))
-        t_surf = self.font_grande.render(str(self.auto_timeout), True, WHITE)
-        self.screen.blit(t_surf, t_surf.get_rect(center=(tx + lw + vw // 2, y + 17)))
+        minus = self.font_tiny.render("-", True, WHITE)
+        plus = self.font_tiny.render("+", True, WHITE)
+        self.screen.blit(minus, minus.get_rect(center=(sx + lw // 2, y + 17)))
+        self.screen.blit(plus, plus.get_rect(center=(sx + lw + vw + rw // 2, y + 17)))
+        t_surf = self.font_tiny.render(str(self.auto_timeout), True, WHITE)
+        self.screen.blit(t_surf, t_surf.get_rect(center=(sx + lw + vw // 2, y + 17)))
 
         # Livello iniziale
-        y = 290
-        label_l = self.font_medio.render("Livello iniziale", True, WHITE)
-        rect = label_l.get_rect(midleft=(SCREEN_WIDTH // 2 - 200, y + 17))
+        y = 270
+        label_l = self.font_tiny.render("Livello iniziale", True, WHITE)
+        rect = label_l.get_rect(midleft=(80, y + 17))
         self.screen.blit(label_l, rect)
         focused = self.opzioni_cursor == 1
-        lw, vw, rw = 30, 40, 30
-        total = lw + vw + rw
-        minus_rect2 = pygame.Rect(tx, y, lw, 34)
-        plus_rect2 = pygame.Rect(tx + lw + vw, y, rw, 34)
-        if focused:
-            pygame.draw.rect(self.screen, (255, 255, 100), (tx - 2, y - 2, total + 4, 38), 3, border_radius=4)
+        minus_rect2 = pygame.Rect(sx, y, lw, 34)
+        plus_rect2 = pygame.Rect(sx + lw + vw, y, rw, 34)
         hover_minus2 = minus_rect2.collidepoint(mx, my)
         hover_plus2 = plus_rect2.collidepoint(mx, my)
+        if focused:
+            pygame.draw.rect(self.screen, (255, 255, 100), (sx - 2, y - 2, lw + vw + rw + 4, 38), 3, border_radius=4)
         pygame.draw.rect(self.screen, (90, 90, 100) if hover_minus2 else (70, 70, 80), minus_rect2, border_radius=4)
-        pygame.draw.rect(self.screen, (40, 40, 50), (tx + lw, y, vw, 34))
+        pygame.draw.rect(self.screen, (40, 40, 50), (sx + lw, y, vw, 34))
         pygame.draw.rect(self.screen, (90, 90, 100) if hover_plus2 else (70, 70, 80), plus_rect2, border_radius=4)
         if hover_minus2:
             pygame.draw.rect(self.screen, GOLD, minus_rect2, 2, border_radius=4)
         if hover_plus2:
             pygame.draw.rect(self.screen, GOLD, plus_rect2, 2, border_radius=4)
-        minus = self.font_medio.render("-", True, WHITE)
-        plus = self.font_medio.render("+", True, WHITE)
-        self.screen.blit(minus, minus.get_rect(center=(tx + lw // 2, y + 17)))
-        self.screen.blit(plus, plus.get_rect(center=(tx + lw + vw + rw // 2, y + 17)))
-        l_surf = self.font_grande.render(str(self.livello_iniziale + 1), True, WHITE)
-        self.screen.blit(l_surf, l_surf.get_rect(center=(tx + lw + vw // 2, y + 17)))
+        minus = self.font_tiny.render("-", True, WHITE)
+        plus = self.font_tiny.render("+", True, WHITE)
+        self.screen.blit(minus, minus.get_rect(center=(sx + lw // 2, y + 17)))
+        self.screen.blit(plus, plus.get_rect(center=(sx + lw + vw + rw // 2, y + 17)))
+        l_surf = self.font_tiny.render(str(self.livello_iniziale + 1), True, WHITE)
+        self.screen.blit(l_surf, l_surf.get_rect(center=(sx + lw + vw // 2, y + 17)))
 
         # CONFERMA
         y_conf = 400
@@ -1905,7 +1922,7 @@ class Gioco:
         else:
             stato = self.font_piccolo.render(f"Domanda {self.domande_fatte}/{self.domande_totali}", True, WHITE)
             self.screen.blit(stato, (20, 20))
-            mode_txt = "Livello Fisso"
+            mode_txt = "Allenamento"
         mode = self.font_piccolo.render(mode_txt, True, GRAY)
         rect_m = mode.get_rect(midright=(SCREEN_WIDTH - 20, 20))
         self.screen.blit(mode, rect_m)
@@ -1980,7 +1997,7 @@ class Gioco:
             dx, dy = 20, 80
             lines = [
                 "DEBUG",
-                f"Modalita: {'Storia' if self.modalita == 'auto' else 'Livello Fisso'}",
+                f"Modalita: {'Storia' if self.modalita == 'auto' else 'Allenamento'}",
                 f"Domanda attiva: {self.domanda_attiva}",
                 f"Feedback: {self.feedback}",
                 f"Attendi invio: {self.attendi_invio}",
@@ -2090,16 +2107,26 @@ class Gioco:
             self.screen.blit(fade_surf, (0, 0))
 
     def disegna_player_exit(self):
-        self.screen.blit(self.gioco_bg, (0, 0))
+        if self.player_exit_retry:
+            self.screen.blit(self.gioco_bg, (0, 0))
+            overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+            overlay.set_alpha(200)
+            overlay.fill(BG_DARK)
+            self.screen.blit(overlay, (0, 0))
+        else:
+            self.screen.blit(self.gioco_bg, (0, 0))
         elapsed = pygame.time.get_ticks() - self.player_exit_start
         progress = min(elapsed / 4000, 1.0)
-        start_x = 75
-        end_x = SCREEN_WIDTH + 200
-        self.player_exit_x = start_x + (end_x - start_x) * progress
         frame_idx = (elapsed // 200) % 4
         data = self.char_data.get(self.config_genere, self.char_data["F"])
         char_img = data["run"][frame_idx]
         cw, ch = char_img.get_size()
+        if self.player_exit_retry:
+            start_x = SCREEN_WIDTH // 2 - cw // 2
+        else:
+            start_x = 75
+        end_x = SCREEN_WIDTH + 200
+        self.player_exit_x = start_x + (end_x - start_x) * progress
         base_y = SCREEN_HEIGHT // 2 - ch // 2
         wy = base_y + 130
         self.screen.blit(char_img, (self.player_exit_x, wy))
@@ -2111,6 +2138,83 @@ class Gioco:
         overlay.fill(BG_DARK)
         self.screen.blit(overlay, (0, 0))
 
+        if self.modalita == "auto":
+            self.disegna_gameover_storia()
+        else:
+            self.disegna_gameover_fisso()
+
+    def disegna_gameover_storia(self):
+        if self.vite <= 0:
+            titolo = self.font_titolo.render("GAME OVER", True, RED)
+        else:
+            titolo = self.font_titolo.render("PARTITA TERMINATA", True, GOLD)
+        rect = titolo.get_rect(center=(SCREEN_WIDTH // 2, 50))
+        self.screen.blit(titolo, rect)
+
+        tot_corrette = sum(v["corrette"] for v in self.stats.values())
+        tot_sbagliate = sum(v["sbagliate"] for v in self.stats.values())
+        tempo_medio = sum(self.tempi_risposta) / len(self.tempi_risposta) if self.tempi_risposta else 0
+
+        righe = [
+            (f"Corrette: {tot_corrette}", GREEN),
+            (f"Sbagliate: {tot_sbagliate}", RED),
+            (f"Livello raggiunto: {self.livello + 1}/{len(LIVELLI)}", WHITE),
+            (f"Tempo medio: {tempo_medio:.1f}s", WHITE),
+        ]
+        y = 110
+        for testo, colore in righe:
+            surf = self.font_medio.render(testo, True, colore)
+            rect = surf.get_rect(center=(SCREEN_WIDTH // 2, y))
+            self.screen.blit(surf, rect)
+            y += 46
+
+        data = self.char_data.get(self.config_genere, self.char_data["F"])
+        char_img = data["hit"] if self.vite <= 0 else data["idle"][0]
+        char_x = SCREEN_WIDTH // 2 - char_img.get_width() // 2
+        char_y = y + 20
+        self.screen.blit(char_img, (char_x, char_y))
+
+        if self.vite <= 0:
+            testo = f"{self.profilo_corrente} si è impegnat-o-a- parecchio, ma gli Hop diventano man mano più impegnativi. Serve più allenamento!"
+            m = self.config_genere == "M"
+            testo = re.sub(r'-([^-]+)-([^-]+)-', lambda g: g.group(1) if m else g.group(2), testo)
+        else:
+            testo = f"Complimenti {self.profilo_corrente}! Hai completato tutti i livelli!"
+        lines = []
+        max_w = SCREEN_WIDTH - 120
+        for parola in testo.split():
+            if not lines:
+                lines.append(parola)
+            else:
+                test = lines[-1] + " " + parola
+                if self.font_piccolo.size(test)[0] > max_w:
+                    lines.append(parola)
+                else:
+                    lines[-1] = test
+
+        y_text = char_y + char_img.get_height() + 20
+        for line in lines:
+            surf = self.font_piccolo.render(line, True, WHITE)
+            rect = surf.get_rect(center=(SCREEN_WIDTH // 2, y_text))
+            self.screen.blit(surf, rect)
+            y_text += 35
+
+        mx, my = pygame.mouse.get_pos()
+        y_btn = y_text + 20
+        self.gameover_buttons = {}
+        for i, (label, action) in enumerate([("RIPROVA", "restart"), ("MENU PRINCIPALE", "menu")]):
+            bx = SCREEN_WIDTH // 2 - 100 + i * 210
+            btn_rect = pygame.Rect(bx, y_btn, 180, 36)
+            hovered = btn_rect.collidepoint(mx, my)
+            bg_col = (80, 90, 100) if hovered else (60, 60, 70)
+            pygame.draw.rect(self.screen, bg_col, btn_rect, border_radius=6)
+            if hovered:
+                pygame.draw.rect(self.screen, GOLD, btn_rect, 2, border_radius=6)
+            surf = self.font_piccolo.render(label, True, WHITE)
+            self.screen.blit(surf, surf.get_rect(center=btn_rect.center))
+            self.gameover_buttons[action] = btn_rect
+
+    def disegna_gameover_fisso(self):
         if self.vite <= 0:
             titolo = self.font_titolo.render("GAME OVER", True, RED)
         else:
@@ -2128,8 +2232,6 @@ class Gioco:
             (f"Vite rimaste: {self.vite}", YELLOW),
             (f"Tempo medio: {tempo_medio:.1f}s", WHITE),
         ]
-        if self.modalita == "auto":
-            righe.insert(2, (f"Livello raggiunto: {self.livello + 1}/{len(LIVELLI)}", WHITE))
         y = 110
         for testo, colore in righe:
             surf = self.font_medio.render(testo, True, colore)
@@ -2179,7 +2281,7 @@ class Gioco:
             extra = ""
             if self.operazione == "sottrazione" and getattr(self, 'differenza_positiva', False):
                 extra = " | Diff. positiva: ON"
-            riga = f"{now} | Livello Fisso | {op_txt} | Corrette: {tot_corrette} | Sbagliate: {tot_sbagliate} | Pool A: [{pool_a_txt}] | Pool B: [{pool_b_txt}] | Domande: {self.domande_fatte}/{self.domande_totali} | Tempo medio: {tempo_medio:.1f}s{extra}"
+            riga = f"{now} | Allenamento | {op_txt} | Corrette: {tot_corrette} | Sbagliate: {tot_sbagliate} | Pool A: [{pool_a_txt}] | Pool B: [{pool_b_txt}] | Domande: {self.domande_fatte}/{self.domande_totali} | Tempo medio: {tempo_medio:.1f}s{extra}"
         path = self.percorso_sessioni()
         with open(path, "a", encoding="utf-8") as f:
             f.write(riga + "\n")
