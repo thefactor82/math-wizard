@@ -7,6 +7,9 @@ import re
 from datetime import datetime
 from collections import deque
 
+def resource_path(relative):
+    return os.path.join(getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__))), relative)
+
 PROFILES_DIR = "profiles"
 
 VITE_MAGO = 3
@@ -42,7 +45,7 @@ def parse_pool(val):
     return val
 
 LIVELLI = {}
-levels_path = "data/levels.json"
+levels_path = resource_path("data/levels.json")
 if os.path.exists(levels_path):
     try:
         with open(levels_path, "r", encoding="utf-8") as f:
@@ -113,7 +116,7 @@ class Gioco:
     def imposta_cursore(self):
         try:
             import struct, io, os
-            path = os.path.join("graphics", "misc", "wand.cur")
+            path = resource_path(os.path.join("graphics", "misc", "wand.cur"))
             if not os.path.exists(path):
                 return
             with open(path, "rb") as f:
@@ -147,15 +150,15 @@ class Gioco:
         self.char_h = self.char_img.get_height()
 
     def carica_risorse(self):
-        bg_game = pygame.image.load("graphics/backgrounds/background.png")
+        bg_game = pygame.image.load(resource_path("graphics/backgrounds/background.png"))
         self.bg = pygame.transform.scale(bg_game, (SCREEN_WIDTH, SCREEN_HEIGHT))
-        bg_menu = pygame.image.load("graphics/backgrounds/background_menu.png")
+        bg_menu = pygame.image.load(resource_path("graphics/backgrounds/background_menu.png"))
         self.bg_menu = pygame.transform.scale(bg_menu, (SCREEN_WIDTH, SCREEN_HEIGHT))
-        bg_opt = pygame.image.load("graphics/backgrounds/background_options.png")
+        bg_opt = pygame.image.load(resource_path("graphics/backgrounds/background_options.png"))
         self.bg_options = pygame.transform.scale(bg_opt, (SCREEN_WIDTH, SCREEN_HEIGHT))
 
         self.backgrounds = {}
-        bg_dir = "graphics/backgrounds"
+        bg_dir = resource_path("graphics/backgrounds")
         for fname in os.listdir(bg_dir):
             if fname.lower().endswith((".png", ".jpg", ".bmp")):
                 stem = os.path.splitext(fname)[0]
@@ -169,7 +172,7 @@ class Gioco:
         pw, ph = 900, 1330
         target_w = 160
         self.char_data = {}
-        for key, path in [("F", "graphics/players/playerf.png"), ("M", "graphics/players/playerm.png")]:
+        for key, path in [("F", resource_path("graphics/players/playerf.png")), ("M", resource_path("graphics/players/playerm.png"))]:
             idle_frames = self.carica_spritesheet(path, 160, 2, row=1, rows=2, cols=4, frame_offset=0, flip_x=False, scale=False)
             profile_img = self.carica_spritesheet(path, 160, 1, row=1, rows=2, cols=4, frame_offset=0, flip_x=False, scale=False)[0]
             hit_frame = self.carica_spritesheet(path, 160, 1, row=1, rows=2, cols=4, frame_offset=3, flip_x=False, scale=False)[0]
@@ -184,7 +187,7 @@ class Gioco:
 
         self.mostri = []
         for mi in range(1, 9):
-            path = f"graphics/monsters/monster{mi}.png"
+            path = resource_path(f"graphics/monsters/monster{mi}.png")
             frames = self.carica_spritesheet(path, 200, 4, row=0, rows=2, cols=4)
             hit = self.carica_spritesheet(path, 200, 1, row=1, rows=2, cols=4, frame_offset=3)[0]
             self.mostri.append({"frames": frames, "hit": hit})
@@ -195,11 +198,11 @@ class Gioco:
         self.mostro_hit_delay = 150
         self.mostro_precedente = None
 
-        self.heart_red = pygame.transform.scale(pygame.image.load("graphics/misc/lives.png").convert_alpha(), (35, 35))
-        self.heart_grey = pygame.transform.scale(pygame.image.load("graphics/misc/lives_lost.png").convert_alpha(), (35, 35))
+        self.heart_red = pygame.transform.scale(pygame.image.load(resource_path("graphics/misc/lives.png")).convert_alpha(), (35, 35))
+        self.heart_grey = pygame.transform.scale(pygame.image.load(resource_path("graphics/misc/lives_lost.png")).convert_alpha(), (35, 35))
 
-        self.logo = pygame.transform.scale(pygame.image.load("graphics/misc/logo.png").convert_alpha(), (SCREEN_WIDTH, SCREEN_HEIGHT))
-        self.gear_img = pygame.image.load("graphics/misc/gear.png").convert_alpha()
+        self.logo = pygame.transform.scale(pygame.image.load(resource_path("graphics/misc/logo.png")).convert_alpha(), (SCREEN_WIDTH, SCREEN_HEIGHT))
+        self.gear_img = pygame.image.load(resource_path("graphics/misc/gear.png")).convert_alpha()
 
     def carica_spritesheet(self, path, target_w, frame_count, row=0, rows=1, cols=None, frame_offset=0, flip_x=True, scale=True):
         sheet = pygame.image.load(path).convert_alpha()
@@ -247,7 +250,7 @@ class Gioco:
         self.livello_iniziale = 0
 
         self.storia_entries = []
-        story_path = "data/story.json"
+        story_path = resource_path("data/story.json")
         if os.path.exists(story_path):
             try:
                 with open(story_path, "r", encoding="utf-8") as f:
@@ -256,7 +259,7 @@ class Gioco:
                 self.storia_entries = []
         self.storia_idx = 0
 
-        self.version = "0.5.001"
+        self.version = "0.5.002"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -1683,7 +1686,7 @@ class Gioco:
         overlay.fill(BG_DARK)
         self.screen.blit(overlay, (0, 0))
 
-        titolo = self.font_titolo.render("OPZIONI - LIVELLO FISSO", True, GOLD)
+        titolo = self.font_titolo.render("OPZIONI - ALLENAMENTO", True, GOLD)
         rect = titolo.get_rect(center=(SCREEN_WIDTH // 2, 80))
         self.screen.blit(titolo, rect)
 
