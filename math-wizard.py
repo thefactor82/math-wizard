@@ -3,6 +3,7 @@ import random
 import sys
 import os
 import json
+import re
 from datetime import datetime
 from collections import deque
 
@@ -43,6 +44,19 @@ def get_pool(livello_idx):
     inclusi = LIVELLI[livello_idx].get("inclusi", [])
     return [n for n in base if n not in esclusi] + inclusi
 
+NUMPAD_DIGIT = {
+    pygame.K_KP0: 0, pygame.K_KP_0: 0,
+    pygame.K_KP1: 1, pygame.K_KP_1: 1,
+    pygame.K_KP2: 2, pygame.K_KP_2: 2,
+    pygame.K_KP3: 3, pygame.K_KP_3: 3,
+    pygame.K_KP4: 4, pygame.K_KP_4: 4,
+    pygame.K_KP5: 5, pygame.K_KP_5: 5,
+    pygame.K_KP6: 6, pygame.K_KP_6: 6,
+    pygame.K_KP7: 7, pygame.K_KP_7: 7,
+    pygame.K_KP8: 8, pygame.K_KP_8: 8,
+    pygame.K_KP9: 9, pygame.K_KP_9: 9,
+}
+
 def genera_operandi(pool, livello_idx, reinforce_queue):
     if reinforce_queue and random.random() < 0.4:
         return reinforce_queue.popleft()
@@ -76,6 +90,7 @@ class Gioco:
         self.font_titolo = pygame.font.Font(None, 80)
         self.font_grande = pygame.font.Font(None, 64)
         self.font_medio = pygame.font.Font(None, 42)
+        self.font_storia = pygame.font.Font(None, 48)
         self.font_piccolo = pygame.font.Font(None, 30)
         self.font_input = pygame.font.Font(None, 56)
         self.font_stats = pygame.font.Font(None, 28)
@@ -129,6 +144,18 @@ class Gioco:
         self.bg_menu = pygame.transform.scale(bg_menu, (SCREEN_WIDTH, SCREEN_HEIGHT))
         bg_opt = pygame.image.load("graphics/backgrounds/background_options.png")
         self.bg_options = pygame.transform.scale(bg_opt, (SCREEN_WIDTH, SCREEN_HEIGHT))
+
+        self.backgrounds = {}
+        bg_dir = "graphics/backgrounds"
+        for fname in os.listdir(bg_dir):
+            if fname.lower().endswith((".png", ".jpg", ".bmp")):
+                stem = os.path.splitext(fname)[0]
+                img = pygame.image.load(os.path.join(bg_dir, fname))
+                self.backgrounds[stem] = pygame.transform.scale(img, (SCREEN_WIDTH, SCREEN_HEIGHT))
+        self.backgrounds["game"] = self.bg
+        self.backgrounds["menu"] = self.bg_menu
+        self.backgrounds["options"] = self.bg_options
+        self.gioco_bg = self.bg
 
         pw, ph = 900, 1330
         target_w = 160
@@ -207,8 +234,19 @@ class Gioco:
         self.config_per_op["sottrazione"]["differenza_positiva"] = True
         self.cfg = self.config_per_op[self.config_operazione]
         self.auto_timeout = TEMPO_LIMITE_DEFAULT
+        self.livello_iniziale = 0
 
-        self.version = "0.2.019"
+        self.storia_entries = []
+        story_path = "data/story.json"
+        if os.path.exists(story_path):
+            try:
+                with open(story_path, "r", encoding="utf-8") as f:
+                    self.storia_entries = json.load(f)
+            except (json.JSONDecodeError, Exception):
+                self.storia_entries = []
+        self.storia_idx = 0
+
+        self.version = "0.2.020"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -243,6 +281,7 @@ class Gioco:
         data = {
             "genere": self.config_genere,
             "auto_timeout": self.auto_timeout,
+            "livello_iniziale": self.livello_iniziale,
         }
         for op in ["moltiplicazione", "addizione", "sottrazione"]:
             data[op] = dict(self.config_per_op[op])
@@ -260,6 +299,7 @@ class Gioco:
                         self.config_per_op[op].update(data[op])
                 self.config_genere = data.get("genere", self.config_genere)
                 self.auto_timeout = data.get("auto_timeout", self.auto_timeout)
+                self.livello_iniziale = data.get("livello_iniziale", self.livello_iniziale)
             else:
                 # Legacy format
                 self.config_genere = data.get("genere", self.config_genere)
@@ -337,7 +377,14 @@ class Gioco:
         self.timeout_limite = self.auto_timeout if self.modalita == "auto" else self.cfg["timeout"]
         if self.modalita == "auto":
             self.tempo_limite_iniziale = self.auto_timeout
-            self.livello = 0
+        self.storia_idx = 0
+        self.storia_is_livello = False
+        self.storia_fade_speed = 8
+        self.storia_prossimo_bg = None
+        self.storia_fade_alpha = 0
+        self.storia_fase = "show"
+        self.storia_fade_color = (0, 0, 0)
+        self.storia_primo_step = True
         self.tempi_risposta = []
         self.blocco_corrente = []
         self.coda_rinforzo = deque()
@@ -362,11 +409,18 @@ class Gioco:
                 self.pool_b = [0]
             self.domande_totali = self.cfg["domande"]
             self.swap_operandi = True if self.operazione == "sottrazione" else self.cfg["swap"]
-        self.avvia_livello()
+        if self.modalita == "auto" and self.storia_entries:
+            self.mostra_storia()
+        else:
+            self.avvia_livello()
+
+    def livello_effettivo(self):
+        return min(self.livello + self.livello_iniziale, len(LIVELLI) - 1)
 
     def avvia_livello(self):
         if self.modalita == "auto":
-            self.domande_livello = random.randint(15, 30)
+            lv = self.livello_effettivo()
+            self.domande_livello = random.randint(8 + lv, 15 + lv)
         self.domande_fatte = 0
         self.tempi_risposta = []
         self.blocco_corrente = []
@@ -374,16 +428,60 @@ class Gioco:
         self.timeout_gestito = False
         self.nuova_domanda()
 
+    def mostra_storia(self):
+        if self.storia_idx >= len(self.storia_entries):
+            self.state = "gameover"
+            return
+        entry = self.storia_entries[self.storia_idx]
+        if entry["tipo"] == "livello":
+            self.state = "storia"
+            self.storia_is_livello = True
+            bg_name = entry.get("bg", "game")
+            self.storia_prossimo_bg = self.backgrounds.get(bg_name, self.bg)
+            self.storia_testo_completo = ""
+            self.storia_caratteri_mostrati = 0
+            if self.storia_fade_alpha >= 255:
+                self.gioco_bg = self.storia_prossimo_bg
+                self.storia_fase = "enter"
+                self.storia_fade_alpha = 255
+                self.storia_fade_speed = 8
+            else:
+                self.storia_fade_alpha = 0
+                self.storia_fade_color = (0, 0, 0)
+                self.storia_fase = "exit"
+                self.storia_fade_speed = 8
+        else:
+            self.state = "storia"
+            testo_raw = entry.get("testo", "")
+            testo_raw = testo_raw.replace("NOMEPROFILOINUSO", self.profilo_corrente)
+            m = self.config_genere == "M"
+            self.storia_testo_completo = re.sub(r'-([^-]+)-([^-]+)-', lambda g: g.group(1) if m else g.group(2), testo_raw)
+            self.storia_caratteri_mostrati = 0
+            self.storia_tipografia_frame = 0
+            if self.storia_primo_step:
+                self.storia_fade_alpha = 255
+                self.storia_fade_color = (255, 255, 255)
+                self.storia_fase = "enter"
+                self.storia_fade_speed = 1
+                self.storia_primo_step = False
+            else:
+                self.storia_fade_alpha = 80
+                self.storia_fade_color = (0, 0, 0)
+                self.storia_fase = "enter"
+                self.storia_fade_speed = 3
+
     def nuova_domanda(self):
         if self.vite <= 0:
             return
+        self.prev_a, self.prev_b = self.a, self.b
         if self.modalita == "auto":
             if self.domande_fatte >= self.domande_livello:
                 self.salva_sessione()
                 self.state = "level_complete"
                 return
-            pool = get_pool(self.livello)
-            self.a, self.b = genera_operandi(pool, self.livello, self.coda_rinforzo)
+            lv = self.livello_effettivo()
+            pool = get_pool(lv)
+            self.a, self.b = genera_operandi(pool, lv, self.coda_rinforzo)
             self.domande_fatte += 1
         else:
             if self.domande_fatte >= self.domande_totali:
@@ -414,16 +512,15 @@ class Gioco:
 
         if (self.a, self.b) == (self.prev_a, self.prev_b):
             if self.a == self.b:
-                pool = get_pool(self.livello) if self.modalita == "auto" else self.pool_a
+                pool = get_pool(self.livello_effettivo()) if self.modalita == "auto" else self.pool_a
                 candidates = [n for n in pool if n != self.a]
                 if candidates:
                     self.a = random.choice(candidates)
                     self.b = random.choice(pool)
             else:
                 self.a, self.b = self.b, self.a
-                if self.operazione == "sottrazione" and self.differenza_positiva and self.a < self.b:
+                if self.modalita == "fisso" and self.operazione == "sottrazione" and self.differenza_positiva and self.a < self.b:
                     self.a, self.b = self.b, self.a
-        self.prev_a, self.prev_b = self.a, self.b
 
         if self.modalita == "fisso":
             if self.operazione == "addizione":
@@ -567,12 +664,25 @@ class Gioco:
                 elif event.key == pygame.K_ESCAPE:
                     self.state = "menu"
             elif self.state == "opzioni_auto":
-                if event.key in (pygame.K_PLUS, pygame.K_EQUALS, pygame.K_KP_PLUS):
-                    self.auto_timeout = min(99, self.auto_timeout + 1)
+                if event.key in (pygame.K_UP, pygame.K_w):
+                    self.opzioni_cursor = (self.opzioni_cursor - 1) % 2
+                elif event.key in (pygame.K_DOWN, pygame.K_s):
+                    self.opzioni_cursor = (self.opzioni_cursor + 1) % 2
+                elif event.key in (pygame.K_PLUS, pygame.K_EQUALS, pygame.K_KP_PLUS):
+                    if self.opzioni_cursor == 0:
+                        self.auto_timeout = min(99, self.auto_timeout + 1)
+                    else:
+                        self.livello_iniziale = min(len(LIVELLI) - 1, self.livello_iniziale + 1)
                     self.salva_config_profilo()
                 elif event.key in (pygame.K_MINUS, pygame.K_KP_MINUS):
-                    self.auto_timeout = max(3, self.auto_timeout - 1)
+                    if self.opzioni_cursor == 0:
+                        self.auto_timeout = max(3, self.auto_timeout - 1)
+                    else:
+                        self.livello_iniziale = max(0, self.livello_iniziale - 1)
                     self.salva_config_profilo()
+                elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                    self.salva_config_profilo()
+                    self.state = "menu"
                 elif event.key == pygame.K_ESCAPE:
                     self.state = "opzioni"
             elif self.state == "config_fisso":
@@ -592,7 +702,7 @@ class Gioco:
                         return
                 if event.key == pygame.K_ESCAPE:
                     self.state = "menu"
-                elif self.attendi_invio and event.key == pygame.K_RETURN:
+                elif self.attendi_invio and event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
                     if self.game_over:
                         self.salva_sessione()
                         self.state = "gameover"
@@ -603,9 +713,9 @@ class Gioco:
                         self.controlla_risposta()
                     elif event.key == pygame.K_BACKSPACE:
                         self.input_utente = self.input_utente[:-1]
-                    elif event.key in (pygame.K_KP0, pygame.K_KP1, pygame.K_KP2, pygame.K_KP3, pygame.K_KP4, pygame.K_KP5, pygame.K_KP6, pygame.K_KP7, pygame.K_KP8, pygame.K_KP9):
+                    elif event.key in NUMPAD_DIGIT:
                         if len(self.input_utente) < 6:
-                            self.input_utente += str(event.key - pygame.K_KP0)
+                            self.input_utente += str(NUMPAD_DIGIT[event.key])
                     elif event.key == pygame.K_KP_MINUS and not self.input_utente:
                         self.input_utente += "-"
                     elif event.unicode.isdigit() and len(self.input_utente) < 6:
@@ -621,22 +731,34 @@ class Gioco:
                     self.running = False
             elif self.state == "level_complete":
                 if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
-                    self.ritorno_gioco = True
                     richieste = 5 + self.livello
-                    corrette = self.stats.get(self.livello, {}).get("corrette", 0)
                     ultimi = self.tempi_risposta[-richieste:]
                     media = sum(ultimi) / len(ultimi) if ultimi else 0
-                    if corrette >= richieste and media < 6 and self.livello < len(LIVELLI) - 1:
+                    if self.livello < len(LIVELLI) - 1:
                         self.livello += 1
-                        if media < self.tempo_limite_iniziale / 2:
+                        if media < self.timeout_limite / 2:
                             self.timeout_limite = max(3, self.timeout_limite - 1)
+                    self.ritorno_gioco = True
                     self.player_exit_start = pygame.time.get_ticks()
                     self.player_exit_x = 75
                     self.state = "player_exit"
+            elif self.state == "storia":
+                if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER, pygame.K_SPACE):
+                    if self.storia_fase == "show":
+                        if self.storia_caratteri_mostrati < len(self.storia_testo_completo):
+                            self.storia_caratteri_mostrati = len(self.storia_testo_completo)
+                        else:
+                            self.storia_fase = "exit"
 
         if event.type == pygame.MOUSEBUTTONDOWN:
             mx, my = event.pos
-            if self.state == "gameover":
+            if self.state == "storia":
+                if self.storia_fase == "show":
+                    if self.storia_caratteri_mostrati < len(self.storia_testo_completo):
+                        self.storia_caratteri_mostrati = len(self.storia_testo_completo)
+                    else:
+                        self.storia_fase = "exit"
+            elif self.state == "gameover":
                 if hasattr(self, 'gameover_buttons'):
                     if self.gameover_buttons.get("restart") and self.gameover_buttons["restart"].collidepoint(mx, my):
                         self.avvia_partita()
@@ -682,31 +804,26 @@ class Gioco:
                                 self.profilo_input = ""
                             break
                 elif self.profilo_genere_mode:
-                    # Scelta genere
-                    if 330 <= mx <= 610 and 370 - 10 <= my <= 370 + 130:
-                        self.config_genere = "F"
-                        nuovo = self.profilo_input.strip()
-                        self.profili.append(nuovo)
-                        self.salva_config_profilo(nuovo)
-                        self.profilo_corrente = nuovo
-                        self.aggiorna_char_img()
-                        self.salva_profili()
-                        self.profilo_input = ""
-                        self.profilo_input_mode = False
-                        self.profilo_genere_mode = False
-                        self.state = "menu"
-                    elif 670 <= mx <= 950 and 370 - 10 <= my <= 370 + 130:
-                        self.config_genere = "M"
-                        nuovo = self.profilo_input.strip()
-                        self.profili.append(nuovo)
-                        self.salva_config_profilo(nuovo)
-                        self.profilo_corrente = nuovo
-                        self.aggiorna_char_img()
-                        self.salva_profili()
-                        self.profilo_input = ""
-                        self.profilo_input_mode = False
-                        self.profilo_genere_mode = False
-                        self.state = "menu"
+                    for i, key in enumerate(("F", "M")):
+                        sx = SCREEN_WIDTH // 2 - 310 + i * 340
+                        y = 370
+                        prof_img = self.char_data[key]["profile"]
+                        img_w, img_h = prof_img.get_size()
+                        box_h = max(90, img_h + 20)
+                        box_rect = pygame.Rect(sx, y, 280, box_h)
+                        if box_rect.collidepoint(mx, my):
+                            self.config_genere = key
+                            nuovo = self.profilo_input.strip()
+                            self.profili.append(nuovo)
+                            self.salva_config_profilo(nuovo)
+                            self.profilo_corrente = nuovo
+                            self.aggiorna_char_img()
+                            self.salva_profili()
+                            self.profilo_input = ""
+                            self.profilo_input_mode = False
+                            self.profilo_genere_mode = False
+                            self.state = "menu"
+                            break
             elif self.state == "opzioni":
                 if SCREEN_WIDTH // 2 - 320 <= mx <= SCREEN_WIDTH // 2 + 320:
                     if 209 <= my <= 273:
@@ -715,13 +832,27 @@ class Gioco:
                         self.mostra_config()
             elif self.state == "opzioni_auto":
                 tx = SCREEN_WIDTH // 2 + 20
-                lw = 30
-                if tx - 2 <= mx <= tx + 100 + 2 and 218 <= my <= 256:
+                lw, vw, rw = 30, 40, 30
+                # Timeout
+                if tx - 2 <= mx <= tx + lw + vw + rw + 2 and 218 <= my <= 256:
+                    self.opzioni_cursor = 0
                     if mx < tx + lw:
                         self.auto_timeout = max(3, self.auto_timeout - 1)
-                    elif mx >= tx + lw + 40:
+                    elif mx >= tx + lw + vw:
                         self.auto_timeout = min(99, self.auto_timeout + 1)
                     self.salva_config_profilo()
+                # Livello iniziale
+                elif tx - 2 <= mx <= tx + lw + vw + rw + 2 and 288 <= my <= 326:
+                    self.opzioni_cursor = 1
+                    if mx < tx + lw:
+                        self.livello_iniziale = max(0, self.livello_iniziale - 1)
+                    elif mx >= tx + lw + vw:
+                        self.livello_iniziale = min(len(LIVELLI) - 1, self.livello_iniziale + 1)
+                    self.salva_config_profilo()
+                # CONFERMA
+                elif SCREEN_WIDTH // 2 - 110 <= mx <= SCREEN_WIDTH // 2 + 110 and 398 <= my <= 448:
+                    self.salva_config_profilo()
+                    self.state = "menu"
             elif self.state == "config_fisso":
                 try:
                     self.gestisci_config(event)
@@ -1096,13 +1227,44 @@ class Gioco:
             elapsed = pygame.time.get_ticks() - self.player_exit_start
             if elapsed >= 4000:
                 if self.modalita == "auto" and self.ritorno_gioco:
-                    self.state = "gioco"
                     self.ritorno_gioco = False
-                    self.avvia_livello()
+                    if self.storia_entries:
+                        self.storia_idx += 1
+                        self.mostra_storia()
+                    else:
+                        self.avvia_livello()
                 else:
                     self.state = "gameover"
             return
         if self.state == "level_complete":
+            return
+        if self.state == "storia":
+            if self.storia_fase == "enter":
+                self.storia_fade_alpha = max(0, self.storia_fade_alpha - self.storia_fade_speed)
+                if self.storia_fade_alpha == 0:
+                    if self.storia_is_livello:
+                        self.storia_is_livello = False
+                        self.state = "gioco"
+                        self.avvia_livello()
+                        return
+                    self.storia_fase = "show"
+            elif self.storia_fase == "show":
+                if self.storia_caratteri_mostrati < len(self.storia_testo_completo):
+                    self.storia_tipografia_frame += 1
+                    if self.storia_tipografia_frame >= 2:
+                        self.storia_tipografia_frame = 0
+                        self.storia_caratteri_mostrati += 1
+            elif self.storia_fase == "exit":
+                self.storia_fade_alpha = min(255, self.storia_fade_alpha + self.storia_fade_speed)
+                if self.storia_fade_alpha >= 255:
+                    if self.storia_is_livello:
+                        self.gioco_bg = self.storia_prossimo_bg
+                        self.storia_fase = "enter"
+                        self.storia_fade_alpha = 255
+                        self.storia_fade_speed = 8
+                    else:
+                        self.storia_idx += 1
+                        self.mostra_storia()
             return
         if self.state not in ("gioco",):
             return
@@ -1138,6 +1300,8 @@ class Gioco:
             self.disegna_player_exit()
         elif self.state == "level_complete":
             self.disegna_level_complete()
+        elif self.state == "storia":
+            self.disegna_storia()
         else:
             if self.state in ("opzioni", "opzioni_auto", "config_fisso"):
                 self.screen.blit(self.bg_options, (0, 0))
@@ -1348,7 +1512,7 @@ class Gioco:
         overlay.fill(BG_DARK)
         self.screen.blit(overlay, (0, 0))
 
-        titolo = self.font_titolo.render("OPZIONI - AUTOAPPRENDIMENTO", True, GOLD)
+        titolo = self.font_titolo.render("OPZIONI - STORIA", True, GOLD)
         rect = titolo.get_rect(center=(SCREEN_WIDTH // 2, 80))
         self.screen.blit(titolo, rect)
 
@@ -1380,6 +1544,46 @@ class Gioco:
         self.screen.blit(plus, plus.get_rect(center=(tx + lw + vw + rw // 2, y + 17)))
         t_surf = self.font_grande.render(str(self.auto_timeout), True, WHITE)
         self.screen.blit(t_surf, t_surf.get_rect(center=(tx + lw + vw // 2, y + 17)))
+
+        # Livello iniziale
+        y = 290
+        label_l = self.font_medio.render("Livello iniziale", True, WHITE)
+        rect = label_l.get_rect(midleft=(SCREEN_WIDTH // 2 - 200, y + 17))
+        self.screen.blit(label_l, rect)
+        focused = self.opzioni_cursor == 1
+        lw, vw, rw = 30, 40, 30
+        total = lw + vw + rw
+        minus_rect2 = pygame.Rect(tx, y, lw, 34)
+        plus_rect2 = pygame.Rect(tx + lw + vw, y, rw, 34)
+        if focused:
+            pygame.draw.rect(self.screen, (255, 255, 100), (tx - 2, y - 2, total + 4, 38), 3, border_radius=4)
+        hover_minus2 = minus_rect2.collidepoint(mx, my)
+        hover_plus2 = plus_rect2.collidepoint(mx, my)
+        pygame.draw.rect(self.screen, (90, 90, 100) if hover_minus2 else (70, 70, 80), minus_rect2, border_radius=4)
+        pygame.draw.rect(self.screen, (40, 40, 50), (tx + lw, y, vw, 34))
+        pygame.draw.rect(self.screen, (90, 90, 100) if hover_plus2 else (70, 70, 80), plus_rect2, border_radius=4)
+        if hover_minus2:
+            pygame.draw.rect(self.screen, GOLD, minus_rect2, 2, border_radius=4)
+        if hover_plus2:
+            pygame.draw.rect(self.screen, GOLD, plus_rect2, 2, border_radius=4)
+        minus = self.font_medio.render("-", True, WHITE)
+        plus = self.font_medio.render("+", True, WHITE)
+        self.screen.blit(minus, minus.get_rect(center=(tx + lw // 2, y + 17)))
+        self.screen.blit(plus, plus.get_rect(center=(tx + lw + vw + rw // 2, y + 17)))
+        l_surf = self.font_grande.render(str(self.livello_iniziale + 1), True, WHITE)
+        self.screen.blit(l_surf, l_surf.get_rect(center=(tx + lw + vw // 2, y + 17)))
+
+        # CONFERMA
+        y_conf = 400
+        conf_rect = pygame.Rect(SCREEN_WIDTH // 2 - 110, y_conf, 220, 46)
+        hover_conf = conf_rect.collidepoint(mx, my)
+        bg_conf = (50, 140, 50) if hover_conf else (40, 120, 40)
+        if hover_conf:
+            pygame.draw.rect(self.screen, GOLD, (SCREEN_WIDTH // 2 - 112, y_conf - 2, 224, 50), 3, border_radius=8)
+        pygame.draw.rect(self.screen, bg_conf, conf_rect, border_radius=8)
+        conf_txt = self.font_tiny.render("CONFERMA", True, WHITE)
+        rect_c = conf_txt.get_rect(center=(SCREEN_WIDTH // 2, y_conf + 23))
+        self.screen.blit(conf_txt, rect_c)
 
     def disegna_config(self):
         mx, my = pygame.mouse.get_pos()
@@ -1603,9 +1807,9 @@ class Gioco:
         shake = (0, 0)
         if self.hit_timer > 0:
             shake = (random.randint(-4, 4), random.randint(-3, 3))
-            self.screen.blit(self.bg, shake)
+            self.screen.blit(self.gioco_bg, shake)
         else:
-            self.screen.blit(self.bg, (0, 0))
+            self.screen.blit(self.gioco_bg, (0, 0))
 
         wx = 75 + shake[0]
         data = self.char_data.get(self.config_genere, self.char_data["F"])
@@ -1695,7 +1899,7 @@ class Gioco:
         if self.modalita == "auto":
             richieste = 5 + sum(range(1, self.livello + 1))
             corr = sum(1 for esito, _ in self.blocco_corrente if esito)
-            stato = self.font_piccolo.render(f"Livello {self.livello + 1}/{len(LIVELLI)} - {corr}/{richieste} corrette", True, WHITE)
+            stato = self.font_piccolo.render(f"Livello {self.livello + 1}/{len(LIVELLI)}", True, WHITE)
             self.screen.blit(stato, (20, 20))
             mode_txt = "Storia"
         else:
@@ -1776,19 +1980,20 @@ class Gioco:
             dx, dy = 20, 80
             lines = [
                 "DEBUG",
-                f"Stato: {self.state}",
-                f"Modalita: {self.modalita}",
+                f"Modalita: {'Storia' if self.modalita == 'auto' else 'Livello Fisso'}",
                 f"Domanda attiva: {self.domanda_attiva}",
                 f"Feedback: {self.feedback}",
                 f"Attendi invio: {self.attendi_invio}",
                 f"Game over: {self.game_over}",
                 f"Lives: {self.vite}",
-                f"Livello: {self.livello + 1 if self.modalita == 'auto' else '-'}",
+                f"Domande: {self.domande_fatte}/{'?' if self.modalita == 'fisso' else self.domande_livello}",
+                f"Tempo medio: {sum(self.tempi_risposta)/len(self.tempi_risposta):.1f}s" if self.tempi_risposta else "Tempo medio: --",
+                f"Livello: {self.livello + 1}/{len(LIVELLI)} (eff. {self.livello_effettivo() + 1})" if self.modalita == 'auto' else "Livello: -",
                 f"Operandi: {self.a} x {self.b}",
                 f"Prev: {self.prev_a} x {self.prev_b}",
                 f"Risultato: {self.risultato_atteso}",
-                f"Pool A: {get_pool(self.livello) if self.modalita == 'auto' else self.pool_a}",
-                f"Pool B: {get_pool(self.livello) if self.modalita == 'auto' else self.pool_b}",
+                f"Pool A: {get_pool(self.livello_effettivo()) if self.modalita == 'auto' else self.pool_a}",
+                f"Pool B: {get_pool(self.livello_effettivo()) if self.modalita == 'auto' else self.pool_b}",
                 f"Coda rinforzo: {list(self.coda_rinforzo)}",
                 f"Progresso mostro: {self.mostro_progresso:.2f}" + (f"  Tempo: {(pygame.time.get_ticks() - self.inizio_domanda)/1000:.1f}s" if self.domanda_attiva else ""),
             ]
@@ -1803,7 +2008,7 @@ class Gioco:
                 dy += 22
 
     def disegna_level_complete(self):
-        self.screen.blit(self.bg, (0, 0))
+        self.screen.blit(self.gioco_bg, (0, 0))
         overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
         overlay.set_alpha(200)
         overlay.fill(BG_DARK)
@@ -1822,16 +2027,10 @@ class Gioco:
             (f"Tempo medio: {media:.1f}s", WHITE),
         ]
         richieste = 5 + self.livello
-        if corrette >= richieste and media < 6:
-            righe.append(("Livello superato!", GOLD))
-            if media < self.tempo_limite_iniziale / 2:
-                righe.append(("Timeout ridotto di 1s per il prossimo livello!", YELLOW))
-        else:
-            righe.append(("Riprova questo livello!", (255, 200, 0)))
-            if corrette < richieste:
-                righe.append((f"Servono almeno {richieste} corrette", GRAY))
-            if media >= 6:
-                righe.append((f"Media deve essere < 6s (attuale: {media:.1f}s)", GRAY))
+        ultimi = self.tempi_risposta[-richieste:]
+        media_ultime = sum(ultimi) / len(ultimi) if ultimi else 0
+        if media_ultime < self.timeout_limite / 2:
+            righe.append(("Tempo medio eccellente! Timeout ridotto di 1s", YELLOW))
 
         y = 180
         for testo, colore in righe:
@@ -1844,8 +2043,54 @@ class Gioco:
         rect = prompt.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 80))
         self.screen.blit(prompt, rect)
 
+    def disegna_storia(self):
+        entry = self.storia_entries[self.storia_idx] if self.storia_idx < len(self.storia_entries) else {}
+        if self.storia_is_livello and self.storia_fase == "exit":
+            bg_surf = self.gioco_bg
+        else:
+            bg_name = entry.get("bg", "game")
+            bg_surf = self.backgrounds.get(bg_name, self.bg)
+        self.screen.blit(bg_surf, (0, 0))
+        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+        overlay.set_alpha(180)
+        overlay.fill(BG_DARK)
+        self.screen.blit(overlay, (0, 0))
+
+        testo = self.storia_testo_completo[:self.storia_caratteri_mostrati]
+
+        righe = testo.split("\n")
+        x_margine = 60
+        y = 120
+        for riga in righe:
+            parole = riga.split()
+            if not parole:
+                y += 46
+                continue
+            line = ""
+            for parola in parole:
+                test = line + " " + parola if line else parola
+                if self.font_storia.size(test)[0] > SCREEN_WIDTH - x_margine * 2:
+                    surf = self.font_storia.render(line, True, WHITE)
+                    rect = surf.get_rect(midleft=(x_margine, y))
+                    self.screen.blit(surf, rect)
+                    y += 46
+                    line = parola
+                else:
+                    line = test
+            if line:
+                surf = self.font_storia.render(line, True, WHITE)
+                rect = surf.get_rect(midleft=(x_margine, y))
+                self.screen.blit(surf, rect)
+                y += 46
+
+        if self.storia_fade_alpha > 0:
+            fade_surf = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+            fade_surf.set_alpha(self.storia_fade_alpha)
+            fade_surf.fill(self.storia_fade_color)
+            self.screen.blit(fade_surf, (0, 0))
+
     def disegna_player_exit(self):
-        self.screen.blit(self.bg, (0, 0))
+        self.screen.blit(self.gioco_bg, (0, 0))
         elapsed = pygame.time.get_ticks() - self.player_exit_start
         progress = min(elapsed / 4000, 1.0)
         start_x = 75
@@ -1860,7 +2105,7 @@ class Gioco:
         self.screen.blit(char_img, (self.player_exit_x, wy))
 
     def disegna_gameover(self):
-        self.screen.blit(self.bg, (0, 0))
+        self.screen.blit(self.gioco_bg, (0, 0))
         overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
         overlay.set_alpha(200)
         overlay.fill(BG_DARK)

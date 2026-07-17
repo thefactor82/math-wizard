@@ -1,0 +1,36 @@
+[
+  {
+    "tipo": "testo",
+    "bg": "background_menu",
+    "testo": "NOMEPROFILOINUSO vive nel regno di Math, un posto pacifico e tranquillo, dove le giornate scorrono serene.\n\nMa come in ogni regno succede, anche a Math ci sono alcuni problemi...\n\nGli Hop, dei simpatici mostriciattoli, passano le loro dispettose giornate ad importunare gli abitanti di Math con le loro...\n\nOperazioni!"
+  },
+  {
+    "tipo": "testo",
+    "bg": "background_start",
+    "testo": "NOMEPROFILOINUSO si è appena svegliat-o-a- per quella che è un'importantissima giornata...\n\nIl Re ha espressamente chiesto di vederl-o-a-!\n\nNOMEPROFILOINUSO non vede l'ora di arrivare al castello, ma dovrà affrontare un lungo sentiero, e probabilmente parecchi Hop che verranno a disturbarl-o-a-..."
+  },
+  {
+    "tipo": "livello",
+    "bg": "background_start"
+  },
+  {
+    "tipo": "livello",
+    "bg": "background"
+  },
+  {
+    "tipo": "livello",
+    "bg": "background2"
+  },
+  {
+    "tipo": "livello",
+    "bg": "background3"
+  },
+  {
+    "tipo": "livello",
+    "bg": "background4"
+  },
+  {
+    "tipo": "livello",
+    "bg": "background5"
+  }
+]
