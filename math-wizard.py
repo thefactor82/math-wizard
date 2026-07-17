@@ -26,12 +26,31 @@ DARK = (20, 20, 30)
 BG_DARK = (30, 30, 50)
 SEL_BLUE = (60, 130, 200)
 
+def parse_pool(val):
+    if isinstance(val, list):
+        return val
+    if isinstance(val, str):
+        result = []
+        for part in val.split(","):
+            part = part.strip()
+            if "-" in part:
+                a, b = part.split("-", 1)
+                result.extend(range(int(a), int(b) + 1))
+            else:
+                result.append(int(part))
+        return result
+    return val
+
 LIVELLI = {}
 levels_path = "data/levels.json"
 if os.path.exists(levels_path):
     try:
         with open(levels_path, "r", encoding="utf-8") as f:
             LIVELLI = json.load(f)
+            for op in LIVELLI:
+                for lv in LIVELLI[op]:
+                    lv["pool_a"] = parse_pool(lv["pool_a"])
+                    lv["pool_b"] = parse_pool(lv["pool_b"])
     except (json.JSONDecodeError, Exception):
         LIVELLI = {}
 if not LIVELLI:
@@ -237,7 +256,7 @@ class Gioco:
                 self.storia_entries = []
         self.storia_idx = 0
 
-        self.version = "0.5.000"
+        self.version = "0.5.001"
 
         self.profili = []
         self.profilo_corrente = ""
