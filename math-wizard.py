@@ -24,25 +24,22 @@ GOLD = (255, 215, 0)
 GRAY = (100, 100, 100)
 DARK = (20, 20, 30)
 BG_DARK = (30, 30, 50)
+SEL_BLUE = (60, 130, 200)
 
-LIVELLI = [
-    {"esclusi": []},
-    {"esclusi": [1]},
-    {"esclusi": [1, 0]},
-    {"esclusi": [1, 0, 2]},
-    {"esclusi": [1, 0, 2], "inclusi": [11]},
-    {"esclusi": [1, 0, 2, 3], "inclusi": [11]},
-    {"esclusi": [1, 0, 2, 3], "inclusi": [11], "condizione_4": 6},
-    {"esclusi": [1, 0, 2, 3], "inclusi": [11], "condizione_4": 7},
-    {"esclusi": [1, 0, 2, 3], "inclusi": [11, 12]},
-    {"esclusi": [1, 0, 2, 3, 4], "inclusi": [11, 12]}
-]
-
-def get_pool(livello_idx):
-    base = list(range(0, 10))
-    esclusi = LIVELLI[livello_idx].get("esclusi", [])
-    inclusi = LIVELLI[livello_idx].get("inclusi", [])
-    return [n for n in base if n not in esclusi] + inclusi
+LIVELLI = {}
+levels_path = "data/levels.json"
+if os.path.exists(levels_path):
+    try:
+        with open(levels_path, "r", encoding="utf-8") as f:
+            LIVELLI = json.load(f)
+    except (json.JSONDecodeError, Exception):
+        LIVELLI = {}
+if not LIVELLI:
+    LIVELLI = {"moltiplicazione": [], "addizione": [], "sottrazione": []}
+default_level = {"pool_a": [0,1,2,3,4,5,6,7,8,9], "pool_b": [0,1,2,3,4,5,6,7,8,9]}
+for op in ["moltiplicazione", "addizione", "sottrazione"]:
+    if op not in LIVELLI or not LIVELLI[op]:
+        LIVELLI[op] = [default_level]
 
 NUMPAD_DIGIT = {
     pygame.K_KP0: 0, pygame.K_KP_0: 0,
@@ -57,19 +54,10 @@ NUMPAD_DIGIT = {
     pygame.K_KP9: 9, pygame.K_KP_9: 9,
 }
 
-def genera_operandi(pool, livello_idx, reinforce_queue):
+def genera_operandi(pool_a, pool_b, reinforce_queue):
     if reinforce_queue and random.random() < 0.4:
         return reinforce_queue.popleft()
-    while True:
-        a = random.choice(pool)
-        b = random.choice(pool)
-        cond = LIVELLI[livello_idx].get("condizione_4")
-        if cond:
-            if a == 4 and b < cond:
-                continue
-            if b == 4 and a < cond:
-                continue
-        return a, b
+    return random.choice(pool_a), random.choice(pool_b)
 
 class Gioco:
     def __init__(self):
@@ -219,6 +207,7 @@ class Gioco:
         self.profilo_genere_mode = False
         self.profilo_nuovo_nome = ""
         self.config_genere = "F"
+        self.config_storia_operazione = "moltiplicazione"
         self.config_operazione = "moltiplicazione"
         self.config_cursor_row = 0
         self.config_cursor_col = 0
@@ -248,7 +237,7 @@ class Gioco:
                 self.storia_entries = []
         self.storia_idx = 0
 
-        self.version = "0.3.000"
+        self.version = "0.5.000"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -282,6 +271,7 @@ class Gioco:
         path = os.path.join(prof_dir, "config.json")
         data = {
             "genere": self.config_genere,
+            "storia_operazione": self.config_storia_operazione,
             "auto_timeout": self.auto_timeout,
             "livello_iniziale": self.livello_iniziale,
         }
@@ -300,6 +290,7 @@ class Gioco:
                     if op in data:
                         self.config_per_op[op].update(data[op])
                 self.config_genere = data.get("genere", self.config_genere)
+                self.config_storia_operazione = data.get("storia_operazione", self.config_storia_operazione)
                 self.auto_timeout = data.get("auto_timeout", self.auto_timeout)
                 self.livello_iniziale = data.get("livello_iniziale", self.livello_iniziale)
             else:
@@ -379,6 +370,7 @@ class Gioco:
         self.timeout_limite = self.auto_timeout if self.modalita == "auto" else self.cfg["timeout"]
         if self.modalita == "auto":
             self.tempo_limite_iniziale = self.auto_timeout
+            self.livelli = LIVELLI[self.config_storia_operazione]
         self.storia_idx = 0
         self.storia_is_livello = False
         self.storia_fade_speed = 8
@@ -417,7 +409,7 @@ class Gioco:
             self.avvia_livello()
 
     def livello_effettivo(self):
-        return min(self.livello + self.livello_iniziale, len(LIVELLI) - 1)
+        return min(self.livello + self.livello_iniziale, len(self.livelli) - 1)
 
     def avvia_livello(self):
         if self.modalita == "auto":
@@ -487,8 +479,11 @@ class Gioco:
                 self.state = "level_complete"
                 return
             lv = self.livello_effettivo()
-            pool = get_pool(lv)
-            self.a, self.b = genera_operandi(pool, lv, self.coda_rinforzo)
+            lv_data = self.livelli[lv]
+            self.operazione = self.config_storia_operazione
+            self.a, self.b = genera_operandi(lv_data["pool_a"], lv_data["pool_b"], self.coda_rinforzo)
+            if self.operazione == "sottrazione" and self.a < self.b:
+                self.a, self.b = self.b, self.a
             self.domande_fatte += 1
         else:
             if self.domande_fatte >= self.domande_totali:
@@ -519,11 +514,15 @@ class Gioco:
 
         if (self.a, self.b) == (self.prev_a, self.prev_b):
             if self.a == self.b:
-                pool = get_pool(self.livello_effettivo()) if self.modalita == "auto" else self.pool_a
-                candidates = [n for n in pool if n != self.a]
+                if self.modalita == "auto":
+                    lv = self.livello_effettivo()
+                    pool_a = self.livelli[lv]["pool_a"]
+                    candidates = [n for n in pool_a if n != self.a]
+                else:
+                    candidates = [n for n in self.pool_a if n != self.a]
                 if candidates:
                     self.a = random.choice(candidates)
-                    self.b = random.choice(pool)
+                    self.b = random.choice(pool_a if self.modalita == "auto" else self.pool_a)
             else:
                 self.a, self.b = self.b, self.a
                 if self.modalita == "fisso" and self.operazione == "sottrazione" and self.differenza_positiva and self.a < self.b:
@@ -537,7 +536,12 @@ class Gioco:
             else:
                 self.risultato_atteso = self.a * self.b
         else:
-            self.risultato_atteso = self.a * self.b
+            if self.operazione == "addizione":
+                self.risultato_atteso = self.a + self.b
+            elif self.operazione == "sottrazione":
+                self.risultato_atteso = self.a - self.b
+            else:
+                self.risultato_atteso = self.a * self.b
         scelto = random.choice([m for m in self.mostri if m is not self.mostro_precedente]) if len(self.mostri) > 1 else self.mostri[0]
         self.mostro_precedente = scelto
         self.monster_frames = scelto["frames"]
@@ -672,20 +676,30 @@ class Gioco:
                     self.state = "menu"
             elif self.state == "opzioni_auto":
                 if event.key in (pygame.K_UP, pygame.K_w):
-                    self.opzioni_cursor = (self.opzioni_cursor - 1) % 2
+                    self.opzioni_cursor = (self.opzioni_cursor - 1) % 3
                 elif event.key in (pygame.K_DOWN, pygame.K_s):
-                    self.opzioni_cursor = (self.opzioni_cursor + 1) % 2
+                    self.opzioni_cursor = (self.opzioni_cursor + 1) % 3
                 elif event.key in (pygame.K_PLUS, pygame.K_EQUALS, pygame.K_KP_PLUS):
                     if self.opzioni_cursor == 0:
                         self.auto_timeout = min(99, self.auto_timeout + 1)
+                    elif self.opzioni_cursor == 1:
+                        self.livello_iniziale = min(len(LIVELLI[self.config_storia_operazione]) - 1, self.livello_iniziale + 1)
                     else:
-                        self.livello_iniziale = min(len(LIVELLI) - 1, self.livello_iniziale + 1)
+                        ops = ["moltiplicazione", "addizione", "sottrazione"]
+                        idx = (ops.index(self.config_storia_operazione) + 1) % 3
+                        self.config_storia_operazione = ops[idx]
+                        self.livello_iniziale = min(self.livello_iniziale, len(LIVELLI[self.config_storia_operazione]) - 1)
                     self.salva_config_profilo()
                 elif event.key in (pygame.K_MINUS, pygame.K_KP_MINUS):
                     if self.opzioni_cursor == 0:
                         self.auto_timeout = max(3, self.auto_timeout - 1)
-                    else:
+                    elif self.opzioni_cursor == 1:
                         self.livello_iniziale = max(0, self.livello_iniziale - 1)
+                    else:
+                        ops = ["moltiplicazione", "addizione", "sottrazione"]
+                        idx = (ops.index(self.config_storia_operazione) - 1) % 3
+                        self.config_storia_operazione = ops[idx]
+                        self.livello_iniziale = min(self.livello_iniziale, len(LIVELLI[self.config_storia_operazione]) - 1)
                     self.salva_config_profilo()
                 elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
                     self.salva_config_profilo()
@@ -741,7 +755,7 @@ class Gioco:
                     richieste = 5 + self.livello
                     ultimi = self.tempi_risposta[-richieste:]
                     media = sum(ultimi) / len(ultimi) if ultimi else 0
-                    if self.livello < len(LIVELLI) - 1:
+                    if self.livello < len(self.livelli) - 1:
                         self.livello += 1
                         if media < self.timeout_limite / 2:
                             self.timeout_limite = max(3, self.timeout_limite - 1)
@@ -859,10 +873,20 @@ class Gioco:
                     if mx < sx + lw:
                         self.livello_iniziale = max(0, self.livello_iniziale - 1)
                     elif mx >= sx + lw + vw:
-                        self.livello_iniziale = min(len(LIVELLI) - 1, self.livello_iniziale + 1)
+                        self.livello_iniziale = min(len(LIVELLI[self.config_storia_operazione]) - 1, self.livello_iniziale + 1)
                     self.salva_config_profilo()
+                # Operazione — 3 pulsanti
+                if hasattr(self, 'opzioni_auto_op_buttons') and len(self.opzioni_auto_op_buttons) == 3:
+                    ops = ["moltiplicazione", "addizione", "sottrazione"]
+                    for i, btn in enumerate(self.opzioni_auto_op_buttons):
+                        if btn.collidepoint(mx, my):
+                            self.opzioni_cursor = 2
+                            self.config_storia_operazione = ops[i]
+                            self.livello_iniziale = min(self.livello_iniziale, len(LIVELLI[self.config_storia_operazione]) - 1)
+                            self.salva_config_profilo()
+                            break
                 # CONFERMA
-                elif SCREEN_WIDTH // 2 - 110 <= mx <= SCREEN_WIDTH // 2 + 110 and 398 <= my <= 448:
+                if SCREEN_WIDTH // 2 - 110 <= mx <= SCREEN_WIDTH // 2 + 110 and 418 <= my <= 468:
                     self.salva_config_profilo()
                     self.state = "menu"
             elif self.state == "config_fisso":
@@ -966,14 +990,13 @@ class Gioco:
                             pool = self.cfg["pool_a"] if r == 1 else self.cfg["pool_b"]
                             if pools_mode:
                                 start = idx * 10
-                                for i in range(start, start + 10):
-                                    pool[i] = not pool[i]
-                                if not any(pool):
-                                    pool[start] = True
+                                if not (any(pool[start:start + 10]) and sum(pool) == 10):
+                                    new_state = not any(pool[start:start + 10])
+                                    for i in range(start, start + 10):
+                                        pool[i] = new_state
                             else:
-                                pool[idx] = not pool[idx]
-                                if not any(pool):
-                                    pool[idx] = True
+                                if not (pool[idx] and sum(pool) == 1):
+                                    pool[idx] = not pool[idx]
                             return
 
             # Row 3: somma massima (addizione) / differenza positiva (sottrazione)
@@ -1099,14 +1122,13 @@ class Gioco:
                 if idx >= 0:
                     if pools_mode:
                         start = idx * 10
-                        for i in range(start, start + 10):
-                            pool[i] = not pool[i]
-                        if not any(pool):
-                            pool[start] = True
+                        if not (any(pool[start:start + 10]) and sum(pool) == 10):
+                            new_state = not any(pool[start:start + 10])
+                            for i in range(start, start + 10):
+                                pool[i] = new_state
                     else:
-                        pool[idx] = not pool[idx]
-                        if not any(pool):
-                            pool[idx] = True
+                        if not (pool[idx] and sum(pool) == 1):
+                            pool[idx] = not pool[idx]
             elif row == 3 and sottrazione:
                 self.cfg["differenza_positiva"] = not self.cfg["differenza_positiva"]
             elif row == 5 and not sottrazione:
@@ -1549,7 +1571,7 @@ class Gioco:
         hover_minus = minus_rect.collidepoint(mx, my)
         hover_plus = plus_rect.collidepoint(mx, my)
         if focused:
-            pygame.draw.rect(self.screen, (255, 255, 100), (sx - 2, y - 2, lw + vw + rw + 4, 38), 3, border_radius=4)
+            pygame.draw.rect(self.screen, SEL_BLUE, (sx - 2, y - 2, lw + vw + rw + 4, 38), 0, border_radius=4)
         pygame.draw.rect(self.screen, (90, 90, 100) if hover_minus else (70, 70, 80), minus_rect, border_radius=4)
         pygame.draw.rect(self.screen, (40, 40, 50), (sx + lw, y, vw, 34))
         pygame.draw.rect(self.screen, (90, 90, 100) if hover_plus else (70, 70, 80), plus_rect, border_radius=4)
@@ -1575,7 +1597,7 @@ class Gioco:
         hover_minus2 = minus_rect2.collidepoint(mx, my)
         hover_plus2 = plus_rect2.collidepoint(mx, my)
         if focused:
-            pygame.draw.rect(self.screen, (255, 255, 100), (sx - 2, y - 2, lw + vw + rw + 4, 38), 3, border_radius=4)
+            pygame.draw.rect(self.screen, SEL_BLUE, (sx - 2, y - 2, lw + vw + rw + 4, 38), 0, border_radius=4)
         pygame.draw.rect(self.screen, (90, 90, 100) if hover_minus2 else (70, 70, 80), minus_rect2, border_radius=4)
         pygame.draw.rect(self.screen, (40, 40, 50), (sx + lw, y, vw, 34))
         pygame.draw.rect(self.screen, (90, 90, 100) if hover_plus2 else (70, 70, 80), plus_rect2, border_radius=4)
@@ -1590,8 +1612,41 @@ class Gioco:
         l_surf = self.font_tiny.render(str(self.livello_iniziale + 1), True, WHITE)
         self.screen.blit(l_surf, l_surf.get_rect(center=(sx + lw + vw // 2, y + 17)))
 
+        # Operazione
+        y = 340
+        label_o = self.font_tiny.render("Operazione", True, WHITE)
+        rect = label_o.get_rect(midleft=(80, y + 17))
+        self.screen.blit(label_o, rect)
+        ops_list = [("moltiplicazione", "Moltiplicazione"), ("addizione", "Addizione"), ("sottrazione", "Sottrazione")]
+        bx = 360
+        self.opzioni_auto_op_buttons = []
+        for op_key, op_label in ops_list:
+            bw = 180
+            bh = 34
+            btn_rect = pygame.Rect(bx, y, bw, bh)
+            selected = self.config_storia_operazione == op_key
+            hovered = btn_rect.collidepoint(mx, my)
+            if selected:
+                bg_col = (60, 130, 200)
+            elif hovered:
+                bg_col = (90, 90, 100)
+            else:
+                bg_col = (70, 70, 80)
+            if selected or hovered:
+                pygame.draw.rect(self.screen, GOLD if hovered else (100, 180, 255), btn_rect, 2 if hovered else 1, border_radius=4)
+            pygame.draw.rect(self.screen, bg_col, btn_rect, border_radius=4)
+            surf = self.font_tiny.render(op_label, True, WHITE)
+            self.screen.blit(surf, surf.get_rect(center=btn_rect.center))
+            self.opzioni_auto_op_buttons.append(btn_rect)
+            bx += bw + 12
+        if self.opzioni_cursor == 2:
+            ops_keys = ["moltiplicazione", "addizione", "sottrazione"]
+            sel_idx = ops_keys.index(self.config_storia_operazione)
+            focus_rect = self.opzioni_auto_op_buttons[sel_idx].inflate(4, 4)
+            pygame.draw.rect(self.screen, (255, 255, 100), focus_rect, 3, border_radius=6)
+
         # CONFERMA
-        y_conf = 400
+        y_conf = 420
         conf_rect = pygame.Rect(SCREEN_WIDTH // 2 - 110, y_conf, 220, 46)
         hover_conf = conf_rect.collidepoint(mx, my)
         bg_conf = (50, 140, 50) if hover_conf else (40, 120, 40)
@@ -1644,7 +1699,7 @@ class Gioco:
             sel = i == op_idx
             btn_rect = pygame.Rect(sx, y, 206, 34)
             hovered = btn_rect.collidepoint(mx, my)
-            bg_col = (80, 120, 80) if sel and hovered else (60, 130, 60) if sel else (80, 80, 90) if hovered else (60, 60, 70)
+            bg_col = (100, 150, 220) if sel and hovered else SEL_BLUE if sel else (80, 80, 90) if hovered else (60, 60, 70)
             pygame.draw.rect(self.screen, bg_col, btn_rect, border_radius=4)
             if hovered:
                 pygame.draw.rect(self.screen, GOLD, btn_rect, 2, border_radius=4)
@@ -1686,7 +1741,7 @@ class Gioco:
                         txt = str(idx)
                     cell_rect = pygame.Rect(sx, sy, cell_w, cell_h)
                     hovered_cell = cell_rect.collidepoint(mx, my)
-                    bg_col = (80, 120, 80) if selected and hovered_cell else (60, 130, 60) if selected else (80, 80, 90) if hovered_cell else (60, 60, 70)
+                    bg_col = (100, 150, 220) if selected and hovered_cell else SEL_BLUE if selected else (80, 80, 90) if hovered_cell else (60, 60, 70)
                     pygame.draw.rect(self.screen, bg_col, cell_rect, border_radius=4)
                     if hovered_cell:
                         pygame.draw.rect(self.screen, GOLD, cell_rect, 2, border_radius=4)
@@ -1726,7 +1781,7 @@ class Gioco:
             self.screen.blit(label_d, rect)
             toggle_rect = pygame.Rect(352, y, 186, 36)
             hover_toggle = toggle_rect.collidepoint(mx, my)
-            bg_d = (80, 120, 80) if self.cfg["differenza_positiva"] and hover_toggle else (60, 130, 60) if self.cfg["differenza_positiva"] else (80, 80, 90) if hover_toggle else (60, 60, 70)
+            bg_d = (100, 150, 220) if self.cfg["differenza_positiva"] and hover_toggle else SEL_BLUE if self.cfg["differenza_positiva"] else (80, 80, 90) if hover_toggle else (60, 60, 70)
             pygame.draw.rect(self.screen, bg_d, toggle_rect, border_radius=6)
             if hover_toggle:
                 pygame.draw.rect(self.screen, GOLD, toggle_rect, 2, border_radius=6)
@@ -1767,7 +1822,7 @@ class Gioco:
         swap_locked = sottrazione
         toggle_rect = pygame.Rect(352, y, 186, 36)
         hover_toggle = toggle_rect.collidepoint(mx, my) and not swap_locked
-        bg_swap = (80, 120, 80) if (self.cfg["swap"] and hover_toggle) else (60, 130, 60) if self.cfg["swap"] else (80, 80, 90) if hover_toggle else (60, 60, 70) if not swap_locked else (60, 60, 70)
+        bg_swap = (100, 150, 220) if (self.cfg["swap"] and hover_toggle) else SEL_BLUE if self.cfg["swap"] else (80, 80, 90) if hover_toggle else (60, 60, 70) if not swap_locked else (60, 60, 70)
         if swap_locked:
             bg_swap = (60, 60, 70)
         pygame.draw.rect(self.screen, bg_swap, toggle_rect, border_radius=6)
@@ -1916,7 +1971,7 @@ class Gioco:
         if self.modalita == "auto":
             richieste = 5 + sum(range(1, self.livello + 1))
             corr = sum(1 for esito, _ in self.blocco_corrente if esito)
-            stato = self.font_piccolo.render(f"Livello {self.livello + 1}/{len(LIVELLI)}", True, WHITE)
+            stato = self.font_piccolo.render(f"Livello {self.livello + 1}/{len(self.livelli)}", True, WHITE)
             self.screen.blit(stato, (20, 20))
             mode_txt = "Storia"
         else:
@@ -1995,6 +2050,7 @@ class Gioco:
             pygame.draw.rect(self.screen, (0, 255, 255), bg_l, 1)
             self.screen.blit(label, rect)
             dx, dy = 20, 80
+            segno_debug = "-" if self.operazione == "sottrazione" else "+" if self.operazione == "addizione" else "x"
             lines = [
                 "DEBUG",
                 f"Modalita: {'Storia' if self.modalita == 'auto' else 'Allenamento'}",
@@ -2005,12 +2061,12 @@ class Gioco:
                 f"Lives: {self.vite}",
                 f"Domande: {self.domande_fatte}/{'?' if self.modalita == 'fisso' else self.domande_livello}",
                 f"Tempo medio: {sum(self.tempi_risposta)/len(self.tempi_risposta):.1f}s" if self.tempi_risposta else "Tempo medio: --",
-                f"Livello: {self.livello + 1}/{len(LIVELLI)} (eff. {self.livello_effettivo() + 1})" if self.modalita == 'auto' else "Livello: -",
-                f"Operandi: {self.a} x {self.b}",
-                f"Prev: {self.prev_a} x {self.prev_b}",
+                f"Livello: {self.livello + 1}/{len(self.livelli)} (eff. {self.livello_effettivo() + 1})" if self.modalita == 'auto' else "Livello: -",
+                f"Operandi: {self.a} {segno_debug} {self.b}",
+                f"Prev: {self.prev_a} {segno_debug} {self.prev_b}",
                 f"Risultato: {self.risultato_atteso}",
-                f"Pool A: {get_pool(self.livello_effettivo()) if self.modalita == 'auto' else self.pool_a}",
-                f"Pool B: {get_pool(self.livello_effettivo()) if self.modalita == 'auto' else self.pool_b}",
+                f"Pool A: {self.livelli[self.livello_effettivo()]['pool_a'] if self.modalita == 'auto' else self.pool_a}",
+                f"Pool B: {self.livelli[self.livello_effettivo()]['pool_b'] if self.modalita == 'auto' else self.pool_b}",
                 f"Coda rinforzo: {list(self.coda_rinforzo)}",
                 f"Progresso mostro: {self.mostro_progresso:.2f}" + (f"  Tempo: {(pygame.time.get_ticks() - self.inizio_domanda)/1000:.1f}s" if self.domanda_attiva else ""),
             ]
@@ -2158,7 +2214,7 @@ class Gioco:
         righe = [
             (f"Corrette: {tot_corrette}", GREEN),
             (f"Sbagliate: {tot_sbagliate}", RED),
-            (f"Livello raggiunto: {self.livello + 1}/{len(LIVELLI)}", WHITE),
+            (f"Livello raggiunto: {self.livello + 1}/{len(self.livelli)}", WHITE),
             (f"Tempo medio: {tempo_medio:.1f}s", WHITE),
         ]
         y = 110
@@ -2273,7 +2329,7 @@ class Gioco:
         tempo_medio = sum(self.tempi_risposta) / len(self.tempi_risposta) if self.tempi_risposta else 0
         now = datetime.now().strftime("%Y-%m-%d %H:%M")
         if self.modalita == "auto":
-            riga = f"{now} | Storia | Corrette: {tot_corrette} | Sbagliate: {tot_sbagliate} | Livello: {self.livello + 1}/{len(LIVELLI)} | Tempo medio: {tempo_medio:.1f}s"
+            riga = f"{now} | Storia | {self.config_storia_operazione.capitalize()} | Corrette: {tot_corrette} | Sbagliate: {tot_sbagliate} | Livello: {self.livello + 1}/{len(self.livelli)} | Tempo medio: {tempo_medio:.1f}s"
         else:
             op_txt = self.operazione.capitalize() if hasattr(self, 'operazione') else "Moltiplicazione"
             pool_a_txt = ",".join(str(n) for n in self.pool_a)
