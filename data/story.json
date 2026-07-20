@@ -11,26 +11,27 @@
   },
   {
     "tipo": "livello",
-    "bg": "background_start"
+    "bg": "background_start",
+    "monsters": [1,2,8]
   },
   {
     "tipo": "livello",
-    "bg": "background"
+    "bg": "background",
+    "monsters": [1,2,3,4,6,8]
   },
   {
     "tipo": "livello",
-    "bg": "background2"
+    "bg": "background2",
+    "monsters": [1,2,3,4,6,8]
   },
   {
     "tipo": "livello",
-    "bg": "background3"
+    "bg": "background3",
+    "monsters": [1,2,3,4,5,6,8]
   },
   {
     "tipo": "livello",
-    "bg": "background4"
-  },
-  {
-    "tipo": "livello",
-    "bg": "background5"
+    "bg": "background5",
+    "monsters": [1,2,3,4,5,6,8]
   }
 ]

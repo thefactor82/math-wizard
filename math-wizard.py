@@ -197,7 +197,7 @@ class Gioco:
             path = resource_path(f"graphics/monsters/monster{mi}.png")
             frames = self.carica_spritesheet(path, 200, 4, row=0, rows=2, cols=4)
             hit = self.carica_spritesheet(path, 200, 1, row=1, rows=2, cols=4, frame_offset=3)[0]
-            self.mostri.append({"frames": frames, "hit": hit})
+            self.mostri.append({"frames": frames, "hit": hit, "idx": mi})
         self.monster_frames = self.mostri[0]["frames"]
         self.monster_hit_img = self.mostri[0]["hit"]
         self.monster_img = self.monster_frames[0]
@@ -255,6 +255,7 @@ class Gioco:
         self.cfg = self.config_per_op[self.config_operazione]
         self.auto_timeout = TEMPO_LIMITE_DEFAULT
         self.livello_iniziale = 0
+        self.storia_progresso = {"moltiplicazione": 0, "addizione": 0, "sottrazione": 0}
 
         self.storia_entries = []
         for src in (data_path, resource_path):
@@ -269,7 +270,7 @@ class Gioco:
                     break
         self.storia_idx = 0
 
-        self.version = "0.5.004"
+        self.version = "0.5.005"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -306,6 +307,7 @@ class Gioco:
             "storia_operazione": self.config_storia_operazione,
             "auto_timeout": self.auto_timeout,
             "livello_iniziale": self.livello_iniziale,
+            "storia_progresso": self.storia_progresso,
         }
         for op in ["moltiplicazione", "addizione", "sottrazione"]:
             data[op] = dict(self.config_per_op[op])
@@ -325,6 +327,7 @@ class Gioco:
                 self.config_storia_operazione = data.get("storia_operazione", self.config_storia_operazione)
                 self.auto_timeout = data.get("auto_timeout", self.auto_timeout)
                 self.livello_iniziale = data.get("livello_iniziale", self.livello_iniziale)
+                self.storia_progresso = data.get("storia_progresso", self.storia_progresso)
             else:
                 # Legacy format
                 self.config_genere = data.get("genere", self.config_genere)
@@ -403,8 +406,10 @@ class Gioco:
         if self.modalita == "auto":
             self.tempo_limite_iniziale = self.auto_timeout
             self.livelli = LIVELLI[self.config_storia_operazione]
+            self.livello = 0
         self.storia_idx = 0
         self.storia_is_livello = False
+        self.storia_monsters = list(range(1, 9))
         self.storia_fade_speed = 8
         self.storia_prossimo_bg = None
         self.storia_fade_alpha = 0
@@ -450,7 +455,6 @@ class Gioco:
         self.domande_fatte = 0
         self.tempi_risposta = []
         self.blocco_corrente = []
-        self.coda_rinforzo.clear()
         self.timeout_gestito = False
         self.nuova_domanda()
 
@@ -462,6 +466,7 @@ class Gioco:
         if entry["tipo"] == "livello":
             self.state = "storia"
             self.storia_is_livello = True
+            self.storia_monsters = entry.get("monsters", list(range(1, 9)))
             bg_name = entry.get("bg", "game")
             self.storia_prossimo_bg = self.backgrounds.get(bg_name, self.bg)
             self.storia_testo_completo = ""
@@ -574,7 +579,11 @@ class Gioco:
                 self.risultato_atteso = self.a - self.b
             else:
                 self.risultato_atteso = self.a * self.b
-        scelto = random.choice([m for m in self.mostri if m is not self.mostro_precedente]) if len(self.mostri) > 1 else self.mostri[0]
+        if self.modalita == "auto":
+            mostri_disponibili = [m for m in self.mostri if m["idx"] in self.storia_monsters]
+        else:
+            mostri_disponibili = self.mostri
+        scelto = random.choice([m for m in mostri_disponibili if m is not self.mostro_precedente]) if len(mostri_disponibili) > 1 else mostri_disponibili[0]
         self.mostro_precedente = scelto
         self.monster_frames = scelto["frames"]
         self.monster_hit_img = scelto["hit"]
@@ -715,12 +724,12 @@ class Gioco:
                     if self.opzioni_cursor == 0:
                         self.auto_timeout = min(99, self.auto_timeout + 1)
                     elif self.opzioni_cursor == 1:
-                        self.livello_iniziale = min(len(LIVELLI[self.config_storia_operazione]) - 1, self.livello_iniziale + 1)
+                        self.livello_iniziale = min(self.storia_progresso.get(self.config_storia_operazione, 0), self.livello_iniziale + 1)
                     else:
                         ops = ["moltiplicazione", "addizione", "sottrazione"]
                         idx = (ops.index(self.config_storia_operazione) + 1) % 3
                         self.config_storia_operazione = ops[idx]
-                        self.livello_iniziale = min(self.livello_iniziale, len(LIVELLI[self.config_storia_operazione]) - 1)
+                        self.livello_iniziale = min(self.livello_iniziale, self.storia_progresso.get(self.config_storia_operazione, 0))
                     self.salva_config_profilo()
                 elif event.key in (pygame.K_MINUS, pygame.K_KP_MINUS):
                     if self.opzioni_cursor == 0:
@@ -731,7 +740,7 @@ class Gioco:
                         ops = ["moltiplicazione", "addizione", "sottrazione"]
                         idx = (ops.index(self.config_storia_operazione) - 1) % 3
                         self.config_storia_operazione = ops[idx]
-                        self.livello_iniziale = min(self.livello_iniziale, len(LIVELLI[self.config_storia_operazione]) - 1)
+                        self.livello_iniziale = min(self.livello_iniziale, self.storia_progresso.get(self.config_storia_operazione, 0))
                     self.salva_config_profilo()
                 elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
                     self.salva_config_profilo()
@@ -789,6 +798,9 @@ class Gioco:
                     media = sum(ultimi) / len(ultimi) if ultimi else 0
                     if self.livello < len(self.livelli) - 1:
                         self.livello += 1
+                        if self.livello > self.storia_progresso.get(self.config_storia_operazione, 0):
+                            self.storia_progresso[self.config_storia_operazione] = self.livello
+                            self.salva_config_profilo()
                         if media < self.timeout_limite / 2:
                             self.timeout_limite = max(3, self.timeout_limite - 1)
                     self.ritorno_gioco = True
@@ -905,7 +917,7 @@ class Gioco:
                     if mx < sx + lw:
                         self.livello_iniziale = max(0, self.livello_iniziale - 1)
                     elif mx >= sx + lw + vw:
-                        self.livello_iniziale = min(len(LIVELLI[self.config_storia_operazione]) - 1, self.livello_iniziale + 1)
+                        self.livello_iniziale = min(self.storia_progresso.get(self.config_storia_operazione, 0), self.livello_iniziale + 1)
                     self.salva_config_profilo()
                 # Operazione — 3 pulsanti
                 if hasattr(self, 'opzioni_auto_op_buttons') and len(self.opzioni_auto_op_buttons) == 3:
@@ -914,7 +926,7 @@ class Gioco:
                         if btn.collidepoint(mx, my):
                             self.opzioni_cursor = 2
                             self.config_storia_operazione = ops[i]
-                            self.livello_iniziale = min(self.livello_iniziale, len(LIVELLI[self.config_storia_operazione]) - 1)
+                            self.livello_iniziale = min(self.livello_iniziale, self.storia_progresso.get(self.config_storia_operazione, 0))
                             self.salva_config_profilo()
                             break
                 # CONFERMA
@@ -1337,7 +1349,18 @@ class Gioco:
                         self.storia_fade_alpha = 255
                         self.storia_fade_speed = 8
                     else:
-                        self.storia_idx += 1
+                        if self.livello_iniziale > 0:
+                            cnt = 0
+                            skip_to = None
+                            for i, e in enumerate(self.storia_entries):
+                                if e["tipo"] == "livello":
+                                    if cnt == self.livello_iniziale:
+                                        skip_to = i
+                                        break
+                                    cnt += 1
+                            self.storia_idx = skip_to if skip_to is not None else self.storia_idx + 1
+                        else:
+                            self.storia_idx += 1
                         self.mostra_storia()
             return
         if self.state not in ("gioco",):
@@ -1643,6 +1666,9 @@ class Gioco:
         self.screen.blit(plus, plus.get_rect(center=(sx + lw + vw + rw // 2, y + 17)))
         l_surf = self.font_tiny.render(str(self.livello_iniziale + 1), True, WHITE)
         self.screen.blit(l_surf, l_surf.get_rect(center=(sx + lw + vw // 2, y + 17)))
+        prog = self.storia_progresso.get(self.config_storia_operazione, 0)
+        prog_surf = self.font_tiny.render(f"(max {prog + 1})", True, GRAY)
+        self.screen.blit(prog_surf, prog_surf.get_rect(midleft=(sx + lw + vw + rw + 10, y + 17)))
 
         # Operazione
         y = 340
@@ -2093,6 +2119,7 @@ class Gioco:
                 f"Lives: {self.vite}",
                 f"Domande: {self.domande_fatte}/{'?' if self.modalita == 'fisso' else self.domande_livello}",
                 f"Tempo medio: {sum(self.tempi_risposta)/len(self.tempi_risposta):.1f}s" if self.tempi_risposta else "Tempo medio: --",
+                f"Timeout: {self.timeout_limite}s" + (f" (iniziale {self.tempo_limite_iniziale}s)" if self.modalita == 'auto' else ""),
                 f"Livello: {self.livello + 1}/{len(self.livelli)} (eff. {self.livello_effettivo() + 1})" if self.modalita == 'auto' else "Livello: -",
                 f"Operandi: {self.a} {segno_debug} {self.b}",
                 f"Prev: {self.prev_a} {segno_debug} {self.prev_b}",
