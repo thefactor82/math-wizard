@@ -103,6 +103,10 @@ class Gioco:
         self.splash_skip = False
         self.player_exit_retry = False
         self.ritorno_gioco = False
+        self.primo_livello_storia = True
+        self.entrata_personaggio = False
+        self.entrata_personaggio_start = 0
+        self.entrata_personaggio_x = 0
         self.debug = False
         self.debug_buf = ""
 
@@ -270,7 +274,7 @@ class Gioco:
                     break
         self.storia_idx = 0
 
-        self.version = "0.5.005"
+        self.version = "0.5.006"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -427,6 +431,7 @@ class Gioco:
         self.prev_a = -1
         self.prev_b = -1
         self.game_over = False
+        self.primo_livello_storia = True
         if self.modalita == "fisso":
             self.operazione = self.config_operazione
             self.somma_massima = self.cfg.get("somma_massima", 10)
@@ -448,7 +453,7 @@ class Gioco:
     def livello_effettivo(self):
         return min(self.livello + self.livello_iniziale, len(self.livelli) - 1)
 
-    def avvia_livello(self):
+    def avvia_livello(self, entrata=True):
         if self.modalita == "auto":
             lv = self.livello_effettivo()
             self.domande_livello = random.randint(8 + lv, 15 + lv)
@@ -456,7 +461,13 @@ class Gioco:
         self.tempi_risposta = []
         self.blocco_corrente = []
         self.timeout_gestito = False
-        self.nuova_domanda()
+        if entrata and (self.modalita == "fisso" or not self.primo_livello_storia):
+            self.entrata_personaggio = True
+            self.entrata_personaggio_start = pygame.time.get_ticks()
+            self.entrata_personaggio_x = -100
+        else:
+            self.primo_livello_storia = False
+            self.nuova_domanda()
 
     def mostra_storia(self):
         if self.storia_idx >= len(self.storia_entries):
@@ -1366,6 +1377,17 @@ class Gioco:
         if self.state not in ("gioco",):
             return
 
+        if self.entrata_personaggio:
+            elapsed = pygame.time.get_ticks() - self.entrata_personaggio_start
+            duration = 1200
+            progress = min(elapsed / duration, 1.0)
+            self.entrata_personaggio_x = -100 + (75 - (-100)) * progress
+            if progress >= 1.0:
+                self.entrata_personaggio = False
+                self.primo_livello_storia = False
+                self.nuova_domanda()
+            return
+
         if self.domanda_attiva:
             elapsed = (pygame.time.get_ticks() - self.inizio_domanda) / 1000.0
             self.mostro_progresso = min(elapsed / self.timeout_limite, 1.0)
@@ -1940,6 +1962,22 @@ class Gioco:
             self.screen.blit(self.gioco_bg, shake)
         else:
             self.screen.blit(self.gioco_bg, (0, 0))
+
+        if self.entrata_personaggio:
+            elapsed = pygame.time.get_ticks() - self.entrata_personaggio_start
+            frame_idx = (elapsed // 120) % 4
+            data = self.char_data.get(self.config_genere, self.char_data["F"])
+            char_img = data["run"][frame_idx]
+            cw, ch = char_img.get_size()
+            base_y = SCREEN_HEIGHT // 2 - ch // 2
+            wy = base_y + 130
+            self.screen.blit(char_img, (self.entrata_personaggio_x, wy))
+            if self.storia_fade_alpha > 0:
+                fade_surf = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+                fade_surf.set_alpha(self.storia_fade_alpha)
+                fade_surf.fill(self.storia_fade_color)
+                self.screen.blit(fade_surf, (0, 0))
+            return
 
         wx = 75 + shake[0]
         data = self.char_data.get(self.config_genere, self.char_data["F"])
