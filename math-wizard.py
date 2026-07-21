@@ -278,7 +278,7 @@ class Gioco:
                     break
         self.storia_idx = 0
 
-        self.version = "0.5.009"
+        self.version = "0.5.010"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -1398,7 +1398,9 @@ class Gioco:
             elapsed = pygame.time.get_ticks() - self.entrata_personaggio_start
             duration = 1200
             progress = min(elapsed / duration, 1.0)
-            self.entrata_personaggio_x = -100 + (75 - (-100)) * progress
+            end_x = 75
+            start_x = -100 if self.player_in_dir == "sx" else SCREEN_WIDTH + 80
+            self.entrata_personaggio_x = start_x + (end_x - start_x) * progress
             if progress >= 1.0:
                 self.entrata_personaggio = False
                 self.nuova_domanda()
