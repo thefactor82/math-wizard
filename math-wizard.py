@@ -279,7 +279,7 @@ class Gioco:
                     break
         self.storia_idx = 0
 
-        self.version = "0.5.011"
+        self.version = "0.5.012"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -439,6 +439,12 @@ class Gioco:
         if self.modalita == "fisso":
             bg_keys = [k for k in self.backgrounds if k not in ("menu", "options", "game")]
             self.gioco_bg = self.backgrounds[random.choice(bg_keys)] if bg_keys else self.bg
+            self.player_in_dir = "sx"
+            self.player_out_dir = "dx"
+            self.player_entrance = True
+            self.monster_in_dir = "dx"
+            self.player_flip = False
+            self.player_stand_x = 75
             self.operazione = self.config_operazione
             self.somma_massima = self.cfg.get("somma_massima", 10)
             self.differenza_positiva = self.cfg.get("differenza_positiva", True)
@@ -620,7 +626,7 @@ class Gioco:
             self.mostro_start_x = SCREEN_WIDTH + 30
         else:
             self.mostro_start_x = -130
-        self.mostro_end_x = (self.player_stand_x - 150) if self.monster_in_dir == "sx" else 225
+        self.mostro_end_x = (self.player_stand_x - 125) if self.monster_in_dir == "sx" else 225
         self.mostro_x = self.mostro_start_x
         self.mostro_colpito = False
         self.player_hit = False
