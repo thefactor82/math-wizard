@@ -277,7 +277,7 @@ class Gioco:
                     break
         self.storia_idx = 0
 
-        self.version = "0.5.007"
+        self.version = "0.5.008"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -435,6 +435,8 @@ class Gioco:
         self.prev_b = -1
         self.game_over = False
         if self.modalita == "fisso":
+            bg_keys = [k for k in self.backgrounds if k not in ("menu", "options", "game", "background_menu", "background_start")]
+            self.gioco_bg = self.backgrounds[random.choice(bg_keys)] if bg_keys else self.bg
             self.operazione = self.config_operazione
             self.somma_massima = self.cfg.get("somma_massima", 10)
             self.differenza_positiva = self.cfg.get("differenza_positiva", True)
