@@ -103,10 +103,13 @@ class Gioco:
         self.splash_skip = False
         self.player_exit_retry = False
         self.ritorno_gioco = False
-        self.primo_livello_storia = True
         self.entrata_personaggio = False
         self.entrata_personaggio_start = 0
         self.entrata_personaggio_x = 0
+        self.player_in_dir = "sx"
+        self.player_out_dir = "dx"
+        self.player_entrance = True
+        self.monster_in_dir = "dx"
         self.debug = False
         self.debug_buf = ""
 
@@ -274,7 +277,7 @@ class Gioco:
                     break
         self.storia_idx = 0
 
-        self.version = "0.5.006"
+        self.version = "0.5.007"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -431,7 +434,6 @@ class Gioco:
         self.prev_a = -1
         self.prev_b = -1
         self.game_over = False
-        self.primo_livello_storia = True
         if self.modalita == "fisso":
             self.operazione = self.config_operazione
             self.somma_massima = self.cfg.get("somma_massima", 10)
@@ -453,7 +455,7 @@ class Gioco:
     def livello_effettivo(self):
         return min(self.livello + self.livello_iniziale, len(self.livelli) - 1)
 
-    def avvia_livello(self, entrata=True):
+    def avvia_livello(self):
         if self.modalita == "auto":
             lv = self.livello_effettivo()
             self.domande_livello = random.randint(8 + lv, 15 + lv)
@@ -461,12 +463,11 @@ class Gioco:
         self.tempi_risposta = []
         self.blocco_corrente = []
         self.timeout_gestito = False
-        if entrata and (self.modalita == "fisso" or not self.primo_livello_storia):
+        if self.player_entrance:
             self.entrata_personaggio = True
             self.entrata_personaggio_start = pygame.time.get_ticks()
-            self.entrata_personaggio_x = -100
+            self.entrata_personaggio_x = -100 if self.player_in_dir == "sx" else SCREEN_WIDTH + 80
         else:
-            self.primo_livello_storia = False
             self.nuova_domanda()
 
     def mostra_storia(self):
@@ -480,6 +481,10 @@ class Gioco:
             self.storia_monsters = entry.get("monsters", list(range(1, 9)))
             bg_name = entry.get("bg", "game")
             self.storia_prossimo_bg = self.backgrounds.get(bg_name, self.bg)
+            self.player_in_dir = entry.get("player_in", "sx")
+            self.player_out_dir = entry.get("player_out", "dx")
+            self.player_entrance = entry.get("player_entrance", "y") == "y"
+            self.monster_in_dir = entry.get("monster_in", "dx")
             self.storia_testo_completo = ""
             self.storia_caratteri_mostrati = 0
             if self.storia_fade_alpha >= 255:
@@ -601,7 +606,12 @@ class Gioco:
         self.monster_img = self.monster_frames[0]
         self.input_utente = ""
         self.mostro_progresso = 0.0
-        self.mostro_x = SCREEN_WIDTH + 30
+        if self.monster_in_dir == "dx":
+            self.mostro_start_x = SCREEN_WIDTH + 30
+        else:
+            self.mostro_start_x = -130
+        self.mostro_end_x = 225
+        self.mostro_x = self.mostro_start_x
         self.mostro_colpito = False
         self.player_hit = False
         self.monster_anim_frame = 0
@@ -1384,16 +1394,13 @@ class Gioco:
             self.entrata_personaggio_x = -100 + (75 - (-100)) * progress
             if progress >= 1.0:
                 self.entrata_personaggio = False
-                self.primo_livello_storia = False
                 self.nuova_domanda()
             return
 
         if self.domanda_attiva:
             elapsed = (pygame.time.get_ticks() - self.inizio_domanda) / 1000.0
             self.mostro_progresso = min(elapsed / self.timeout_limite, 1.0)
-            start_x = SCREEN_WIDTH + 30
-            end_x = 225
-            self.mostro_x = start_x - self.mostro_progresso * (start_x - end_x)
+            self.mostro_x = self.mostro_start_x + (self.mostro_end_x - self.mostro_start_x) * self.mostro_progresso
 
             if self.mostro_progresso >= 1.0:
                 self.gestisci_timeout()
@@ -2278,7 +2285,10 @@ class Gioco:
             start_x = SCREEN_WIDTH // 2 - cw // 2
         else:
             start_x = 75
-        end_x = SCREEN_WIDTH + 200
+        if self.player_out_dir == "dx":
+            end_x = SCREEN_WIDTH + 200
+        else:
+            end_x = -200
         self.player_exit_x = start_x + (end_x - start_x) * progress
         base_y = SCREEN_HEIGHT // 2 - ch // 2
         wy = base_y + 130
