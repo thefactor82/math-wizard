@@ -110,6 +110,7 @@ class Gioco:
         self.player_out_dir = "dx"
         self.player_entrance = True
         self.monster_in_dir = "dx"
+        self.player_flip = False
         self.debug = False
         self.debug_buf = ""
 
@@ -164,11 +165,11 @@ class Gioco:
         self.char_h = self.char_img.get_height()
 
     def carica_risorse(self):
-        bg_game = pygame.image.load(resource_path("graphics/backgrounds/background.png"))
+        bg_game = pygame.image.load(resource_path("graphics/backgrounds/background1.png"))
         self.bg = pygame.transform.scale(bg_game, (SCREEN_WIDTH, SCREEN_HEIGHT))
-        bg_menu = pygame.image.load(resource_path("graphics/backgrounds/background_menu.png"))
+        bg_menu = pygame.image.load(resource_path("graphics/MISC/background_menu.png"))
         self.bg_menu = pygame.transform.scale(bg_menu, (SCREEN_WIDTH, SCREEN_HEIGHT))
-        bg_opt = pygame.image.load(resource_path("graphics/backgrounds/background_options.png"))
+        bg_opt = pygame.image.load(resource_path("graphics/MISC/background_options.png"))
         self.bg_options = pygame.transform.scale(bg_opt, (SCREEN_WIDTH, SCREEN_HEIGHT))
 
         self.backgrounds = {}
@@ -277,7 +278,7 @@ class Gioco:
                     break
         self.storia_idx = 0
 
-        self.version = "0.5.008"
+        self.version = "0.5.009"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -435,7 +436,7 @@ class Gioco:
         self.prev_b = -1
         self.game_over = False
         if self.modalita == "fisso":
-            bg_keys = [k for k in self.backgrounds if k not in ("menu", "options", "game", "background_menu", "background_start")]
+            bg_keys = [k for k in self.backgrounds if k not in ("menu", "options", "game")]
             self.gioco_bg = self.backgrounds[random.choice(bg_keys)] if bg_keys else self.bg
             self.operazione = self.config_operazione
             self.somma_massima = self.cfg.get("somma_massima", 10)
@@ -487,6 +488,7 @@ class Gioco:
             self.player_out_dir = entry.get("player_out", "dx")
             self.player_entrance = entry.get("player_entrance", "y") == "y"
             self.monster_in_dir = entry.get("monster_in", "dx")
+            self.player_flip = (self.player_in_dir == "dx")
             self.storia_testo_completo = ""
             self.storia_caratteri_mostrati = 0
             if self.storia_fade_alpha >= 255:
@@ -605,6 +607,9 @@ class Gioco:
         self.mostro_precedente = scelto
         self.monster_frames = scelto["frames"]
         self.monster_hit_img = scelto["hit"]
+        if self.monster_in_dir == "sx":
+            self.monster_frames = [pygame.transform.flip(f, True, False) for f in self.monster_frames]
+            self.monster_hit_img = pygame.transform.flip(self.monster_hit_img, True, False)
         self.monster_img = self.monster_frames[0]
         self.input_utente = ""
         self.mostro_progresso = 0.0
@@ -1977,6 +1982,8 @@ class Gioco:
             frame_idx = (elapsed // 120) % 4
             data = self.char_data.get(self.config_genere, self.char_data["F"])
             char_img = data["run"][frame_idx]
+            if self.player_in_dir == "dx":
+                char_img = pygame.transform.flip(char_img, True, False)
             cw, ch = char_img.get_size()
             base_y = SCREEN_HEIGHT // 2 - ch // 2
             wy = base_y + 130
@@ -1997,6 +2004,8 @@ class Gioco:
         else:
             frame_idx = (pygame.time.get_ticks() // 400) % 2
             char_img = data["idle"][frame_idx]
+        if self.player_flip:
+            char_img = pygame.transform.flip(char_img, True, False)
         cw, ch = char_img.get_size()
         base_y = SCREEN_HEIGHT // 2 - ch // 2
         wy = base_y + 130 + shake[1]
@@ -2282,6 +2291,8 @@ class Gioco:
         frame_idx = (elapsed // 200) % 4
         data = self.char_data.get(self.config_genere, self.char_data["F"])
         char_img = data["run"][frame_idx]
+        if self.player_out_dir == "sx":
+            char_img = pygame.transform.flip(char_img, True, False)
         cw, ch = char_img.get_size()
         if self.player_exit_retry:
             start_x = SCREEN_WIDTH // 2 - cw // 2

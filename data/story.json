@@ -1,23 +1,26 @@
 [
   {
     "tipo": "testo",
-    "bg": "background_menu",
+    "bg": "background1",
     "testo": "NOMEPROFILOINUSO vive nel regno di Math, un posto pacifico e tranquillo, dove le giornate scorrono serene.\n\nMa come in ogni regno succede, anche a Math ci sono alcuni problemi...\n\nGli Hop, dei simpatici mostriciattoli, passano le loro dispettose giornate ad importunare gli abitanti di Math con le loro...\n\nOperazioni!"
   },
   {
     "tipo": "testo",
-    "bg": "background_start",
+    "bg": "background0",
     "testo": "NOMEPROFILOINUSO si è appena svegliat-o-a- per quella che è un'importantissima giornata...\n\nIl Re ha espressamente chiesto di vederl-o-a-!\n\nNOMEPROFILOINUSO non vede l'ora di arrivare al castello, ma dovrà affrontare un lungo sentiero, e probabilmente parecchi Hop che verranno a disturbarl-o-a-..."
   },
   {
     "tipo": "livello",
-    "bg": "background_start",
+    "bg": "background0",
     "monsters": [1,2,8],
-    "player_entrance": "n"
+    "player_in": "dx",
+    "player_out": "sx",
+    "player_entrance": "y",
+    "monster_in": "sx"
   },
   {
     "tipo": "livello",
-    "bg": "background",
+    "bg": "background1",
     "monsters": [1,2,3,4,6,8],
     "player_in": "sx",
     "player_out": "dx",
