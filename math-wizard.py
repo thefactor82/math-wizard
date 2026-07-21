@@ -111,6 +111,7 @@ class Gioco:
         self.player_entrance = True
         self.monster_in_dir = "dx"
         self.player_flip = False
+        self.player_stand_x = 75
         self.debug = False
         self.debug_buf = ""
 
@@ -162,7 +163,7 @@ class Gioco:
     def aggiorna_char_img(self):
         data = self.char_data.get(self.config_genere, self.char_data["F"])
         self.char_img = data["idle"][0]
-        self.char_h = self.char_img.get_height()
+        self.char_w, self.char_h = self.char_img.get_size()
 
     def carica_risorse(self):
         bg_game = pygame.image.load(resource_path("graphics/backgrounds/background1.png"))
@@ -278,7 +279,7 @@ class Gioco:
                     break
         self.storia_idx = 0
 
-        self.version = "0.5.010"
+        self.version = "0.5.011"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -469,7 +470,8 @@ class Gioco:
         if self.player_entrance:
             self.entrata_personaggio = True
             self.entrata_personaggio_start = pygame.time.get_ticks()
-            self.entrata_personaggio_x = -100 if self.player_in_dir == "sx" else SCREEN_WIDTH + 80
+            start_x = -100 if self.player_in_dir == "sx" else SCREEN_WIDTH + 80
+            self.entrata_personaggio_x = start_x
         else:
             self.nuova_domanda()
 
@@ -489,6 +491,7 @@ class Gioco:
             self.player_entrance = entry.get("player_entrance", "y") == "y"
             self.monster_in_dir = entry.get("monster_in", "dx")
             self.player_flip = (self.player_in_dir == "dx")
+            self.player_stand_x = (SCREEN_WIDTH - 75 - self.char_w) if self.player_flip else 75
             self.storia_testo_completo = ""
             self.storia_caratteri_mostrati = 0
             if self.storia_fade_alpha >= 255:
@@ -617,7 +620,7 @@ class Gioco:
             self.mostro_start_x = SCREEN_WIDTH + 30
         else:
             self.mostro_start_x = -130
-        self.mostro_end_x = 225
+        self.mostro_end_x = (self.player_stand_x - 150) if self.monster_in_dir == "sx" else 225
         self.mostro_x = self.mostro_start_x
         self.mostro_colpito = False
         self.player_hit = False
@@ -1398,7 +1401,7 @@ class Gioco:
             elapsed = pygame.time.get_ticks() - self.entrata_personaggio_start
             duration = 1200
             progress = min(elapsed / duration, 1.0)
-            end_x = 75
+            end_x = self.player_stand_x
             start_x = -100 if self.player_in_dir == "sx" else SCREEN_WIDTH + 80
             self.entrata_personaggio_x = start_x + (end_x - start_x) * progress
             if progress >= 1.0:
@@ -1997,7 +2000,7 @@ class Gioco:
                 self.screen.blit(fade_surf, (0, 0))
             return
 
-        wx = 75 + shake[0]
+        wx = self.player_stand_x + shake[0]
         data = self.char_data.get(self.config_genere, self.char_data["F"])
         if self.player_hit:
             char_img = data["hit"]
@@ -2015,7 +2018,8 @@ class Gioco:
         self.screen.blit(char_img, (wx, wy))
 
         if self.domanda_attiva and self.input_utente:
-            glow_x, glow_y = wx + 30, wy + 40
+            wand_x = wx + cw - 30 if self.player_flip else wx + 30
+            glow_x, glow_y = wand_x, wy + 40
             base_col = (235, 220, 255) if self.config_genere == "F" else (220, 255, 220)
             t = pygame.time.get_ticks()
             radius = 12 + int(4 * abs((t % 600) / 300 - 1))
@@ -2044,7 +2048,7 @@ class Gioco:
             self.screen.blit(self.monster_frames[self.monster_anim_frame], (self.mostro_x + shake[0], wy_monster))
 
         if self.zap_timer > 0:
-            start_x, start_y = wx + 30, wy + 40
+            start_x, start_y = (wx + cw - 30) if self.player_flip else (wx + 30), wy + 40
             if self.zap_reverse:
                 end_x, end_y = wx + cw // 2, wy + ch // 2
             else:
@@ -2299,7 +2303,7 @@ class Gioco:
         if self.player_exit_retry:
             start_x = SCREEN_WIDTH // 2 - cw // 2
         else:
-            start_x = 75
+            start_x = self.player_stand_x
         if self.player_out_dir == "dx":
             end_x = SCREEN_WIDTH + 200
         else:
