@@ -225,9 +225,9 @@ class Gioco:
         self.boss_data = None
         boss_path = resource_path("graphics/monsters/monster99.png")
         if os.path.exists(boss_path):
-            boss_walk = self.carica_spritesheet(boss_path, 260, 2, row=0, rows=2, cols=4, frame_offset=0, flip_x=False)
-            boss_hit = self.carica_spritesheet(boss_path, 260, 1, row=1, rows=2, cols=4, frame_offset=0, flip_x=False)[0]
-            boss_defeated = self.carica_spritesheet(boss_path, 260, 1, row=1, rows=2, cols=4, frame_offset=1, flip_x=False)[0]
+            boss_walk = self.carica_spritesheet(boss_path, 390, 2, row=0, rows=2, cols=2, frame_offset=0, flip_x=False)
+            boss_hit = self.carica_spritesheet(boss_path, 390, 1, row=1, rows=2, cols=2, frame_offset=0, flip_x=False)[0]
+            boss_defeated = self.carica_spritesheet(boss_path, 390, 1, row=1, rows=2, cols=2, frame_offset=1, flip_x=False)[0]
             self.boss_data = {"walk": boss_walk, "hit": boss_hit, "defeated": boss_defeated}
 
         self.heart_red = pygame.transform.scale(pygame.image.load(resource_path("graphics/misc/lives.png")).convert_alpha(), (35, 35))
@@ -295,7 +295,7 @@ class Gioco:
                     break
         self.storia_idx = 0
 
-        self.version = "0.5.018"
+        self.version = "0.5.019"
 
         self.profili = []
         self.profilo_corrente = ""
