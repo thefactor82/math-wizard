@@ -285,7 +285,7 @@ class Gioco:
                     break
         self.storia_idx = 0
 
-        self.version = "0.5.013"
+        self.version = "0.5.014"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -393,6 +393,9 @@ class Gioco:
         self.game_over = False
         self.inizio_domanda = 0
         self.timeout_gestito = False
+        self.consecutive_correct = 0
+        self.heart_reward_active = False
+        self.heart_reward_start = 0
 
         self.menu_cursor = 0
         self.opzioni_cursor = 0
@@ -432,6 +435,9 @@ class Gioco:
         self.storia_fase = "show"
         self.storia_fade_color = (0, 0, 0)
         self.storia_primo_step = True
+        self.consecutive_correct = 0
+        self.heart_reward_active = False
+        self.heart_reward_start = 0
         self.tempi_risposta = []
         self.blocco_corrente = []
         self.coda_rinforzo = deque()
@@ -1297,6 +1303,18 @@ class Gioco:
         if self.vite <= 0:
             self.game_over = True
 
+        if self.corretto:
+            self.consecutive_correct += 1
+            if self.consecutive_correct >= 30 and self.vite < VITE_MAGO and not self.game_over:
+                self.vite += 1
+                self.consecutive_correct = 0
+                self.heart_reward_active = True
+                self.heart_reward_start = pygame.time.get_ticks()
+            elif self.consecutive_correct >= 30:
+                self.consecutive_correct = 0
+        else:
+            self.consecutive_correct = 0
+
         self.blocco_corrente.append((self.corretto, tempo))
         self.stats[livello]["tempi"].append(tempo)
         self.domanda_attiva = False
@@ -1331,6 +1349,7 @@ class Gioco:
         self.zap_reverse = True
         self.player_hit = True
         self.hit_timer = 12
+        self.consecutive_correct = 0
         if self.vite <= 0:
             self.game_over = True
 
@@ -2182,6 +2201,21 @@ class Gioco:
             flash.fill(RED)
             self.screen.blit(flash, (0, 0))
 
+        if self.heart_reward_active:
+            elapsed = pygame.time.get_ticks() - self.heart_reward_start
+            duration = 800
+            if elapsed < duration:
+                progress = elapsed / duration
+                alpha = int(255 * min(1.0, progress * 4) * max(0, 1.0 - progress))
+                rise = int(120 * progress)
+                heart_img = self.heart_red.copy()
+                heart_img.set_alpha(alpha)
+                hx = self.mostro_x + 65
+                hy = wy_monster - rise
+                self.screen.blit(heart_img, (hx, hy))
+            else:
+                self.heart_reward_active = False
+
         if self.debug:
             label = self.font_stats.render("DEBUG ON", True, (0, 255, 255))
             rect = label.get_rect(bottomright=(SCREEN_WIDTH - 15, SCREEN_HEIGHT - 15))
@@ -2210,6 +2244,7 @@ class Gioco:
                 f"Pool B: {self.livelli[self.livello_effettivo()]['pool_b'] if self.modalita == 'auto' else self.pool_b}",
                 f"Coda rinforzo: {list(self.coda_rinforzo)}",
                 f"Progresso mostro: {self.mostro_progresso:.2f}" + (f"  Tempo: {(pygame.time.get_ticks() - self.inizio_domanda)/1000:.1f}s" if self.domanda_attiva else ""),
+                f"Consecutive: {self.consecutive_correct}",
             ]
             bg = pygame.Surface((380, len(lines) * 22 + 10))
             bg.set_alpha(200)

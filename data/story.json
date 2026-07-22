@@ -12,8 +12,7 @@
   {
     "tipo": "livello",
     "bg": "background0",
-    "monsters": [9,10,11],
-    "flying": [9,10,11],
+    "monsters": [1,2,8],
     "player_in": "sx",
     "player_out": "dx",
     "player_entrance": "n",
@@ -40,8 +39,7 @@
   {
     "tipo": "livello",
     "bg": "background3",
-    "monsters": [1,2,3,4,5,6,8,9],
-    "flying": [9],
+    "monsters": [1,2,3,4,5,6,8],
     "player_in": "sx",
     "player_out": "dx",
     "player_entrance": "y",
@@ -50,8 +48,27 @@
   {
     "tipo": "livello",
     "bg": "background5",
-    "monsters": [1,2,3,4,5,6,8,9],
-    "flying": [9],
+    "monsters": [1,2,3,4,5,6,8],
+    "player_in": "sx",
+    "player_out": "dx",
+    "player_entrance": "y",
+    "monster_in": "dx"
+  },
+  {
+    "tipo": "livello",
+    "bg": "background6",
+    "monsters": [3,7,9,10,11],
+    "flying": [9,10,11],
+    "player_in": "sx",
+    "player_out": "dx",
+    "player_entrance": "y",
+    "monster_in": "dx"
+  },
+  {
+    "tipo": "livello",
+    "bg": "background7",
+    "monsters": [3,7,9,10,11],
+    "flying": [9,10,11],
     "player_in": "sx",
     "player_out": "dx",
     "player_entrance": "y",
