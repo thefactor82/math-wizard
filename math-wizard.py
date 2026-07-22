@@ -4,6 +4,7 @@ import sys
 import os
 import json
 import re
+import math
 from datetime import datetime
 from collections import deque
 
@@ -112,6 +113,8 @@ class Gioco:
         self.monster_in_dir = "dx"
         self.player_flip = False
         self.player_stand_x = 75
+        self.mostro_tipo = "walk"
+        self.mostro_y_offset = 0
         self.debug = False
         self.debug_buf = ""
 
@@ -202,11 +205,14 @@ class Gioco:
         self.char_anim_frame = 0
 
         self.mostri = []
-        for mi in range(1, 9):
-            path = resource_path(f"graphics/monsters/monster{mi}.png")
-            frames = self.carica_spritesheet(path, 200, 4, row=0, rows=2, cols=4)
-            hit = self.carica_spritesheet(path, 200, 1, row=1, rows=2, cols=4, frame_offset=3)[0]
-            self.mostri.append({"frames": frames, "hit": hit, "idx": mi})
+        monster_dir = resource_path("graphics/monsters")
+        for fname in sorted(os.listdir(monster_dir)):
+            if fname.lower().startswith("monster") and fname.lower().endswith(".png"):
+                mi = int(fname.replace("monster", "").replace(".png", "").replace("M", ""))
+                path = os.path.join(monster_dir, fname)
+                frames = self.carica_spritesheet(path, 200, 4, row=0, rows=2, cols=4)
+                hit = self.carica_spritesheet(path, 200, 1, row=1, rows=2, cols=4, frame_offset=3)[0]
+                self.mostri.append({"frames": frames, "hit": hit, "idx": mi})
         self.monster_frames = self.mostri[0]["frames"]
         self.monster_hit_img = self.mostri[0]["hit"]
         self.monster_img = self.monster_frames[0]
@@ -279,7 +285,7 @@ class Gioco:
                     break
         self.storia_idx = 0
 
-        self.version = "0.5.012"
+        self.version = "0.5.013"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -418,7 +424,8 @@ class Gioco:
             self.livello = 0
         self.storia_idx = 0
         self.storia_is_livello = False
-        self.storia_monsters = list(range(1, 9))
+        self.storia_monsters = list(range(1, 10))
+        self.storia_flying_monsters = []
         self.storia_fade_speed = 8
         self.storia_prossimo_bg = None
         self.storia_fade_alpha = 0
@@ -489,7 +496,8 @@ class Gioco:
         if entry["tipo"] == "livello":
             self.state = "storia"
             self.storia_is_livello = True
-            self.storia_monsters = entry.get("monsters", list(range(1, 9)))
+            self.storia_monsters = entry.get("monsters", list(range(1, 10)))
+            self.storia_flying_monsters = entry.get("flying", [])
             bg_name = entry.get("bg", "game")
             self.storia_prossimo_bg = self.backgrounds.get(bg_name, self.bg)
             self.player_in_dir = entry.get("player_in", "sx")
@@ -614,6 +622,8 @@ class Gioco:
             mostri_disponibili = self.mostri
         scelto = random.choice([m for m in mostri_disponibili if m is not self.mostro_precedente]) if len(mostri_disponibili) > 1 else mostri_disponibili[0]
         self.mostro_precedente = scelto
+        self.mostro_tipo = "fly" if scelto["idx"] in self.storia_flying_monsters else "walk"
+        self.mostro_y_offset = 0
         self.monster_frames = scelto["frames"]
         self.monster_hit_img = scelto["hit"]
         if self.monster_in_dir == "sx":
@@ -1419,6 +1429,10 @@ class Gioco:
             elapsed = (pygame.time.get_ticks() - self.inizio_domanda) / 1000.0
             self.mostro_progresso = min(elapsed / self.timeout_limite, 1.0)
             self.mostro_x = self.mostro_start_x + (self.mostro_end_x - self.mostro_start_x) * self.mostro_progresso
+            if self.mostro_tipo == "fly":
+                self.mostro_y_offset = 30 * math.sin(self.mostro_progresso * 6 * math.pi)
+            else:
+                self.mostro_y_offset = 0
 
             if self.mostro_progresso >= 1.0:
                 self.gestisci_timeout()
@@ -2020,7 +2034,7 @@ class Gioco:
         cw, ch = char_img.get_size()
         base_y = SCREEN_HEIGHT // 2 - ch // 2
         wy = base_y + 130 + shake[1]
-        wy_monster = base_y + 170 + 35
+        wy_monster = base_y + 170 + 35 + self.mostro_y_offset
         self.screen.blit(char_img, (wx, wy))
 
         if self.domanda_attiva and self.input_utente:
