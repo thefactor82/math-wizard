@@ -285,7 +285,7 @@ class Gioco:
                     break
         self.storia_idx = 0
 
-        self.version = "0.5.016"
+        self.version = "0.5.017"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -1620,8 +1620,8 @@ class Gioco:
         self.screen.blit(sottotitolo, rect)
 
         opzioni = [
-            ("Storia", "Livelli progressivi automatici, operandi 0-12, level-up basato su precisione e velocita"),
-            ("Allenamento", "Scegli operandi, numero domande e sfida a difficolta costante"),
+            ("Storia", "Affronta un'avventura nel regno di Math, con incremento automatico della difficoltà."),
+            ("Allenamento", "Scegli le varie impostazioni per una sfida breve a difficoltà costante"),
         ]
         for i, (tit, desc) in enumerate(opzioni):
             y = 280 + i * 100
