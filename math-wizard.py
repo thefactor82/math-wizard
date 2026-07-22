@@ -209,6 +209,8 @@ class Gioco:
         for fname in sorted(os.listdir(monster_dir)):
             if fname.lower().startswith("monster") and fname.lower().endswith(".png"):
                 mi = int(fname.replace("monster", "").replace(".png", "").replace("M", ""))
+                if mi == 99:
+                    continue
                 path = os.path.join(monster_dir, fname)
                 frames = self.carica_spritesheet(path, 200, 4, row=0, rows=2, cols=4)
                 hit = self.carica_spritesheet(path, 200, 1, row=1, rows=2, cols=4, frame_offset=3)[0]
@@ -219,6 +221,14 @@ class Gioco:
         self.monster_anim_speed = 150
         self.mostro_hit_delay = 150
         self.mostro_precedente = None
+
+        self.boss_data = None
+        boss_path = resource_path("graphics/monsters/monster99.png")
+        if os.path.exists(boss_path):
+            boss_walk = self.carica_spritesheet(boss_path, 260, 2, row=0, rows=2, cols=4, frame_offset=0, flip_x=False)
+            boss_hit = self.carica_spritesheet(boss_path, 260, 1, row=1, rows=2, cols=4, frame_offset=0, flip_x=False)[0]
+            boss_defeated = self.carica_spritesheet(boss_path, 260, 1, row=1, rows=2, cols=4, frame_offset=1, flip_x=False)[0]
+            self.boss_data = {"walk": boss_walk, "hit": boss_hit, "defeated": boss_defeated}
 
         self.heart_red = pygame.transform.scale(pygame.image.load(resource_path("graphics/misc/lives.png")).convert_alpha(), (35, 35))
         self.heart_grey = pygame.transform.scale(pygame.image.load(resource_path("graphics/misc/lives_lost.png")).convert_alpha(), (35, 35))
@@ -285,7 +295,7 @@ class Gioco:
                     break
         self.storia_idx = 0
 
-        self.version = "0.5.017"
+        self.version = "0.5.018"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -396,6 +406,30 @@ class Gioco:
         self.consecutive_correct = 0
         self.heart_reward_active = False
         self.heart_reward_start = 0
+
+        self.boss_active = False
+        self.boss_fase = None
+        self.boss_x = 0.0
+        self.boss_start_x = 0.0
+        self.boss_end_x = 0.0
+        self.boss_y = 0
+        self.boss_progresso = 0.0
+        self.boss_domande_fatte = 0
+        self.boss_domande_totali = 10
+        self.boss_timeout = 60
+        self.boss_frames = []
+        self.boss_hit_img = None
+        self.boss_defeated_img = None
+        self.boss_colpito = False
+        self.boss_fade_start = 0
+        self.boss_in_dir = "dx"
+        self.boss_flip = False
+        self.boss_anim_frame = 0
+        self.boss_anim_speed = 150
+        self.boss_colpito_start = 0
+        self.boss_defeated_start = 0
+        self.boss_defeated_timer = 0
+        self.boss_entrance_start = 0
 
         self.menu_cursor = 0
         self.opzioni_cursor = 0
@@ -512,6 +546,32 @@ class Gioco:
             self.monster_in_dir = entry.get("monster_in", "dx")
             self.player_flip = (self.player_in_dir == "dx")
             self.player_stand_x = (SCREEN_WIDTH - 75 - self.char_w) if self.player_flip else 75
+
+            boss_name = entry.get("boss")
+            if boss_name and self.boss_data:
+                self.boss_active = True
+                self.boss_fase = None
+                self.boss_in_dir = entry.get("boss_in", "dx")
+                self.boss_flip = (self.boss_in_dir == "sx")
+                self.boss_frames = [pygame.transform.flip(f, True, False) for f in self.boss_data["walk"]] if self.boss_flip else self.boss_data["walk"]
+                self.boss_hit_img = pygame.transform.flip(self.boss_data["hit"], True, False) if self.boss_flip else self.boss_data["hit"]
+                self.boss_defeated_img = pygame.transform.flip(self.boss_data["defeated"], True, False) if self.boss_flip else self.boss_data["defeated"]
+                self.boss_colpito = False
+                self.boss_fade_start = 0
+                self.boss_domande_fatte = 0
+                self.boss_progresso = 0.0
+                self.boss_anim_frame = 0
+                boss_w = self.boss_hit_img.get_width()
+                if not self.boss_flip:
+                    self.boss_end_x = float(SCREEN_WIDTH - 75 - boss_w)
+                    self.boss_start_x = float(SCREEN_WIDTH + 30)
+                else:
+                    self.boss_end_x = 75.0
+                    self.boss_start_x = float(-boss_w - 30)
+                self.boss_x = self.boss_start_x
+            else:
+                self.boss_active = False
+
             self.storia_testo_completo = ""
             self.storia_caratteri_mostrati = 0
             if self.storia_fade_alpha >= 255:
@@ -552,9 +612,55 @@ class Gioco:
     def nuova_domanda(self):
         if self.vite <= 0:
             return
+
+        if self.boss_active and self.boss_fase == "fight":
+            if self.boss_domande_fatte >= self.boss_domande_totali:
+                self.boss_fase = "defeated"
+                self.boss_defeated_start = pygame.time.get_ticks()
+                self.boss_defeated_timer = 0
+                return
+            self.prev_a, self.prev_b = self.a, self.b
+            lv = self.livello_effettivo()
+            lv_data = self.livelli[lv]
+            self.operazione = self.config_storia_operazione
+            self.a, self.b = genera_operandi(lv_data["pool_a"], lv_data["pool_b"], self.coda_rinforzo)
+            if self.operazione == "sottrazione" and self.a < self.b:
+                self.a, self.b = self.b, self.a
+            if (self.a, self.b) == (self.prev_a, self.prev_b):
+                self.a, self.b = self.b, self.a
+            if self.operazione == "addizione":
+                self.risultato_atteso = self.a + self.b
+            elif self.operazione == "sottrazione":
+                self.risultato_atteso = self.a - self.b
+            else:
+                self.risultato_atteso = self.a * self.b
+            self.boss_domande_fatte += 1
+            self.domanda_attiva = True
+            self.input_utente = ""
+            self.mostro_progresso = 0.0
+            self.mostro_colpito = False
+            self.boss_colpito = False
+            self.monster_img = self.monster_frames[0]
+            self.inizio_domanda = pygame.time.get_ticks()
+            self.timeout_limite = self.boss_timeout
+            self.timeout_gestito = False
+            self.feedback = None
+            self.feedback_timer = 0
+            self.zap_timer = 0
+            self.zap_reverse = False
+            self.player_hit = False
+            self.hit_timer = 0
+            self.corretto = False
+            return
+
         self.prev_a, self.prev_b = self.a, self.b
         if self.modalita == "auto":
             if self.domande_fatte >= self.domande_livello:
+                if self.boss_active:
+                    self.boss_fase = "entrance"
+                    self.boss_x = self.boss_start_x
+                    self.boss_entrance_start = pygame.time.get_ticks()
+                    return
                 self.salva_sessione()
                 self.state = "level_complete"
                 return
@@ -1272,10 +1378,15 @@ class Gioco:
             if risposta == self.risultato_atteso:
                 self.corretto = True
                 self.stats[livello]["corrette"] += 1
-                self.mostro_colpito = True
-                self.mostro_fade_start = pygame.time.get_ticks()
-                self.monster_img = self.monster_hit_img
-                self.zap_timer = 12
+                if self.boss_active and self.boss_fase == "fight":
+                    self.boss_colpito = True
+                    self.boss_colpito_start = pygame.time.get_ticks()
+                    self.zap_timer = 12
+                else:
+                    self.mostro_colpito = True
+                    self.mostro_fade_start = pygame.time.get_ticks()
+                    self.monster_img = self.monster_hit_img
+                    self.zap_timer = 12
             else:
                 self.corretto = False
                 self.stats[livello]["sbagliate"] += 1
@@ -1447,6 +1558,62 @@ class Gioco:
             if progress >= 1.0:
                 self.entrata_personaggio = False
                 self.nuova_domanda()
+            return
+
+        if self.boss_active and self.boss_fase == "entrance":
+            elapsed = pygame.time.get_ticks() - self.boss_entrance_start
+            duration = 800
+            progress = min(elapsed / duration, 1.0)
+            ease = 1 - (1 - progress) ** 3
+            self.boss_x = self.boss_start_x + (self.boss_end_x - self.boss_start_x) * ease
+            if progress >= 1.0:
+                self.boss_fase = "fight"
+                self.boss_progresso = 0.0
+                self.boss_domande_fatte = 0
+                self.boss_colpito = False
+                self.nuova_domanda()
+            return
+
+        if self.boss_active and self.boss_fase == "fight":
+            if self.boss_colpito:
+                hit_elapsed = pygame.time.get_ticks() - self.boss_colpito_start
+                if hit_elapsed > 500:
+                    self.boss_colpito = False
+            if self.domanda_attiva:
+                elapsed = (pygame.time.get_ticks() - self.inizio_domanda) / 1000.0
+                self.boss_progresso = min(elapsed / self.boss_timeout, 1.0)
+                boss_w = self.boss_hit_img.get_width()
+                if not self.boss_flip:
+                    fight_end = float(SCREEN_WIDTH - 75 - boss_w)
+                else:
+                    fight_end = 75.0
+                self.boss_x = self.boss_end_x + (fight_end - self.boss_end_x) * self.boss_progresso
+                if not self.boss_colpito:
+                    self.boss_anim_frame = (pygame.time.get_ticks() // self.boss_anim_speed) % len(self.boss_frames)
+                if self.boss_progresso >= 1.0:
+                    self.gestisci_timeout()
+            else:
+                if not self.attendi_invio:
+                    if self.feedback is not None and pygame.time.get_ticks() - self.feedback_timer > 1500:
+                        if self.game_over:
+                            self.salva_sessione()
+                            self.state = "gameover"
+                        else:
+                            self.nuova_domanda()
+            return
+
+        if self.boss_active and self.boss_fase == "defeated":
+            elapsed = pygame.time.get_ticks() - self.boss_defeated_start
+            if elapsed < 1500:
+                self.boss_defeated_timer = elapsed
+            else:
+                fade_elapsed = elapsed - 1500
+                alpha = max(0, 255 - int(fade_elapsed / 1500 * 255))
+                if alpha <= 0:
+                    self.boss_active = False
+                    self.boss_fase = None
+                    self.salva_sessione()
+                    self.state = "level_complete"
             return
 
         if self.domanda_attiva:
@@ -2076,7 +2243,28 @@ class Gioco:
                 pygame.draw.circle(surf, (*col, alpha), (r, r), r)
                 self.screen.blit(surf, (glow_x - r, glow_y - r))
 
-        if self.mostro_colpito:
+        if self.boss_active and self.boss_fase in ("entrance", "fight", "defeated"):
+            boss_img = None
+            if self.boss_fase == "defeated":
+                elapsed_def = pygame.time.get_ticks() - self.boss_defeated_start
+                if elapsed_def < 1500:
+                    boss_img = self.boss_defeated_img
+                else:
+                    fade_elapsed = elapsed_def - 1500
+                    alpha = max(0, 255 - int(fade_elapsed / 1500 * 255))
+                    if alpha > 0:
+                        boss_img = self.boss_defeated_img.copy()
+                        boss_img.set_alpha(alpha)
+            elif self.boss_colpito:
+                boss_img = self.boss_hit_img
+            else:
+                boss_img = self.boss_frames[self.boss_anim_frame % len(self.boss_frames)]
+            if boss_img:
+                bw, bh = boss_img.get_size()
+                boss_draw_x = self.boss_x + shake[0]
+                boss_draw_y = wy_monster
+                self.screen.blit(boss_img, (boss_draw_x, boss_draw_y))
+        elif self.mostro_colpito:
             elapsed = pygame.time.get_ticks() - self.mostro_fade_start
             if elapsed < self.mostro_hit_delay:
                 self.screen.blit(self.monster_img, (self.mostro_x + shake[0], wy_monster))
@@ -2096,6 +2284,11 @@ class Gioco:
             start_x, start_y = (wx + cw - 30) if self.player_flip else (wx + 30), wy + 40
             if self.zap_reverse:
                 end_x, end_y = wx + cw // 2, wy + ch // 2
+            elif self.boss_active and self.boss_fase in ("entrance", "fight", "defeated"):
+                bw = self.boss_hit_img.get_width() if self.boss_hit_img else 200
+                bh = self.boss_hit_img.get_height() if self.boss_hit_img else 200
+                boss_draw_y = wy_monster
+                end_x, end_y = self.boss_x + bw // 2, boss_draw_y + bh // 2
             else:
                 end_x, end_y = self.mostro_x + 100, wy_monster + self.char_h // 2
             mid_x = (start_x + end_x) // 2
@@ -2251,6 +2444,7 @@ class Gioco:
                 f"Coda rinforzo: {list(self.coda_rinforzo)}",
                 f"Progresso mostro: {self.mostro_progresso:.2f}" + (f"  Tempo: {(pygame.time.get_ticks() - self.inizio_domanda)/1000:.1f}s" if self.domanda_attiva else ""),
                 f"Consecutive: {self.consecutive_correct}",
+                f"Boss: {'attivo' if self.boss_active else 'no'}" + (f"  fase: {self.boss_fase}  colpi: {self.boss_domande_fatte}/{self.boss_domande_totali}" if self.boss_active else ""),
             ]
             bg = pygame.Surface((380, len(lines) * 22 + 10))
             bg.set_alpha(200)

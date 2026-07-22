@@ -72,6 +72,8 @@
     "player_in": "sx",
     "player_out": "dx",
     "player_entrance": "y",
-    "monster_in": "dx"
+    "monster_in": "dx",
+    "boss": "monster99",
+    "boss_in": "dx"
   }
 ]
