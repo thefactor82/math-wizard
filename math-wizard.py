@@ -295,7 +295,7 @@ class Gioco:
                     break
         self.storia_idx = 0
 
-        self.version = "0.5.019"
+        self.version = "0.5.020"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -552,7 +552,7 @@ class Gioco:
                 self.boss_active = True
                 self.boss_fase = None
                 self.boss_in_dir = entry.get("boss_in", "dx")
-                self.boss_flip = (self.boss_in_dir == "sx")
+                self.boss_flip = (self.boss_in_dir == "dx")
                 self.boss_frames = [pygame.transform.flip(f, True, False) for f in self.boss_data["walk"]] if self.boss_flip else self.boss_data["walk"]
                 self.boss_hit_img = pygame.transform.flip(self.boss_data["hit"], True, False) if self.boss_flip else self.boss_data["hit"]
                 self.boss_defeated_img = pygame.transform.flip(self.boss_data["defeated"], True, False) if self.boss_flip else self.boss_data["defeated"]
@@ -562,11 +562,10 @@ class Gioco:
                 self.boss_progresso = 0.0
                 self.boss_anim_frame = 0
                 boss_w = self.boss_hit_img.get_width()
-                if not self.boss_flip:
-                    self.boss_end_x = float(SCREEN_WIDTH - 75 - boss_w)
+                self.boss_end_x = float(SCREEN_WIDTH - 75 - boss_w)
+                if self.boss_in_dir == "dx":
                     self.boss_start_x = float(SCREEN_WIDTH + 30)
                 else:
-                    self.boss_end_x = 75.0
                     self.boss_start_x = float(-boss_w - 30)
                 self.boss_x = self.boss_start_x
             else:
@@ -1583,10 +1582,7 @@ class Gioco:
                 elapsed = (pygame.time.get_ticks() - self.inizio_domanda) / 1000.0
                 self.boss_progresso = min(elapsed / self.boss_timeout, 1.0)
                 boss_w = self.boss_hit_img.get_width()
-                if not self.boss_flip:
-                    fight_end = float(SCREEN_WIDTH - 75 - boss_w)
-                else:
-                    fight_end = 75.0
+                fight_end = 75.0
                 self.boss_x = self.boss_end_x + (fight_end - self.boss_end_x) * self.boss_progresso
                 if not self.boss_colpito:
                     self.boss_anim_frame = (pygame.time.get_ticks() // self.boss_anim_speed) % len(self.boss_frames)
@@ -2262,7 +2258,7 @@ class Gioco:
             if boss_img:
                 bw, bh = boss_img.get_size()
                 boss_draw_x = self.boss_x + shake[0]
-                boss_draw_y = wy_monster
+                boss_draw_y = wy_monster - (bh - 215)
                 self.screen.blit(boss_img, (boss_draw_x, boss_draw_y))
         elif self.mostro_colpito:
             elapsed = pygame.time.get_ticks() - self.mostro_fade_start
@@ -2287,7 +2283,7 @@ class Gioco:
             elif self.boss_active and self.boss_fase in ("entrance", "fight", "defeated"):
                 bw = self.boss_hit_img.get_width() if self.boss_hit_img else 200
                 bh = self.boss_hit_img.get_height() if self.boss_hit_img else 200
-                boss_draw_y = wy_monster
+                boss_draw_y = wy_monster - (bh - 215)
                 end_x, end_y = self.boss_x + bw // 2, boss_draw_y + bh // 2
             else:
                 end_x, end_y = self.mostro_x + 100, wy_monster + self.char_h // 2
@@ -2351,7 +2347,8 @@ class Gioco:
             bar_x = (SCREEN_WIDTH - bar_w) // 2
             bar_y = SCREEN_HEIGHT - 45
             pygame.draw.rect(self.screen, (60, 60, 80), (bar_x, bar_y, bar_w, bar_h), border_radius=8)
-            rimanente = 1.0 - self.mostro_progresso
+            timer_progresso = self.boss_progresso if (self.boss_active and self.boss_fase == "fight") else self.mostro_progresso
+            rimanente = 1.0 - timer_progresso
             if rimanente > 0.4:
                 col_bar = (0, 200, 80)
             elif rimanente > 0.2:
@@ -2363,7 +2360,7 @@ class Gioco:
                 if w > 0:
                     pygame.draw.rect(self.screen, col_bar, (bar_x, bar_y, w, bar_h), border_radius=8)
 
-            tempo_testo = self.font_piccolo.render(f"{self.timeout_limite * (1 - self.mostro_progresso):.0f}s", True, WHITE)
+            tempo_testo = self.font_piccolo.render(f"{self.timeout_limite * (1 - timer_progresso):.0f}s", True, WHITE)
             rect = tempo_testo.get_rect(midleft=(bar_x + bar_w + 15, bar_y + bar_h // 2))
             self.screen.blit(tempo_testo, rect)
 
