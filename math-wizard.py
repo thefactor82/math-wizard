@@ -285,7 +285,7 @@ class Gioco:
                     break
         self.storia_idx = 0
 
-        self.version = "0.5.014"
+        self.version = "0.5.015"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -427,7 +427,7 @@ class Gioco:
             self.livello = 0
         self.storia_idx = 0
         self.storia_is_livello = False
-        self.storia_monsters = list(range(1, 10))
+        self.storia_monsters = list(range(1, 9))
         self.storia_flying_monsters = []
         self.storia_fade_speed = 8
         self.storia_prossimo_bg = None
@@ -502,7 +502,7 @@ class Gioco:
         if entry["tipo"] == "livello":
             self.state = "storia"
             self.storia_is_livello = True
-            self.storia_monsters = entry.get("monsters", list(range(1, 10)))
+            self.storia_monsters = entry.get("monsters", list(range(1, 9)))
             self.storia_flying_monsters = entry.get("flying", [])
             bg_name = entry.get("bg", "game")
             self.storia_prossimo_bg = self.backgrounds.get(bg_name, self.bg)
@@ -2233,7 +2233,7 @@ class Gioco:
                 f"Attendi invio: {self.attendi_invio}",
                 f"Game over: {self.game_over}",
                 f"Lives: {self.vite}",
-                f"Domande: {self.domande_fatte}/{'?' if self.modalita == 'fisso' else self.domande_livello}",
+                f"Domande: {self.domande_fatte}/{self.domande_totali if self.modalita == 'fisso' else self.domande_livello}",
                 f"Tempo medio: {sum(self.tempi_risposta)/len(self.tempi_risposta):.1f}s" if self.tempi_risposta else "Tempo medio: --",
                 f"Timeout: {self.timeout_limite}s" + (f" (iniziale {self.tempo_limite_iniziale}s)" if self.modalita == 'auto' else ""),
                 f"Livello: {self.livello + 1}/{len(self.livelli)} (eff. {self.livello_effettivo() + 1})" if self.modalita == 'auto' else "Livello: -",
