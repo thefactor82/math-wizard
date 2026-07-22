@@ -285,7 +285,7 @@ class Gioco:
                     break
         self.storia_idx = 0
 
-        self.version = "0.5.015"
+        self.version = "0.5.016"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -777,12 +777,14 @@ class Gioco:
                     if self.opzioni_cursor == 0:
                         self.auto_timeout = min(99, self.auto_timeout + 1)
                     elif self.opzioni_cursor == 1:
-                        self.livello_iniziale = min(self.storia_progresso.get(self.config_storia_operazione, 0), self.livello_iniziale + 1)
+                        prog_max = max(0, self.storia_progresso.get(self.config_storia_operazione, 0) - 1)
+                        self.livello_iniziale = min(prog_max, self.livello_iniziale + 1)
                     else:
                         ops = ["moltiplicazione", "addizione", "sottrazione"]
                         idx = (ops.index(self.config_storia_operazione) + 1) % 3
                         self.config_storia_operazione = ops[idx]
-                        self.livello_iniziale = min(self.livello_iniziale, self.storia_progresso.get(self.config_storia_operazione, 0))
+                        prog_max = max(0, self.storia_progresso.get(self.config_storia_operazione, 0) - 1)
+                        self.livello_iniziale = min(self.livello_iniziale, prog_max)
                     self.salva_config_profilo()
                 elif event.key in (pygame.K_MINUS, pygame.K_KP_MINUS):
                     if self.opzioni_cursor == 0:
@@ -793,7 +795,8 @@ class Gioco:
                         ops = ["moltiplicazione", "addizione", "sottrazione"]
                         idx = (ops.index(self.config_storia_operazione) - 1) % 3
                         self.config_storia_operazione = ops[idx]
-                        self.livello_iniziale = min(self.livello_iniziale, self.storia_progresso.get(self.config_storia_operazione, 0))
+                        prog_max = max(0, self.storia_progresso.get(self.config_storia_operazione, 0) - 1)
+                        self.livello_iniziale = min(self.livello_iniziale, prog_max)
                     self.salva_config_profilo()
                 elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
                     self.salva_config_profilo()
@@ -970,7 +973,8 @@ class Gioco:
                     if mx < sx + lw:
                         self.livello_iniziale = max(0, self.livello_iniziale - 1)
                     elif mx >= sx + lw + vw:
-                        self.livello_iniziale = min(self.storia_progresso.get(self.config_storia_operazione, 0), self.livello_iniziale + 1)
+                        prog_max = max(0, self.storia_progresso.get(self.config_storia_operazione, 0) - 1)
+                        self.livello_iniziale = min(prog_max, self.livello_iniziale + 1)
                     self.salva_config_profilo()
                 # Operazione — 3 pulsanti
                 if hasattr(self, 'opzioni_auto_op_buttons') and len(self.opzioni_auto_op_buttons) == 3:
@@ -979,7 +983,8 @@ class Gioco:
                         if btn.collidepoint(mx, my):
                             self.opzioni_cursor = 2
                             self.config_storia_operazione = ops[i]
-                            self.livello_iniziale = min(self.livello_iniziale, self.storia_progresso.get(self.config_storia_operazione, 0))
+                            prog_max = max(0, self.storia_progresso.get(self.config_storia_operazione, 0) - 1)
+                            self.livello_iniziale = min(self.livello_iniziale, prog_max)
                             self.salva_config_profilo()
                             break
                 # CONFERMA
@@ -1747,7 +1752,8 @@ class Gioco:
         l_surf = self.font_tiny.render(str(self.livello_iniziale + 1), True, WHITE)
         self.screen.blit(l_surf, l_surf.get_rect(center=(sx + lw + vw // 2, y + 17)))
         prog = self.storia_progresso.get(self.config_storia_operazione, 0)
-        prog_surf = self.font_tiny.render(f"(max {prog + 1})", True, GRAY)
+        max_start = max(0, prog - 1)
+        prog_surf = self.font_tiny.render(f"(max {max(1, prog)})", True, GRAY)
         self.screen.blit(prog_surf, prog_surf.get_rect(midleft=(sx + lw + vw + rw + 10, y + 17)))
 
         # Operazione
