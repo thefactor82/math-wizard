@@ -295,7 +295,7 @@ class Gioco:
                     break
         self.storia_idx = 0
 
-        self.version = "0.5.021"
+        self.version = "0.6.000"
 
         self.profili = []
         self.profilo_corrente = ""
