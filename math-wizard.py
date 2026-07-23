@@ -295,7 +295,7 @@ class Gioco:
                     break
         self.storia_idx = 0
 
-        self.version = "0.6.000"
+        self.version = "0.6.001"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -425,7 +425,7 @@ class Gioco:
         self.boss_in_dir = "dx"
         self.boss_flip = False
         self.boss_anim_frame = 0
-        self.boss_anim_speed = 150
+        self.boss_anim_speed = 1200
         self.boss_colpito_start = 0
         self.boss_defeated_start = 0
         self.boss_defeated_timer = 0
@@ -636,7 +636,6 @@ class Gioco:
             self.boss_domande_fatte += 1
             self.domanda_attiva = True
             self.input_utente = ""
-            self.mostro_progresso = 0.0
             self.mostro_colpito = False
             self.boss_colpito = False
             self.monster_img = self.monster_frames[0]
@@ -1420,7 +1419,7 @@ class Gioco:
 
         if self.corretto:
             self.consecutive_correct += 1
-            if self.consecutive_correct >= 30 and self.vite < VITE_MAGO and not self.game_over:
+            if self.consecutive_correct >= 30 and self.vite < VITE_MAGO and not self.game_over and not (self.boss_active and self.boss_fase == "fight"):
                 self.vite += 1
                 self.consecutive_correct = 0
                 self.heart_reward_active = True
@@ -1465,7 +1464,9 @@ class Gioco:
         self.player_hit = True
         self.hit_timer = 12
         self.consecutive_correct = 0
-        if self.vite <= 0:
+        if self.boss_active and self.boss_fase == "fight":
+            self.game_over = True
+        elif self.vite <= 0:
             self.game_over = True
 
     def aggiorna(self):
