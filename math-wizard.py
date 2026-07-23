@@ -295,7 +295,7 @@ class Gioco:
                     break
         self.storia_idx = 0
 
-        self.version = "0.6.001"
+        self.version = "0.6.002"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -425,7 +425,7 @@ class Gioco:
         self.boss_in_dir = "dx"
         self.boss_flip = False
         self.boss_anim_frame = 0
-        self.boss_anim_speed = 1200
+        self.boss_anim_speed = 1000
         self.boss_colpito_start = 0
         self.boss_defeated_start = 0
         self.boss_defeated_timer = 0
@@ -639,7 +639,6 @@ class Gioco:
             self.mostro_colpito = False
             self.boss_colpito = False
             self.monster_img = self.monster_frames[0]
-            self.inizio_domanda = pygame.time.get_ticks()
             self.timeout_limite = self.boss_timeout
             self.timeout_gestito = False
             self.feedback = None
@@ -1389,6 +1388,8 @@ class Gioco:
                 self.corretto = False
                 self.stats[livello]["sbagliate"] += 1
                 self.vite -= 1
+                if self.boss_active and self.boss_fase == "fight":
+                    self.boss_domande_totali += 1
                 self.mostro_colpito = True
                 self.mostro_fade_start = pygame.time.get_ticks()
                 self.monster_img = self.monster_hit_img
@@ -1403,6 +1404,8 @@ class Gioco:
             self.corretto = False
             self.stats[livello]["sbagliate"] += 1
             self.vite -= 1
+            if self.boss_active and self.boss_fase == "fight":
+                self.boss_domande_totali += 1
             self.mostro_colpito = True
             self.mostro_fade_start = pygame.time.get_ticks()
             self.monster_img = self.monster_hit_img
@@ -1583,7 +1586,7 @@ class Gioco:
                 elapsed = (pygame.time.get_ticks() - self.inizio_domanda) / 1000.0
                 self.boss_progresso = min(elapsed / self.boss_timeout, 1.0)
                 boss_w = self.boss_hit_img.get_width()
-                fight_end = 75.0
+                fight_end = float(self.player_stand_x + self.char_w - 50)
                 self.boss_x = self.boss_end_x + (fight_end - self.boss_end_x) * self.boss_progresso
                 if not self.boss_colpito:
                     self.boss_anim_frame = (pygame.time.get_ticks() // self.boss_anim_speed) % len(self.boss_frames)
