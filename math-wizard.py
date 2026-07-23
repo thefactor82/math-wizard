@@ -2426,7 +2426,6 @@ class Gioco:
                 f"Modalita: {'Storia' if self.modalita == 'auto' else 'Allenamento'}",
                 f"Domanda attiva: {self.domanda_attiva}",
                 f"Feedback: {self.feedback}",
-                f"Attendi invio: {self.attendi_invio}",
                 f"Game over: {self.game_over}",
                 f"Lives: {self.vite}",
                 f"Domande: {self.domande_fatte}/{self.domande_totali if self.modalita == 'fisso' else self.domande_livello}",
