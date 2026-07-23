@@ -295,7 +295,7 @@ class Gioco:
                     break
         self.storia_idx = 0
 
-        self.version = "0.6.002"
+        self.version = "0.6.003"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -430,6 +430,8 @@ class Gioco:
         self.boss_defeated_start = 0
         self.boss_defeated_timer = 0
         self.boss_entrance_start = 0
+        self.boss_paused_ms = 0
+        self.boss_pause_start = 0
 
         self.menu_cursor = 0
         self.opzioni_cursor = 0
@@ -639,6 +641,9 @@ class Gioco:
             self.mostro_colpito = False
             self.boss_colpito = False
             self.monster_img = self.monster_frames[0]
+            if self.boss_pause_start > 0:
+                self.boss_paused_ms += pygame.time.get_ticks() - self.boss_pause_start
+                self.boss_pause_start = 0
             self.timeout_limite = self.boss_timeout
             self.timeout_gestito = False
             self.feedback = None
@@ -1437,6 +1442,8 @@ class Gioco:
         self.domanda_attiva = False
         self.feedback = self.corretto
         self.feedback_timer = pygame.time.get_ticks()
+        if self.boss_active and self.boss_fase == "fight":
+            self.boss_pause_start = pygame.time.get_ticks()
         if not self.corretto:
             self.attendi_invio = True
 
@@ -1458,6 +1465,8 @@ class Gioco:
         self.domanda_attiva = False
         self.feedback = False
         self.feedback_timer = pygame.time.get_ticks()
+        if self.boss_active and self.boss_fase == "fight":
+            self.boss_pause_start = pygame.time.get_ticks()
         self.attendi_invio = True
         self.mostro_colpito = True
         self.mostro_fade_start = pygame.time.get_ticks()
@@ -1574,6 +1583,9 @@ class Gioco:
                 self.boss_progresso = 0.0
                 self.boss_domande_fatte = 0
                 self.boss_colpito = False
+                self.boss_paused_ms = 0
+                self.boss_pause_start = 0
+                self.inizio_domanda = pygame.time.get_ticks()
                 self.nuova_domanda()
             return
 
@@ -1583,10 +1595,10 @@ class Gioco:
                 if hit_elapsed > 500:
                     self.boss_colpito = False
             if self.domanda_attiva:
-                elapsed = (pygame.time.get_ticks() - self.inizio_domanda) / 1000.0
+                elapsed = (pygame.time.get_ticks() - self.inizio_domanda - self.boss_paused_ms) / 1000.0
                 self.boss_progresso = min(elapsed / self.boss_timeout, 1.0)
                 boss_w = self.boss_hit_img.get_width()
-                fight_end = float(self.player_stand_x + self.char_w - 50)
+                fight_end = float(self.player_stand_x + self.char_w - 15)
                 self.boss_x = self.boss_end_x + (fight_end - self.boss_end_x) * self.boss_progresso
                 if not self.boss_colpito:
                     self.boss_anim_frame = (pygame.time.get_ticks() // self.boss_anim_speed) % len(self.boss_frames)
@@ -2595,7 +2607,7 @@ class Gioco:
         righe = [
             (f"Corrette: {tot_corrette}", GREEN),
             (f"Sbagliate: {tot_sbagliate}", RED),
-            (f"Livello raggiunto: {self.livello + 1}/{len(self.livelli)}", WHITE),
+            (f"Livello raggiunto: {self.livello_effettivo() + 1}/{len(self.livelli)}", WHITE),
             (f"Tempo medio: {tempo_medio:.1f}s", WHITE),
         ]
         y = 110
