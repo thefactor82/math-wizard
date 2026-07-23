@@ -295,7 +295,7 @@ class Gioco:
                     break
         self.storia_idx = 0
 
-        self.version = "0.5.020"
+        self.version = "0.5.021"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -2325,7 +2325,7 @@ class Gioco:
         if self.modalita == "auto":
             richieste = 5 + sum(range(1, self.livello + 1))
             corr = sum(1 for esito, _ in self.blocco_corrente if esito)
-            stato = self.font_piccolo.render(f"Livello {self.livello + 1}/{len(self.livelli)}", True, WHITE)
+            stato = self.font_piccolo.render(f"Livello {self.livello_effettivo() + 1}/{len(self.livelli)}", True, WHITE)
             self.screen.blit(stato, (20, 20))
             mode_txt = "Storia"
         else:
@@ -2432,7 +2432,7 @@ class Gioco:
                 f"Domande: {self.domande_fatte}/{self.domande_totali if self.modalita == 'fisso' else self.domande_livello}",
                 f"Tempo medio: {sum(self.tempi_risposta)/len(self.tempi_risposta):.1f}s" if self.tempi_risposta else "Tempo medio: --",
                 f"Timeout: {self.timeout_limite}s" + (f" (iniziale {self.tempo_limite_iniziale}s)" if self.modalita == 'auto' else ""),
-                f"Livello: {self.livello + 1}/{len(self.livelli)} (eff. {self.livello_effettivo() + 1})" if self.modalita == 'auto' else "Livello: -",
+                f"Livello: {self.livello_effettivo() + 1}/{len(self.livelli)}" if self.modalita == 'auto' else "Livello: -",
                 f"Operandi: {self.a} {segno_debug} {self.b}",
                 f"Prev: {self.prev_a} {segno_debug} {self.prev_b}",
                 f"Risultato: {self.risultato_atteso}",
