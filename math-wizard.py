@@ -295,7 +295,7 @@ class Gioco:
                     break
         self.storia_idx = 0
 
-        self.version = "0.6.004"
+        self.version = "0.6.005"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -661,6 +661,13 @@ class Gioco:
         if self.modalita == "auto":
             if self.domande_fatte >= self.domande_livello:
                 if self.boss_active:
+                    lv = self.livello_effettivo()
+                    tempi_lv = self.stats.get(lv, {}).get("tempi", [])
+                    if tempi_lv:
+                        avg_time = sum(tempi_lv) / len(tempi_lv)
+                        self.boss_timeout = max(10, math.ceil(avg_time) * 11)
+                    else:
+                        self.boss_timeout = 60
                     self.boss_fase = "shake"
                     self.boss_shake_start = pygame.time.get_ticks()
                     self.boss_x = self.boss_start_x
@@ -2605,7 +2612,7 @@ class Gioco:
             self.disegna_gameover_fisso()
 
     def disegna_gameover_storia(self):
-        if self.vite <= 0:
+        if self.vite <= 0 or (self.boss_active and self.boss_fase == "fight"):
             titolo = self.font_titolo.render("GAME OVER", True, RED)
         else:
             titolo = self.font_titolo.render("PARTITA TERMINATA", True, GOLD)
@@ -2630,12 +2637,12 @@ class Gioco:
             y += 46
 
         data = self.char_data.get(self.config_genere, self.char_data["F"])
-        char_img = data["hit"] if self.vite <= 0 else data["idle"][0]
+        char_img = data["hit"] if (self.vite <= 0 or (self.boss_active and self.boss_fase == "fight")) else data["idle"][0]
         char_x = SCREEN_WIDTH // 2 - char_img.get_width() // 2
         char_y = y + 20
         self.screen.blit(char_img, (char_x, char_y))
 
-        if self.vite <= 0:
+        if self.vite <= 0 or (self.boss_active and self.boss_fase == "fight"):
             testo = f"{self.profilo_corrente} si è impegnat-o-a- parecchio, ma gli Hop diventano man mano più impegnativi. Serve più allenamento!"
             m = self.config_genere == "M"
             testo = re.sub(r'-([^-]+)-([^-]+)-', lambda g: g.group(1) if m else g.group(2), testo)
