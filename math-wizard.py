@@ -295,7 +295,7 @@ class Gioco:
                     break
         self.storia_idx = 0
 
-        self.version = "0.6.003"
+        self.version = "0.6.004"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -430,6 +430,7 @@ class Gioco:
         self.boss_defeated_start = 0
         self.boss_defeated_timer = 0
         self.boss_entrance_start = 0
+        self.boss_shake_start = 0
         self.boss_paused_ms = 0
         self.boss_pause_start = 0
 
@@ -638,6 +639,7 @@ class Gioco:
             self.boss_domande_fatte += 1
             self.domanda_attiva = True
             self.input_utente = ""
+            self.attendi_invio = False
             self.mostro_colpito = False
             self.boss_colpito = False
             self.monster_img = self.monster_frames[0]
@@ -659,9 +661,10 @@ class Gioco:
         if self.modalita == "auto":
             if self.domande_fatte >= self.domande_livello:
                 if self.boss_active:
-                    self.boss_fase = "entrance"
+                    self.boss_fase = "shake"
+                    self.boss_shake_start = pygame.time.get_ticks()
                     self.boss_x = self.boss_start_x
-                    self.boss_entrance_start = pygame.time.get_ticks()
+                    self.boss_entrance_start = 0
                     return
                 self.salva_sessione()
                 self.state = "level_complete"
@@ -1572,6 +1575,14 @@ class Gioco:
                 self.nuova_domanda()
             return
 
+        if self.boss_active and self.boss_fase == "shake":
+            elapsed = pygame.time.get_ticks() - self.boss_shake_start
+            duration = 600
+            if elapsed >= duration:
+                self.boss_fase = "entrance"
+                self.boss_entrance_start = pygame.time.get_ticks()
+            return
+
         if self.boss_active and self.boss_fase == "entrance":
             elapsed = pygame.time.get_ticks() - self.boss_entrance_start
             duration = 800
@@ -1598,7 +1609,7 @@ class Gioco:
                 elapsed = (pygame.time.get_ticks() - self.inizio_domanda - self.boss_paused_ms) / 1000.0
                 self.boss_progresso = min(elapsed / self.boss_timeout, 1.0)
                 boss_w = self.boss_hit_img.get_width()
-                fight_end = float(self.player_stand_x + self.char_w - 15)
+                fight_end = float(self.player_stand_x + self.char_w - 100)
                 self.boss_x = self.boss_end_x + (fight_end - self.boss_end_x) * self.boss_progresso
                 if not self.boss_colpito:
                     self.boss_anim_frame = (pygame.time.get_ticks() // self.boss_anim_speed) % len(self.boss_frames)
@@ -2200,8 +2211,9 @@ class Gioco:
 
     def disegna_gioco(self):
         shake = (0, 0)
-        if self.hit_timer > 0:
-            shake = (random.randint(-4, 4), random.randint(-3, 3))
+        boss_shaking = self.boss_active and self.boss_fase == "shake"
+        if self.hit_timer > 0 or boss_shaking:
+            shake = (random.randint(-6, 6), random.randint(-5, 5))
             self.screen.blit(self.gioco_bg, shake)
         else:
             self.screen.blit(self.gioco_bg, (0, 0))
