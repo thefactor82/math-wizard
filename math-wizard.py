@@ -295,7 +295,7 @@ class Gioco:
                     break
         self.storia_idx = 0
 
-        self.version = "0.6.005"
+        self.version = "0.6.007"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -661,7 +661,7 @@ class Gioco:
         if self.modalita == "auto":
             if self.domande_fatte >= self.domande_livello:
                 if self.boss_active:
-                    lv = self.livello_effettivo()
+                    lv = self.livello
                     tempi_lv = self.stats.get(lv, {}).get("tempi", [])
                     if tempi_lv:
                         avg_time = sum(tempi_lv) / len(tempi_lv)
@@ -1514,6 +1514,15 @@ class Gioco:
                     self.game_over = False
                     self.corretto = 0
                     self.stats = {}
+                    self.timeout_limite = self.auto_timeout
+                    self.boss_fase = None
+                    self.boss_colpito = False
+                    self.boss_progresso = 0.0
+                    self.boss_domande_fatte = 0
+                    self.boss_domande_totali = 10
+                    self.boss_timeout = 60
+                    self.boss_paused_ms = 0
+                    self.boss_pause_start = 0
                     self.state = "gioco"
                     self.avvia_livello()
                 elif self.modalita == "auto" and self.ritorno_gioco:
@@ -1875,6 +1884,7 @@ class Gioco:
         credits = [
             f"v{self.version}",
             "Concept, development, and organization: TheFactor82",
+            "Development, Beta testing: SL, GA, WF",
             "Graphics: Elena",
         ]
         y = SCREEN_HEIGHT - 10 - len(credits) * 22
@@ -2293,7 +2303,7 @@ class Gioco:
             if boss_img:
                 bw, bh = boss_img.get_size()
                 boss_draw_x = self.boss_x + shake[0]
-                boss_draw_y = wy_monster - (bh - 215)
+                boss_draw_y = wy_monster - (bh - 215) + 15
                 self.screen.blit(boss_img, (boss_draw_x, boss_draw_y))
         elif self.mostro_colpito:
             elapsed = pygame.time.get_ticks() - self.mostro_fade_start
@@ -2318,7 +2328,7 @@ class Gioco:
             elif self.boss_active and self.boss_fase in ("entrance", "fight", "defeated"):
                 bw = self.boss_hit_img.get_width() if self.boss_hit_img else 200
                 bh = self.boss_hit_img.get_height() if self.boss_hit_img else 200
-                boss_draw_y = wy_monster - (bh - 215)
+                boss_draw_y = wy_monster - (bh - 215) + 15
                 end_x, end_y = self.boss_x + bw // 2, boss_draw_y + bh // 2
             else:
                 end_x, end_y = self.mostro_x + 100, wy_monster + self.char_h // 2
@@ -2473,7 +2483,7 @@ class Gioco:
                 f"Pool A: {self.livelli[self.livello_effettivo()]['pool_a'] if self.modalita == 'auto' else self.pool_a}",
                 f"Pool B: {self.livelli[self.livello_effettivo()]['pool_b'] if self.modalita == 'auto' else self.pool_b}",
                 f"Coda rinforzo: {list(self.coda_rinforzo)}",
-                f"Progresso mostro: {self.mostro_progresso:.2f}" + (f"  Tempo: {(pygame.time.get_ticks() - self.inizio_domanda)/1000:.1f}s" if self.domanda_attiva else ""),
+                f"Progresso mostro: {(self.boss_progresso if (self.boss_active and self.boss_fase == 'fight') else self.mostro_progresso):.2f}" + (f"  Tempo: {(pygame.time.get_ticks() - self.inizio_domanda)/1000:.1f}s" if self.domanda_attiva else ""),
                 f"Consecutive: {self.consecutive_correct}",
                 f"Boss: {'attivo' if self.boss_active else 'no'}" + (f"  fase: {self.boss_fase}  colpi: {self.boss_domande_fatte}/{self.boss_domande_totali}" if self.boss_active else ""),
             ]
@@ -2494,7 +2504,7 @@ class Gioco:
         overlay.fill(BG_DARK)
         self.screen.blit(overlay, (0, 0))
 
-        titolo = self.font_titolo.render(f"LIVELLO {self.livello + 1} COMPLETATO", True, GOLD)
+        titolo = self.font_titolo.render(f"LIVELLO {self.livello_effettivo() + 1} COMPLETATO", True, GOLD)
         rect = titolo.get_rect(center=(SCREEN_WIDTH // 2, 80))
         self.screen.blit(titolo, rect)
 
@@ -2741,7 +2751,7 @@ class Gioco:
         tempo_medio = sum(self.tempi_risposta) / len(self.tempi_risposta) if self.tempi_risposta else 0
         now = datetime.now().strftime("%Y-%m-%d %H:%M")
         if self.modalita == "auto":
-            riga = f"{now} | Storia | {self.config_storia_operazione.capitalize()} | Corrette: {tot_corrette} | Sbagliate: {tot_sbagliate} | Livello: {self.livello + 1}/{len(self.livelli)} | Tempo medio: {tempo_medio:.1f}s"
+            riga = f"{now} | Storia | {self.config_storia_operazione.capitalize()} | Corrette: {tot_corrette} | Sbagliate: {tot_sbagliate} | Livello: {self.livello_effettivo() + 1}/{len(self.livelli)} | Tempo medio: {tempo_medio:.1f}s"
         else:
             op_txt = self.operazione.capitalize() if hasattr(self, 'operazione') else "Moltiplicazione"
             pool_a_txt = ",".join(str(n) for n in self.pool_a)
