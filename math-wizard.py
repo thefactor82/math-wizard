@@ -320,7 +320,7 @@ class Gioco:
         self.storia_idx = 0
         self.num_livelli_storia = sum(1 for e in self.storia_entries if e.get("tipo") == "livello")
 
-        self.version = "0.7.007"
+        self.version = "0.7.008"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -2719,14 +2719,16 @@ class Gioco:
 
         tot_corrette = sum(v["corrette"] for v in self.stats.values())
         tot_sbagliate = sum(v["sbagliate"] for v in self.stats.values())
-        tempo_medio_mostri = sum(self.tempi_mostri) / len(self.tempi_mostri) if self.tempi_mostri else 0
+        completato = not (self.vite <= 0 or (self.boss_active and self.boss_fase == "fight"))
 
         righe = [
             (f"Corrette: {tot_corrette}", GREEN),
             (f"Sbagliate: {tot_sbagliate}", RED),
             (f"Livello raggiunto: {self.livello_effettivo() + 1}/{len(self.livelli)}", WHITE),
-            (f"Tempo medio: {tempo_medio_mostri:.1f}s", WHITE),
         ]
+        if not completato:
+            tempo_medio_mostri = sum(self.tempi_mostri) / len(self.tempi_mostri) if self.tempi_mostri else 0
+            righe.append((f"Tempo medio: {tempo_medio_mostri:.1f}s", WHITE))
         y = 110
         for testo, colore in righe:
             surf = self.font_medio.render(testo, True, colore)
