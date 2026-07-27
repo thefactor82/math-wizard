@@ -319,7 +319,7 @@ class Gioco:
                     break
         self.storia_idx = 0
 
-        self.version = "0.7.001"
+        self.version = "0.7.002"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -744,7 +744,8 @@ class Gioco:
                         self.a = min(self.pool_a, key=lambda x: abs(x - self.somma_massima))
                         self.b = 0
             if self.swap_operandi and random.random() < 0.5:
-                self.a, self.b = self.b, self.a
+                if self.operazione != "divisione" or not self.risultato_intero:
+                    self.a, self.b = self.b, self.a
             if self.operazione == "sottrazione" and self.differenza_positiva and self.a < self.b:
                 self.a, self.b = self.b, self.a
             self.domande_fatte += 1
