@@ -2,7 +2,13 @@
 
 > **Un videogioco per "allenare" le basi fondamentali della matematica... e forse non solo.**
 
+## TL;DR
+
+Math Wizard nasce da un'esperienza molto personale: vedere le mie due figlie affrontare con fatica le tabelline mi ha spinto a creare un videogioco che trasformasse l'apprendimento in qualcosa di divertente. Non trovando giochi che fossero davvero veloci, coinvolgenti e focalizzati sulla matematica, ho deciso di svilupparne uno io, con il loro aiuto e i loro suggerimenti. Il risultato è un gioco opensource, senza pubblicità, pensato per allenare le quattro operazioni fondamentali e, in futuro, perchè no, molti altri argomenti scolastici.
+
 ---
+
+## La Storia
 
 Quando la mia prima figlia si è trovata davanti a uno dei primi grandi "scogli" della scuola elementare... cioè le tabelline...
 Apriti cielo!
@@ -101,7 +107,7 @@ Quindi avevo bisogno di un gioco tranquillo, rassicurante, in cui non si sentiss
 
 Sono un system administrator.
 
-Conosco Python, lavoro quotidianamente con script, AI e IDE, e in passato mi sono occupato anche di grafica. So quindi come funzionano immagini, sprite e animazioni di base.
+Conosco Python, lavoro quotidianamente con script, AI e IDE, e in passato mi sono occupato anche di grafica. So quindi come funzionano immagini, sprite e animazioni di base. Da qui a realizzare un videogioco comunque ce ne passa...
 
 ---
 
@@ -178,7 +184,7 @@ Perché, senza saperlo, mi hanno aiutato a realizzare un sogno che avevo fin da 
 
 ---
 
-# Feature e funzionalità
+# Feature e funzionalità (e cose tecniche per chi ne capisce qualcosa in più...)
 
 ## Modalità di gioco
 
