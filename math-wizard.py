@@ -319,7 +319,7 @@ class Gioco:
                     break
         self.storia_idx = 0
 
-        self.version = "0.7.002"
+        self.version = "0.7.003"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -467,6 +467,8 @@ class Gioco:
         self.config_cursor_subrow = 0
 
         self.tempi_risposta = []
+        self.tempi_mostri = []
+        self.tempi_boss = []
         self.blocco_corrente = []
         self.coda_rinforzo = deque()
         self.stats = {}
@@ -501,6 +503,8 @@ class Gioco:
         self.heart_reward_active = False
         self.heart_reward_start = 0
         self.tempi_risposta = []
+        self.tempi_mostri = []
+        self.tempi_boss = []
         self.blocco_corrente = []
         self.coda_rinforzo = deque()
         self.stats = {}
@@ -550,6 +554,8 @@ class Gioco:
             self.domande_livello = random.randint(8 + lv, 15 + lv)
         self.domande_fatte = 0
         self.tempi_risposta = []
+        self.tempi_mostri = []
+        self.tempi_boss = []
         self.blocco_corrente = []
         self.timeout_gestito = False
         if self.player_entrance:
@@ -1431,6 +1437,10 @@ class Gioco:
 
         tempo = min((pygame.time.get_ticks() - self.inizio_domanda) / 1000.0, self.timeout_limite)
         self.tempi_risposta.append(tempo)
+        if self.boss_active and self.boss_fase == "fight":
+            self.tempi_boss.append(tempo)
+        else:
+            self.tempi_mostri.append(tempo)
 
         livello = 0 if self.modalita == "fisso" else self.livello
         self.stats.setdefault(livello, {"corrette": 0, "sbagliate": 0, "tempi": []})
@@ -1516,6 +1526,10 @@ class Gioco:
         self.timeout_gestito = True
         tempo = self.timeout_limite
         self.tempi_risposta.append(tempo)
+        if self.boss_active and self.boss_fase == "fight":
+            self.tempi_boss.append(tempo)
+        else:
+            self.tempi_mostri.append(tempo)
         livello = 0 if self.modalita == "fisso" else self.livello
         self.stats.setdefault(livello, {"corrette": 0, "sbagliate": 0, "tempi": []})
         self.stats[livello]["sbagliate"] += 1
@@ -2589,7 +2603,7 @@ class Gioco:
         richieste = 5 + self.livello
         ultimi = self.tempi_risposta[-richieste:]
         media_ultime = sum(ultimi) / len(ultimi) if ultimi else 0
-        if media_ultime < self.timeout_limite / 2:
+        if media_ultime < self.timeout_limite / 2 and self.livello < len(self.livelli) - 1:
             righe.append(("Tempo medio eccellente! Timeout ridotto di 1s", YELLOW))
 
         y = 180
@@ -2701,14 +2715,17 @@ class Gioco:
 
         tot_corrette = sum(v["corrette"] for v in self.stats.values())
         tot_sbagliate = sum(v["sbagliate"] for v in self.stats.values())
-        tempo_medio = sum(self.tempi_risposta) / len(self.tempi_risposta) if self.tempi_risposta else 0
+        tempo_medio_mostri = sum(self.tempi_mostri) / len(self.tempi_mostri) if self.tempi_mostri else 0
+        tempo_medio_boss = sum(self.tempi_boss) / len(self.tempi_boss) if self.tempi_boss else 0
 
         righe = [
             (f"Corrette: {tot_corrette}", GREEN),
             (f"Sbagliate: {tot_sbagliate}", RED),
             (f"Livello raggiunto: {self.livello_effettivo() + 1}/{len(self.livelli)}", WHITE),
-            (f"Tempo medio: {tempo_medio:.1f}s", WHITE),
+            (f"Tempo medio mostri: {tempo_medio_mostri:.1f}s", WHITE),
         ]
+        if self.tempi_boss:
+            righe.append((f"Tempo medio boss: {tempo_medio_boss:.1f}s", WHITE))
         y = 110
         for testo, colore in righe:
             surf = self.font_medio.render(testo, True, colore)
