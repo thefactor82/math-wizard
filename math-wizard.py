@@ -65,9 +65,9 @@ for src in (data_path, resource_path):
         if LIVELLI:
             break
 if not LIVELLI:
-    LIVELLI = {"moltiplicazione": [], "addizione": [], "sottrazione": []}
+    LIVELLI = {"moltiplicazione": [], "addizione": [], "sottrazione": [], "divisione": []}
 default_level = {"pool_a": [0,1,2,3,4,5,6,7,8,9], "pool_b": [0,1,2,3,4,5,6,7,8,9]}
-for op in ["moltiplicazione", "addizione", "sottrazione"]:
+for op in ["moltiplicazione", "addizione", "sottrazione", "divisione"]:
     if op not in LIVELLI or not LIVELLI[op]:
         LIVELLI[op] = [default_level]
 
@@ -88,6 +88,26 @@ def genera_operandi(pool_a, pool_b, reinforce_queue):
     if reinforce_queue and random.random() < 0.4:
         return reinforce_queue.popleft()
     return random.choice(pool_a), random.choice(pool_b)
+
+def genera_operandi_divisione(pool_a, pool_b, reinforce_queue, risultato_intero=True):
+    if reinforce_queue and random.random() < 0.4:
+        return reinforce_queue.popleft()
+    if risultato_intero:
+        valid_b = [b for b in pool_b if b != 0]
+        if not valid_b:
+            return 1, 1
+        for _ in range(50):
+            b = random.choice(valid_b)
+            valid_a = [a for a in pool_a if a > 0 and a % b == 0]
+            if valid_a:
+                return random.choice(valid_a), b
+        b = random.choice(valid_b)
+        return b, b
+    else:
+        valid_b = [b for b in pool_b if b != 0]
+        if not valid_b:
+            return 1, 1
+        return random.choice(pool_a), random.choice(valid_b)
 
 class Gioco:
     def __init__(self):
@@ -267,7 +287,7 @@ class Gioco:
         self.config_cursor_col = 0
         self.config_cursor_subrow = 0
         self.config_per_op = {}
-        for op in ["moltiplicazione", "addizione", "sottrazione"]:
+        for op in ["moltiplicazione", "addizione", "sottrazione", "divisione"]:
             self.config_per_op[op] = {
                 "pool_a": [n < 10 for n in range(100)],
                 "pool_b": [n < 10 for n in range(100)],
@@ -277,10 +297,12 @@ class Gioco:
             }
         self.config_per_op["addizione"]["somma_massima"] = 10
         self.config_per_op["sottrazione"]["differenza_positiva"] = True
+        self.config_per_op["divisione"]["risultato_intero"] = True
+        self.config_per_op["divisione"]["swap"] = False
         self.cfg = self.config_per_op[self.config_operazione]
         self.auto_timeout = TEMPO_LIMITE_DEFAULT
         self.livello_iniziale = 0
-        self.storia_progresso = {"moltiplicazione": 0, "addizione": 0, "sottrazione": 0}
+        self.storia_progresso = {"moltiplicazione": 0, "addizione": 0, "sottrazione": 0, "divisione": 0}
 
         self.storia_entries = []
         for src in (data_path, resource_path):
@@ -295,7 +317,7 @@ class Gioco:
                     break
         self.storia_idx = 0
 
-        self.version = "0.6.007"
+        self.version = "0.6.008"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -334,7 +356,7 @@ class Gioco:
             "livello_iniziale": self.livello_iniziale,
             "storia_progresso": self.storia_progresso,
         }
-        for op in ["moltiplicazione", "addizione", "sottrazione"]:
+        for op in ["moltiplicazione", "addizione", "sottrazione", "divisione"]:
             data[op] = dict(self.config_per_op[op])
         with open(path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
@@ -345,7 +367,7 @@ class Gioco:
             with open(path, "r", encoding="utf-8") as f:
                 data = json.load(f)
             if "moltiplicazione" in data and isinstance(data["moltiplicazione"], dict):
-                for op in ["moltiplicazione", "addizione", "sottrazione"]:
+                for op in ["moltiplicazione", "addizione", "sottrazione", "divisione"]:
                     if op in data:
                         self.config_per_op[op].update(data[op])
                 self.config_genere = data.get("genere", self.config_genere)
@@ -365,6 +387,7 @@ class Gioco:
                     self.config_per_op[op]["timeout"] = data.get("timeout", self.config_per_op[op]["timeout"])
                 self.config_per_op["addizione"]["somma_massima"] = data.get("somma_massima", self.config_per_op["addizione"]["somma_massima"])
                 self.config_per_op["sottrazione"]["differenza_positiva"] = data.get("differenza_positiva", self.config_per_op["sottrazione"]["differenza_positiva"])
+                self.config_per_op["divisione"]["risultato_intero"] = data.get("risultato_intero", self.config_per_op["divisione"]["risultato_intero"])
             self.cfg = self.config_per_op[self.config_operazione]
 
     def percorso_sessioni(self):
@@ -498,6 +521,8 @@ class Gioco:
             self.operazione = self.config_operazione
             self.somma_massima = self.cfg.get("somma_massima", 10)
             self.differenza_positiva = self.cfg.get("differenza_positiva", True)
+            self.risultato_intero = self.cfg.get("risultato_intero", True)
+            divisione = self.config_operazione == "divisione"
             pool_range = range(13) if self.config_operazione == "moltiplicazione" else range(100)
             self.pool_a = [n for n in pool_range if self.cfg["pool_a"][n]]
             self.pool_b = [n for n in pool_range if self.cfg["pool_b"][n]]
@@ -625,7 +650,10 @@ class Gioco:
             lv = self.livello_effettivo()
             lv_data = self.livelli[lv]
             self.operazione = self.config_storia_operazione
-            self.a, self.b = genera_operandi(lv_data["pool_a"], lv_data["pool_b"], self.coda_rinforzo)
+            if self.operazione == "divisione":
+                self.a, self.b = genera_operandi_divisione(lv_data["pool_a"], lv_data["pool_b"], self.coda_rinforzo, self.risultato_intero)
+            else:
+                self.a, self.b = genera_operandi(lv_data["pool_a"], lv_data["pool_b"], self.coda_rinforzo)
             if self.operazione == "sottrazione" and self.a < self.b:
                 self.a, self.b = self.b, self.a
             if (self.a, self.b) == (self.prev_a, self.prev_b):
@@ -634,6 +662,8 @@ class Gioco:
                 self.risultato_atteso = self.a + self.b
             elif self.operazione == "sottrazione":
                 self.risultato_atteso = self.a - self.b
+            elif self.operazione == "divisione":
+                self.risultato_atteso = self.a // self.b if self.b != 0 else 0
             else:
                 self.risultato_atteso = self.a * self.b
             self.boss_domande_fatte += 1
@@ -679,7 +709,10 @@ class Gioco:
             lv = self.livello_effettivo()
             lv_data = self.livelli[lv]
             self.operazione = self.config_storia_operazione
-            self.a, self.b = genera_operandi(lv_data["pool_a"], lv_data["pool_b"], self.coda_rinforzo)
+            if self.operazione == "divisione":
+                self.a, self.b = genera_operandi_divisione(lv_data["pool_a"], lv_data["pool_b"], self.coda_rinforzo, self.risultato_intero)
+            else:
+                self.a, self.b = genera_operandi(lv_data["pool_a"], lv_data["pool_b"], self.coda_rinforzo)
             if self.operazione == "sottrazione" and self.a < self.b:
                 self.a, self.b = self.b, self.a
             self.domande_fatte += 1
@@ -692,6 +725,8 @@ class Gioco:
                 return
             if self.coda_rinforzo and random.random() < 0.4:
                 self.a, self.b = self.coda_rinforzo.popleft()
+            elif self.operazione == "divisione":
+                self.a, self.b = genera_operandi_divisione(self.pool_a, self.pool_b, self.coda_rinforzo, self.risultato_intero)
             else:
                 self.a = random.choice(self.pool_a)
                 self.b = random.choice(self.pool_b)
@@ -731,6 +766,8 @@ class Gioco:
                 self.risultato_atteso = self.a + self.b
             elif self.operazione == "sottrazione":
                 self.risultato_atteso = self.a - self.b
+            elif self.operazione == "divisione":
+                self.risultato_atteso = self.a // self.b if self.b != 0 else 0
             else:
                 self.risultato_atteso = self.a * self.b
         else:
@@ -738,6 +775,8 @@ class Gioco:
                 self.risultato_atteso = self.a + self.b
             elif self.operazione == "sottrazione":
                 self.risultato_atteso = self.a - self.b
+            elif self.operazione == "divisione":
+                self.risultato_atteso = self.a // self.b if self.b != 0 else 0
             else:
                 self.risultato_atteso = self.a * self.b
         if self.modalita == "auto":
@@ -898,8 +937,8 @@ class Gioco:
                         prog_max = max(0, self.storia_progresso.get(self.config_storia_operazione, 0) - 1)
                         self.livello_iniziale = min(prog_max, self.livello_iniziale + 1)
                     else:
-                        ops = ["moltiplicazione", "addizione", "sottrazione"]
-                        idx = (ops.index(self.config_storia_operazione) + 1) % 3
+                        ops = ["moltiplicazione", "addizione", "sottrazione", "divisione"]
+                        idx = (ops.index(self.config_storia_operazione) + 1) % 4
                         self.config_storia_operazione = ops[idx]
                         prog_max = max(0, self.storia_progresso.get(self.config_storia_operazione, 0) - 1)
                         self.livello_iniziale = min(self.livello_iniziale, prog_max)
@@ -910,8 +949,8 @@ class Gioco:
                     elif self.opzioni_cursor == 1:
                         self.livello_iniziale = max(0, self.livello_iniziale - 1)
                     else:
-                        ops = ["moltiplicazione", "addizione", "sottrazione"]
-                        idx = (ops.index(self.config_storia_operazione) - 1) % 3
+                        ops = ["moltiplicazione", "addizione", "sottrazione", "divisione"]
+                        idx = (ops.index(self.config_storia_operazione) - 1) % 4
                         self.config_storia_operazione = ops[idx]
                         prog_max = max(0, self.storia_progresso.get(self.config_storia_operazione, 0) - 1)
                         self.livello_iniziale = min(self.livello_iniziale, prog_max)
@@ -1094,9 +1133,9 @@ class Gioco:
                         prog_max = max(0, self.storia_progresso.get(self.config_storia_operazione, 0) - 1)
                         self.livello_iniziale = min(prog_max, self.livello_iniziale + 1)
                     self.salva_config_profilo()
-                # Operazione — 3 pulsanti
-                if hasattr(self, 'opzioni_auto_op_buttons') and len(self.opzioni_auto_op_buttons) == 3:
-                    ops = ["moltiplicazione", "addizione", "sottrazione"]
+                # Operazione — 4 pulsanti
+                if hasattr(self, 'opzioni_auto_op_buttons') and len(self.opzioni_auto_op_buttons) == 4:
+                    ops = ["moltiplicazione", "addizione", "sottrazione", "divisione"]
                     for i, btn in enumerate(self.opzioni_auto_op_buttons):
                         if btn.collidepoint(mx, my):
                             self.opzioni_cursor = 2
@@ -1118,11 +1157,12 @@ class Gioco:
                     traceback.print_exc()
 
     def gestisci_config(self, event):
-        ops = ["moltiplicazione", "addizione", "sottrazione"]
+        ops = ["moltiplicazione", "addizione", "sottrazione", "divisione"]
         op_idx = ops.index(self.config_operazione)
         addizione = self.config_operazione == "addizione"
         sottrazione = self.config_operazione == "sottrazione"
-        pools_mode = addizione or sottrazione
+        divisione = self.config_operazione == "divisione"
+        pools_mode = addizione or sottrazione or divisione
         cols_u = 5
         items_pool = 10 if pools_mode else 13
 
@@ -1158,7 +1198,7 @@ class Gioco:
             return 0
 
         def skip_somma(r, step):
-            if not addizione and not sottrazione:
+            if not addizione and not sottrazione and not divisione:
                 if step == 1 and r == 2:
                     return 4
                 if step == -1 and r == 4:
@@ -1178,9 +1218,9 @@ class Gioco:
             # Row 0: operation selector
             y0 = row_y(0)
             if y0 - 2 <= my <= y0 + 36:
-                for i in range(3):
-                    sx = 360 + i * 220
-                    if sx <= mx <= sx + 206:
+                for i in range(4):
+                    sx = 360 + i * 170
+                    if sx <= mx <= sx + 158:
                         self.config_operazione = ops[i]
                         self.cfg = self.config_per_op[self.config_operazione]
                         self.config_cursor_row = 0
@@ -1237,6 +1277,12 @@ class Gioco:
                         self.config_cursor_row = 3
                         self.config_cursor_col = 0
                         self.cfg["differenza_positiva"] = not self.cfg["differenza_positiva"]
+                        return
+                elif divisione:
+                    if 350 <= mx <= 540 and y3 - 4 <= my <= y3 + 40:
+                        self.config_cursor_row = 3
+                        self.config_cursor_col = 0
+                        self.cfg["risultato_intero"] = not self.cfg["risultato_intero"]
                         return
 
             # Row 4: domande
@@ -1312,7 +1358,7 @@ class Gioco:
             self.config_cursor_col = min(col, max_col_for_row(row))
         elif event.key == pygame.K_LEFT:
             if row == 0:
-                self.config_operazione = ops[(op_idx - 1) % 3]
+                self.config_operazione = ops[(op_idx - 1) % 4]
                 self.cfg = self.config_per_op[self.config_operazione]
             elif row in (1, 2):
                 if col > 0:
@@ -1323,7 +1369,7 @@ class Gioco:
                 self.config_cursor_col = max(0, col - 1)
         elif event.key == pygame.K_RIGHT:
             if row == 0:
-                self.config_operazione = ops[(op_idx + 1) % 3]
+                self.config_operazione = ops[(op_idx + 1) % 4]
                 self.cfg = self.config_per_op[self.config_operazione]
             elif row in (1, 2):
                 if col < 4:
@@ -1334,7 +1380,7 @@ class Gioco:
                 self.config_cursor_col = min(max_col_for_row(row), col + 1)
         elif event.key == pygame.K_SPACE:
             if row == 0:
-                self.config_operazione = ops[(op_idx + 1) % 3]
+                self.config_operazione = ops[(op_idx + 1) % 4]
                 self.cfg = self.config_per_op[self.config_operazione]
             elif row in (1, 2):
                 pool = self.cfg["pool_a"] if row == 1 else self.cfg["pool_b"]
@@ -1351,6 +1397,8 @@ class Gioco:
                             pool[idx] = not pool[idx]
             elif row == 3 and sottrazione:
                 self.cfg["differenza_positiva"] = not self.cfg["differenza_positiva"]
+            elif row == 3 and divisione:
+                self.cfg["risultato_intero"] = not self.cfg["risultato_intero"]
             elif row == 5 and not sottrazione:
                 self.cfg["swap"] = not self.cfg["swap"]
         elif event.key in (pygame.K_PLUS, pygame.K_EQUALS, pygame.K_KP_PLUS):
@@ -1968,11 +2016,11 @@ class Gioco:
         label_o = self.font_tiny.render("Operazione", True, WHITE)
         rect = label_o.get_rect(midleft=(80, y + 17))
         self.screen.blit(label_o, rect)
-        ops_list = [("moltiplicazione", "Moltiplicazione"), ("addizione", "Addizione"), ("sottrazione", "Sottrazione")]
+        ops_list = [("moltiplicazione", "Moltiplicazione"), ("addizione", "Addizione"), ("sottrazione", "Sottrazione"), ("divisione", "Divisione")]
         bx = 360
         self.opzioni_auto_op_buttons = []
         for op_key, op_label in ops_list:
-            bw = 180
+            bw = 145
             bh = 34
             btn_rect = pygame.Rect(bx, y, bw, bh)
             selected = self.config_storia_operazione == op_key
@@ -1991,7 +2039,7 @@ class Gioco:
             self.opzioni_auto_op_buttons.append(btn_rect)
             bx += bw + 12
         if self.opzioni_cursor == 2:
-            ops_keys = ["moltiplicazione", "addizione", "sottrazione"]
+            ops_keys = ["moltiplicazione", "addizione", "sottrazione", "divisione"]
             sel_idx = ops_keys.index(self.config_storia_operazione)
             focus_rect = self.opzioni_auto_op_buttons[sel_idx].inflate(4, 4)
             pygame.draw.rect(self.screen, (255, 255, 100), focus_rect, 3, border_radius=6)
@@ -2019,14 +2067,15 @@ class Gioco:
         rect = titolo.get_rect(center=(SCREEN_WIDTH // 2, 80))
         self.screen.blit(titolo, rect)
 
-        ops = ["moltiplicazione", "addizione", "sottrazione"]
+        ops = ["moltiplicazione", "addizione", "sottrazione", "divisione"]
         op_idx = ops.index(self.config_operazione)
         addizione = self.config_operazione == "addizione"
         sottrazione = self.config_operazione == "sottrazione"
+        divisione = self.config_operazione == "divisione"
 
         def row_y(r):
             base = [150, 210, 290, 370, 420, 470, 520, 550]
-            pools_mode = addizione or sottrazione
+            pools_mode = addizione or sottrazione or divisione
             cell_h, gap = 30, 6
             items_pool = 10 if pools_mode else 13
             subrows_pool = (items_pool + 4) // 5
@@ -2044,25 +2093,25 @@ class Gioco:
         label_op = self.font_tiny.render("Operazione", True, WHITE)
         rect = label_op.get_rect(midleft=(80, y + 17))
         self.screen.blit(label_op, rect)
-        opzioni_op = ["Moltiplicazione", "Addizione", "Sottrazione"]
+        opzioni_op = ["Moltiplicazione", "Addizione", "Sottrazione", "Divisione"]
         for i, nome in enumerate(opzioni_op):
-            sx = 360 + i * 220
+            sx = 360 + i * 170
             sel = i == op_idx
-            btn_rect = pygame.Rect(sx, y, 206, 34)
+            btn_rect = pygame.Rect(sx, y, 158, 34)
             hovered = btn_rect.collidepoint(mx, my)
             bg_col = (100, 150, 220) if sel and hovered else SEL_BLUE if sel else (80, 80, 90) if hovered else (60, 60, 70)
             pygame.draw.rect(self.screen, bg_col, btn_rect, border_radius=4)
             if hovered:
                 pygame.draw.rect(self.screen, GOLD, btn_rect, 2, border_radius=4)
             txt = self.font_tiny.render(nome, True, WHITE)
-            rect_t = txt.get_rect(center=(sx + 103, y + 17))
+            rect_t = txt.get_rect(center=(sx + 79, y + 17))
             self.screen.blit(txt, rect_t)
 
         # Row 1-2: Pool A / Pool B (unified 5-col grid)
         labels = ["Operando A", "Operando B"]
         pools = [self.cfg["pool_a"], self.cfg["pool_b"]]
         cols_u = 5
-        pools_mode = addizione or sottrazione
+        pools_mode = addizione or sottrazione or divisione
         for ri in range(2):
             row = 1 + ri
             y_base = row_y(row)
@@ -2140,6 +2189,20 @@ class Gioco:
             dp_val = self.font_tiny.render(dp_txt, True, WHITE)
             rect_dv = dp_val.get_rect(center=(445, y + 18))
             self.screen.blit(dp_val, rect_dv)
+        elif divisione:
+            label_r = self.font_tiny.render("Risultato intero", True, WHITE)
+            rect = label_r.get_rect(midleft=(80, y + 17))
+            self.screen.blit(label_r, rect)
+            toggle_rect = pygame.Rect(352, y, 186, 36)
+            hover_toggle = toggle_rect.collidepoint(mx, my)
+            bg_r = (100, 150, 220) if self.cfg["risultato_intero"] and hover_toggle else SEL_BLUE if self.cfg["risultato_intero"] else (80, 80, 90) if hover_toggle else (60, 60, 70)
+            pygame.draw.rect(self.screen, bg_r, toggle_rect, border_radius=6)
+            if hover_toggle:
+                pygame.draw.rect(self.screen, GOLD, toggle_rect, 2, border_radius=6)
+            ri_txt = "ON" if self.cfg["risultato_intero"] else "OFF"
+            ri_val = self.font_tiny.render(ri_txt, True, WHITE)
+            rect_rv = ri_val.get_rect(center=(445, y + 18))
+            self.screen.blit(ri_val, rect_rv)
 
         # Row 4: Domande
         row = 4
@@ -2351,6 +2414,8 @@ class Gioco:
             segno = "-"
         elif hasattr(self, 'operazione') and self.operazione == "addizione":
             segno = "+"
+        elif hasattr(self, 'operazione') and self.operazione == "divisione":
+            segno = ":"
         else:
             segno = "x"
         domanda = self.font_grande.render(f"{self.a}  {segno}  {self.b}  =  ?", True, WHITE)
@@ -2465,7 +2530,7 @@ class Gioco:
             pygame.draw.rect(self.screen, (0, 255, 255), bg_l, 1)
             self.screen.blit(label, rect)
             dx, dy = 20, 80
-            segno_debug = "-" if self.operazione == "sottrazione" else "+" if self.operazione == "addizione" else "x"
+            segno_debug = "-" if self.operazione == "sottrazione" else "+" if self.operazione == "addizione" else ":" if self.operazione == "divisione" else "x"
             lines = [
                 "DEBUG",
                 f"Modalita: {'Storia' if self.modalita == 'auto' else 'Allenamento'}",
@@ -2759,6 +2824,8 @@ class Gioco:
             extra = ""
             if self.operazione == "sottrazione" and getattr(self, 'differenza_positiva', False):
                 extra = " | Diff. positiva: ON"
+            if self.operazione == "divisione" and getattr(self, 'risultato_intero', True):
+                extra = " | Ris. intero: ON"
             riga = f"{now} | Allenamento | {op_txt} | Corrette: {tot_corrette} | Sbagliate: {tot_sbagliate} | Pool A: [{pool_a_txt}] | Pool B: [{pool_b_txt}] | Domande: {self.domande_fatte}/{self.domande_totali} | Tempo medio: {tempo_medio:.1f}s{extra}"
         path = self.percorso_sessioni()
         with open(path, "a", encoding="utf-8") as f:
