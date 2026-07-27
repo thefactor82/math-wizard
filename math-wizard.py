@@ -319,7 +319,7 @@ class Gioco:
                     break
         self.storia_idx = 0
 
-        self.version = "0.7.004"
+        self.version = "0.7.005"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -2600,9 +2600,6 @@ class Gioco:
             (f"Corrette: {corrette}", GREEN),
             (f"Tempo medio: {media:.1f}s", WHITE),
         ]
-        if self.tempi_boss:
-            media_boss = sum(self.tempi_boss) / len(self.tempi_boss)
-            righe.append((f"Tempo medio boss: {media_boss:.1f}s", WHITE))
         richieste = 5 + self.livello
         ultimi = self.tempi_mostri[-richieste:]
         media_ultime = sum(ultimi) / len(ultimi) if ultimi else 0
