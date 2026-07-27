@@ -1,14 +1,14 @@
-# Math Wizard
+# 🧙 Math Wizard
 
 > **Un videogioco per "allenare" le basi fondamentali della matematica... e forse non solo.**
 
-## TL;DR
+## ⚡ TL;DR
 
 Math Wizard nasce da un'esperienza molto personale: vedere le mie due figlie affrontare con fatica le tabelline mi ha spinto a creare un videogioco che trasformasse l'apprendimento in qualcosa di divertente. Non trovando giochi che fossero davvero veloci, coinvolgenti e focalizzati sulla matematica, ho deciso di svilupparne uno io, con il loro aiuto e i loro suggerimenti. Il risultato è un gioco opensource, senza pubblicità, pensato per allenare le quattro operazioni fondamentali e, in futuro, perchè no, molti altri argomenti scolastici.
 
 ---
 
-## La Storia
+# 📖 La Storia
 
 Quando la mia prima figlia si è trovata davanti a uno dei primi grandi "scogli" della scuola elementare... cioè le tabelline...
 Apriti cielo!
@@ -23,7 +23,7 @@ Ed è stato proprio in quel momento che ho deciso che forse quell'idea doveva (o
 
 ---
 
-## Primo presupposto
+## 💡 Primo presupposto
 
 Mia moglie e io, come penso (e spero) la maggior parte dei genitori di oggi, combattiamo quotidianamente contro l'irresistibile desiderio delle nostre figlie di avere tra le mani uno smartphone, un tablet o qualsiasi altro oggetto dotato di schermo che possa essere tappato e swipato.
 
@@ -45,7 +45,7 @@ E allora mi sono chiesto:
 
 ---
 
-## Secondo presupposto
+## 🔎 Secondo presupposto
 
 Sì, è vero.
 
@@ -55,7 +55,7 @@ Però quello che ho visto è bastato a convincermi che, per ottenere quello che 
 
 Questi sono stati i principali problemi che ho riscontrato.
 
-### 1. Giochi "lenti"
+### 🎮 1. Giochi "lenti"
 
 Se un gioco deve aiutarmi a imparare le tabelline (o a migliorare), non posso passare dieci minuti a guardare l'introduzione, poi altri minuti a vedere il personaggio che cammina, parla con altri personaggi, attraversa il villaggio...
 
@@ -65,7 +65,7 @@ Poi altri cinque minuti di animazioni.
 
 Risultato: in mezz'ora di gioco avrò risolto sì e no dieci operazioni, senza alcuna logica nella progressione della difficoltà.
 
-### 2. Giochi "sbagliati"
+### 🎮 2. Giochi "sbagliati"
 
 Mi è capitato un gioco in cui controllavi un personaggio che correva, saltava ostacoli e, ogni tanto, risolveva qualche operazione.
 
@@ -73,7 +73,7 @@ Sembrava promettente.
 
 Peccato che l'80% del tempo fosse dedicato alla parte platform, che diventava via via sempre più difficile, assorbendo sempre più tempo e relegando la matematica in un angolino sempre più piccolo.
 
-### 3. Giochi "tristi"
+### 🎮 3. Giochi "tristi"
 
 Una storia, secondo me, in un videogioco è importante. Serve a creare coinvolgimento, soprattutto quando si parla di matematica, che per qualcuno potrebbe persino essere una parola da censurare.
 
@@ -89,7 +89,7 @@ Ma pretendere che due bambine si entusiasmino nel difendere una base facendo esp
 
 ---
 
-## Terzo presupposto
+## 🧒 Terzo presupposto
 
 Le mie bambine sono... molto bambine.
 
@@ -103,7 +103,7 @@ Quindi avevo bisogno di un gioco tranquillo, rassicurante, in cui non si sentiss
 
 ---
 
-## Quarto presupposto
+## 🧑‍💻 Quarto presupposto
 
 Sono un system administrator.
 
@@ -111,7 +111,7 @@ Conosco Python, lavoro quotidianamente con script, AI e IDE, e in passato mi son
 
 ---
 
-## Come è nato Math Wizard
+## 🚀 Come è nato Math Wizard
 
 Mettendo insieme tutti questi ingredienti, armato di tanta buona volontà e con l'aiuto di **OpenCode**, **Big Pickle** e **Gemini**... è nato Math Wizard.
 
@@ -152,7 +152,7 @@ Così ho aggiunto addizioni e sottrazioni, permettendo anche alla mia prima figl
 
 ---
 
-## Perché non un'app per smartphone?
+## 📵 Perché non un'app per smartphone?
 
 All'inizio pensavo di sviluppare un'app per smartphone, ma ho cambiato idea.
 
@@ -160,7 +160,7 @@ Forse Math Wizard deve rimanere un gioco per PC. Perché usare una tastiera sign
 
 ---
 
-## Il futuro
+## 🔮 Il futuro
 
 Ma a parte questo lato puramente tecnico, quello che continuo a pensare è che il progetto non debba necessariamente fermarsi qui, e che le potenzialità siano enormi. Attualmente Math Wizard permette di allenarsi con le quattro operazioni fondamentali.
 
@@ -184,40 +184,40 @@ Perché, senza saperlo, mi hanno aiutato a realizzare un sogno che avevo fin da 
 
 ---
 
-# Feature e funzionalità (e cose tecniche per chi ne capisce qualcosa in più...)
+# ✨ Feature e funzionalità (e cose tecniche per chi ne capisce qualcosa in più...)
 
-## Modalità di gioco
+## 🎮 Modalità di gioco
 
-### Storia
+### 📜 Storia
 La modalità principale. Il giocatore avanza attraverso livelli di una semplice ma divertente storia, affrontando un numero crescente di domande per livello. La difficoltà aumenta automaticamente: operandi più grandi, timeout più stretti (se la velocità di risposta è sufficientemente bassa). La storia si conclude con un **boss finale** da colpire più volte, e il tempo a disposizione per sconfiggerlo dipende dalla velocità media di risposta del livello appena completato.
 
-### Allenamento
+### 🏋️ Allenamento
 Modalità libera a livello singolo. Si possono scegliere tutti i parametri relativi alle domande proposte in modo da allenarsi su specifici calcoli, senza progressione. Ideale per ripassare le operazioni più difficili o per prendere confidenza con il gioco in generale.
 
-## Operazioni
+## 🧮 Operazioni
 
 Supporta le quattro operazioni fondamentali:
 
 - **Addizione** (con proprietà commutativa)
 - **Sottrazione** (con possibilità di permettere o vietare risultati negativi)
 - **Moltiplicazione** (con proprietà commutativa)
-- **Divisione** (con risultati sempre interi)
+- **Divisione** (con possibilità di permettere risultati sempre interi)
 
 Nella modalità **Storia** ogni operazione ha una propria progressione di livelli con pool di operandi configurabili (range o liste esplicite) tramite un file json, perfetto per chi necessita di alzare o abbassare il livello generale del gioco (utile per insegnanti e genitori che vogliono "preparare" il gioco ai propri bambini).
 
-## Sistema di vite e ricompense
+## ❤️ Sistema di vite e ricompense
 
 - Il giocatore parte con **3 vite** (rappresentate da cuori).
 - Una risposta sbagliata toglie una vita.
 - **30 risposte corrette consecutive** aggiungono una vita, con animazione del cuore che appare e sale.
 
-## Sistema di progressione
+## 📈 Sistema di progressione
 
 - In modalità **Storia** ogni livello ha un numero crescente di domande: `random(8 + livello, 15 + livello)`
 - Il **timeout** si riduce progressivamente: viene tagliato di 1s se la velocità media delle risposte nel livello appena giocato è inferiore alla metà del timeout impostato.
 - La progressione viene salvata per-operazione nei profili utente. La storia può essere iniziata nuovamente dal principio o proseguita dal penultimo livello raggiunto.
 
-## Profili utente
+## 👤 Profili utente
 
 Ogni profilo salva in modo indipendente:
 - Personaggio scelto
@@ -225,18 +225,18 @@ Ogni profilo salva in modo indipendente:
 - Configurazioni impostate nelle due modalità
 - Statistiche e sessioni precedenti
 
-## Statistiche
+## 📊 Statistiche
 
 Al termine di ogni livello vengono mostrate:
 - Numero di domande
 - Risposte corrette
 - Tempo medio di risposta
 
-## Debug
+## 🐞 Debug
 
 Un pannello di debug (attivabile digitando D E B U G), utile per sviluppo
 
-## Dettagli tecnici
+## 🛠️ Dettagli tecnici
 
 - Scritto in **Python** con **Pygame**
 - Grafiche a **spritesheet** per giocatore, mostri
