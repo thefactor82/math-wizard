@@ -319,7 +319,7 @@ class Gioco:
                     break
         self.storia_idx = 0
 
-        self.version = "0.7.003"
+        self.version = "0.7.004"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -1018,7 +1018,7 @@ class Gioco:
             elif self.state == "level_complete":
                 if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
                     richieste = 5 + self.livello
-                    ultimi = self.tempi_risposta[-richieste:]
+                    ultimi = self.tempi_mostri[-richieste:]
                     media = sum(ultimi) / len(ultimi) if ultimi else 0
                     if self.livello < len(self.livelli) - 1:
                         self.livello += 1
@@ -2592,16 +2592,19 @@ class Gioco:
         rect = titolo.get_rect(center=(SCREEN_WIDTH // 2, 80))
         self.screen.blit(titolo, rect)
 
-        tot = len(self.tempi_risposta)
+        tot = len(self.tempi_mostri)
         corrette = self.stats.get(self.livello, {}).get("corrette", 0)
-        media = sum(self.tempi_risposta) / tot if tot else 0
+        media = sum(self.tempi_mostri) / tot if tot else 0
         righe = [
-            (f"Domande: {tot}", WHITE),
+            (f"Domande: {len(self.tempi_risposta)}", WHITE),
             (f"Corrette: {corrette}", GREEN),
             (f"Tempo medio: {media:.1f}s", WHITE),
         ]
+        if self.tempi_boss:
+            media_boss = sum(self.tempi_boss) / len(self.tempi_boss)
+            righe.append((f"Tempo medio boss: {media_boss:.1f}s", WHITE))
         richieste = 5 + self.livello
-        ultimi = self.tempi_risposta[-richieste:]
+        ultimi = self.tempi_mostri[-richieste:]
         media_ultime = sum(ultimi) / len(ultimi) if ultimi else 0
         if media_ultime < self.timeout_limite / 2 and self.livello < len(self.livelli) - 1:
             righe.append(("Tempo medio eccellente! Timeout ridotto di 1s", YELLOW))
@@ -2716,16 +2719,13 @@ class Gioco:
         tot_corrette = sum(v["corrette"] for v in self.stats.values())
         tot_sbagliate = sum(v["sbagliate"] for v in self.stats.values())
         tempo_medio_mostri = sum(self.tempi_mostri) / len(self.tempi_mostri) if self.tempi_mostri else 0
-        tempo_medio_boss = sum(self.tempi_boss) / len(self.tempi_boss) if self.tempi_boss else 0
 
         righe = [
             (f"Corrette: {tot_corrette}", GREEN),
             (f"Sbagliate: {tot_sbagliate}", RED),
             (f"Livello raggiunto: {self.livello_effettivo() + 1}/{len(self.livelli)}", WHITE),
-            (f"Tempo medio mostri: {tempo_medio_mostri:.1f}s", WHITE),
+            (f"Tempo medio: {tempo_medio_mostri:.1f}s", WHITE),
         ]
-        if self.tempi_boss:
-            righe.append((f"Tempo medio boss: {tempo_medio_boss:.1f}s", WHITE))
         y = 110
         for testo, colore in righe:
             surf = self.font_medio.render(testo, True, colore)
@@ -2767,9 +2767,14 @@ class Gioco:
         mx, my = pygame.mouse.get_pos()
         y_btn = y_text + 20
         self.gameover_buttons = {}
-        for i, (label, action) in enumerate([("RIPROVA", "restart"), ("MENU PRINCIPALE", "menu")]):
-            bx = SCREEN_WIDTH // 2 - 100 + i * 210
-            btn_rect = pygame.Rect(bx, y_btn, 180, 36)
+        completato = not (self.vite <= 0 or (self.boss_active and self.boss_fase == "fight"))
+        btns = [("MENU PRINCIPALE", "menu")] if completato else [("RIPROVA", "restart"), ("MENU PRINCIPALE", "menu")]
+        btn_w = 180
+        total_w = len(btns) * btn_w + (len(btns) - 1) * 30
+        start_x = SCREEN_WIDTH // 2 - total_w // 2
+        for i, (label, action) in enumerate(btns):
+            bx = start_x + i * (btn_w + 30)
+            btn_rect = pygame.Rect(bx, y_btn, btn_w, 36)
             hovered = btn_rect.collidepoint(mx, my)
             bg_col = (80, 90, 100) if hovered else (60, 60, 70)
             pygame.draw.rect(self.screen, bg_col, btn_rect, border_radius=6)
