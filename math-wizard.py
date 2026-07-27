@@ -90,12 +90,14 @@ def genera_operandi(pool_a, pool_b, reinforce_queue):
     return random.choice(pool_a), random.choice(pool_b)
 
 def genera_operandi_divisione(pool_a, pool_b, reinforce_queue, risultato_intero=True):
-    if reinforce_queue and random.random() < 0.4:
-        return reinforce_queue.popleft()
     if risultato_intero:
         valid_b = [b for b in pool_b if b != 0]
         if not valid_b:
             return 1, 1
+        while reinforce_queue:
+            a, b = reinforce_queue.popleft()
+            if b != 0 and a > 0 and a % b == 0:
+                return a, b
         for _ in range(50):
             b = random.choice(valid_b)
             valid_a = [a for a in pool_a if a > 0 and a % b == 0]
@@ -317,7 +319,7 @@ class Gioco:
                     break
         self.storia_idx = 0
 
-        self.version = "0.7.000"
+        self.version = "0.7.001"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -533,6 +535,8 @@ class Gioco:
             self.domande_totali = self.cfg["domande"]
             self.swap_operandi = True if self.operazione == "sottrazione" else self.cfg["swap"]
         if self.modalita == "auto" and self.storia_entries:
+            op_cfg = self.config_per_op.get(self.config_storia_operazione, {})
+            self.risultato_intero = op_cfg.get("risultato_intero", True)
             self.mostra_storia()
         else:
             self.avvia_livello()
