@@ -318,8 +318,9 @@ class Gioco:
                 if self.storia_entries:
                     break
         self.storia_idx = 0
+        self.num_livelli_storia = sum(1 for e in self.storia_entries if e.get("tipo") == "livello")
 
-        self.version = "0.7.006"
+        self.version = "0.7.007"
 
         self.profili = []
         self.profilo_corrente = ""
@@ -547,6 +548,9 @@ class Gioco:
 
     def livello_effettivo(self):
         return min(self.livello + self.livello_iniziale, len(self.livelli) - 1)
+
+    def e_ultimo_livello_storia(self):
+        return self.livello + self.livello_iniziale >= self.num_livelli_storia - 1
 
     def avvia_livello(self):
         if self.modalita == "auto":
@@ -1020,7 +1024,7 @@ class Gioco:
                     richieste = 5 + self.livello
                     ultimi = self.tempi_mostri[-richieste:]
                     media = sum(ultimi) / len(ultimi) if ultimi else 0
-                    if self.livello_effettivo() < len(self.livelli) - 1:
+                    if not self.e_ultimo_livello_storia():
                         self.livello += 1
                         if self.livello > self.storia_progresso.get(self.config_storia_operazione, 0):
                             self.storia_progresso[self.config_storia_operazione] = self.livello
@@ -2603,7 +2607,7 @@ class Gioco:
         richieste = 5 + self.livello
         ultimi = self.tempi_mostri[-richieste:]
         media_ultime = sum(ultimi) / len(ultimi) if ultimi else 0
-        if media_ultime < self.timeout_limite / 2 and self.livello_effettivo() < len(self.livelli) - 1:
+        if media_ultime < self.timeout_limite / 2 and not self.e_ultimo_livello_storia():
             righe.append(("Tempo medio eccellente! Timeout ridotto di 1s", YELLOW))
 
         y = 180
