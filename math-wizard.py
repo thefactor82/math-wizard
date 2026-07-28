@@ -117,6 +117,25 @@ def normalize_pool_list (raw_pool ,length ):
     return [False ]*length 
 
 
+def format_pool_compact (nums ):
+    if not nums :
+        return "[]"
+    if all (isinstance (x ,int )for x in nums ):
+        nums =sorted (set (nums ))
+        parts =[]
+        start =nums [0]
+        end =nums [0]
+        for n in nums [1:]:
+            if n ==end +1 :
+                end =n 
+            else :
+                parts .append (f"{start }-{end }"if start !=end else str (start ))
+                start =end =n 
+        parts .append (f"{start }-{end }"if start !=end else str (start ))
+        return ",".join (parts )
+    return str (nums )
+
+
 def get_operation_symbol (operation ):
     if operation =="sottrazione":
         return "-"
@@ -481,7 +500,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="0.8.002"
+        self .version ="0.8.003"
 
         self .profiles =[]
         self .current_profile =""
@@ -2698,8 +2717,8 @@ class Game :
             f"Operandi: {self .a } {segno_debug } {self .b }",
             f"Prev: {self .prev_a } {segno_debug } {self .prev_b }",
             f"Risultato: {self .expected_result }",
-            f"Pool A: {self .levels [self .effective_level ()]['pool_a']if self .mode =='auto'else self .pool_a }",
-            f"Pool B: {self .levels [self .effective_level ()]['pool_b']if self .mode =='auto'else self .pool_b }",
+            f"Pool A: {format_pool_compact (self .levels [self .effective_level ()]['pool_a'])if self .mode =='auto'else format_pool_compact (self .pool_a )}",
+            f"Pool B: {format_pool_compact (self .levels [self .effective_level ()]['pool_b'])if self .mode =='auto'else format_pool_compact (self .pool_b )}",
             f"Coda rinforzo: {list (self .reinforcement_queue )}",
             f"Progresso mostro: {(self .boss_progress if (self .boss_active and self .boss_phase =='fight')else self .monster_progress ):.2f}"+(f"  Tempo: {(pygame .time .get_ticks ()-self .question_start )/1000 :.1f}s"if self .question_active else ""),
             f"Consecutive: {self .consecutive_correct }",
@@ -2979,8 +2998,8 @@ class Game :
             line_text =f"{now } | Storia | {self .config_story_operation .capitalize ()} | Corrette: {total_correct } | Sbagliate: {total_wrong } | Livello: {self .effective_level ()+1 }/{len (self .levels )} | Tempo medio: {average_time :.1f}s"
         else :
             op_txt =self .operation .capitalize ()if hasattr (self ,'operation')else "Moltiplicazione"
-            pool_a_txt =",".join (str (n )for n in self .pool_a )
-            pool_b_txt =",".join (str (n )for n in self .pool_b )
+            pool_a_txt =format_pool_compact (self .pool_a )
+            pool_b_txt =format_pool_compact (self .pool_b )
             extra =""
             if self .operation =="sottrazione"and getattr (self ,'differenza_positiva',False ):
                 extra =" | Diff. positiva: ON"
