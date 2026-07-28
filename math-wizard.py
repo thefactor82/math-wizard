@@ -7,6 +7,7 @@ import re
 import math
 from datetime import datetime
 from collections import deque
+from fractions import Fraction
 
 def resource_path(relative):
     return os.path.join(getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__))), relative)
@@ -49,19 +50,154 @@ def parse_pool(val):
         return result
     return val
 
+def sanitize_profile_name(name):
+    if not isinstance(name, str):
+        return None
+    name = name.strip()
+    if not name or name in (".", ".."):
+        return None
+    if "/" in name or "\\" in name:
+        return None
+    return name if re.match(r"^[A-Za-z0-9_-]+$", name) else None
+
+def make_placeholder_surface(size, color=(80, 80, 90)):
+    surf = pygame.Surface(size, pygame.SRCALPHA)
+    surf.fill(color)
+    return surf
+
+def safe_load_image(path, scale=None, convert_alpha=True):
+    try:
+        img = pygame.image.load(path)
+        if convert_alpha:
+            img = img.convert_alpha()
+        else:
+            img = img.convert()
+        if scale is not None:
+            img = pygame.transform.scale(img, scale)
+        return img
+    except (pygame.error, OSError) as e:
+        print(f"Warning: unable to load image '{path}': {e}")
+        return make_placeholder_surface(scale if scale is not None else (100, 100))
+
+
+def load_json_file(path):
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, json.JSONDecodeError) as e:
+        print(f"Warning: unable to load JSON '{path}': {e}")
+        return None
+
+
+def save_json_file(path, data):
+    try:
+        dir_name = os.path.dirname(path)
+        if dir_name:
+            os.makedirs(dir_name, exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+    except OSError as e:
+        print(f"Warning: unable to save JSON '{path}': {e}")
+
+
+def normalize_pool_list(raw_pool, length):
+    if isinstance(raw_pool, str):
+        raw_pool = parse_pool(raw_pool)
+    if isinstance(raw_pool, list):
+        if all(isinstance(x, bool) for x in raw_pool):
+            result = [bool(x) for x in raw_pool[:length]]
+            result += [False] * max(0, length - len(result))
+            return result
+        if all(isinstance(x, int) for x in raw_pool):
+            pool = [False] * length
+            for n in raw_pool:
+                if 0 <= n < length:
+                    pool[n] = True
+            return pool
+    return [False] * length
+
+
+def get_operation_symbol(operazione):
+    if operazione == "sottrazione":
+        return "-"
+    if operazione == "addizione":
+        return "+"
+    if operazione == "divisione":
+        return ":"
+    return "x"
+
+
+def calcola_risultato(a, b, operazione, risultato_intero=True):
+    if operazione == "addizione":
+        return a + b
+    if operazione == "sottrazione":
+        return a - b
+    if operazione == "divisione":
+        if b == 0:
+            return 0
+        return a // b if risultato_intero else a / b
+    return a * b
+
+
+def finite_decimal_places(a, b, max_places=2):
+    if b == 0:
+        return None
+    frac = Fraction(a, b)
+    if frac.denominator == 1:
+        return 0
+    denom = frac.denominator
+    while denom % 2 == 0:
+        denom //= 2
+    while denom % 5 == 0:
+        denom //= 5
+    if denom != 1:
+        return None
+    for places in range(1, max_places + 1):
+        if (frac * 10**places).denominator == 1:
+            return places
+    return None
+
+
+def is_answer_correct(risposta, atteso):
+    if isinstance(atteso, float) or isinstance(risposta, float):
+        return abs(risposta - atteso) < 1e-6
+    return risposta == atteso
+
+
+def genera_operandi_addizione(pool_a, pool_b, reinforce_queue, somma_massima=None):
+    if reinforce_queue and random.random() < 0.4:
+        return reinforce_queue.popleft()
+    a = random.choice(pool_a)
+    b = random.choice(pool_b)
+    if somma_massima is None:
+        return a, b
+    for _ in range(50):
+        if a + b <= somma_massima:
+            return a, b
+        a = random.choice(pool_a)
+        b = random.choice(pool_b)
+    fallback_b = 0 if 0 in pool_b else random.choice(pool_b)
+    return min(pool_a, key=lambda x: abs(x - somma_massima)), fallback_b
+
+
+def seleziona_operandi(pool_a, pool_b, reinforce_queue, operazione, risultato_intero=True, somma_massima=None):
+    if operazione == "divisione":
+        return genera_operandi_divisione(pool_a, pool_b, reinforce_queue, risultato_intero)
+    if operazione == "addizione":
+        return genera_operandi_addizione(pool_a, pool_b, reinforce_queue, somma_massima)
+    return genera_operandi(pool_a, pool_b, reinforce_queue)
+
 LIVELLI = {}
 for src in (data_path, resource_path):
     levels_path = src("data/levels.json")
     if os.path.exists(levels_path):
-        try:
-            with open(levels_path, "r", encoding="utf-8") as f:
-                LIVELLI = json.load(f)
-                for op in LIVELLI:
-                    for lv in LIVELLI[op]:
-                        lv["pool_a"] = parse_pool(lv["pool_a"])
-                        lv["pool_b"] = parse_pool(lv["pool_b"])
-        except (json.JSONDecodeError, Exception):
-            LIVELLI = {}
+        data = load_json_file(levels_path)
+        if isinstance(data, dict):
+            LIVELLI = data
+            for op in LIVELLI:
+                for lv in LIVELLI[op]:
+                    lv["pool_a"] = parse_pool(lv["pool_a"])
+                    lv["pool_b"] = parse_pool(lv["pool_b"])
         if LIVELLI:
             break
 if not LIVELLI:
@@ -90,10 +226,10 @@ def genera_operandi(pool_a, pool_b, reinforce_queue):
     return random.choice(pool_a), random.choice(pool_b)
 
 def genera_operandi_divisione(pool_a, pool_b, reinforce_queue, risultato_intero=True):
+    valid_b = [b for b in pool_b if b != 0]
+    if not valid_b:
+        return 1, 1
     if risultato_intero:
-        valid_b = [b for b in pool_b if b != 0]
-        if not valid_b:
-            return 1, 1
         while reinforce_queue:
             a, b = reinforce_queue.popleft()
             if b != 0 and a > 0 and a % b == 0:
@@ -105,11 +241,24 @@ def genera_operandi_divisione(pool_a, pool_b, reinforce_queue, risultato_intero=
                 return random.choice(valid_a), b
         b = random.choice(valid_b)
         return b, b
-    else:
-        valid_b = [b for b in pool_b if b != 0]
-        if not valid_b:
-            return 1, 1
-        return random.choice(pool_a), random.choice(valid_b)
+
+    while reinforce_queue:
+        a, b = reinforce_queue.popleft()
+        if b != 0 and finite_decimal_places(a, b) is not None:
+            return a, b
+
+    for _ in range(100):
+        b = random.choice(valid_b)
+        a = random.choice(pool_a)
+        if finite_decimal_places(a, b) is not None:
+            if a % b != 0 or pool_b.count(b) == 1:
+                return a, b
+    for _ in range(50):
+        b = random.choice(valid_b)
+        a = random.choice(pool_a)
+        if finite_decimal_places(a, b) is not None:
+            return a, b
+    return random.choice(pool_a), random.choice(valid_b)
 
 class Gioco:
     def __init__(self):
@@ -182,8 +331,9 @@ class Gioco:
             surf = pygame.transform.scale_by(surf, 3)
             cursor = pygame.cursors.Cursor((0, 0), surf)
             pygame.mouse.set_cursor(cursor)
-        except Exception:
-            pass
+        except (OSError, struct.error, pygame.error) as e:
+            print(f"Warning: unable to set custom cursor from wand.cur: {e}")
+            return
 
     def aggiorna_char_img(self):
         data = self.char_data.get(self.config_genere, self.char_data["F"])
@@ -191,20 +341,18 @@ class Gioco:
         self.char_w, self.char_h = self.char_img.get_size()
 
     def carica_risorse(self):
-        bg_game = pygame.image.load(resource_path("graphics/backgrounds/background1.png"))
-        self.bg = pygame.transform.scale(bg_game, (SCREEN_WIDTH, SCREEN_HEIGHT))
-        bg_menu = pygame.image.load(resource_path("graphics/MISC/background_menu.png"))
-        self.bg_menu = pygame.transform.scale(bg_menu, (SCREEN_WIDTH, SCREEN_HEIGHT))
-        bg_opt = pygame.image.load(resource_path("graphics/MISC/background_options.png"))
-        self.bg_options = pygame.transform.scale(bg_opt, (SCREEN_WIDTH, SCREEN_HEIGHT))
+        self.bg = safe_load_image(resource_path("graphics/backgrounds/background1.png"), (SCREEN_WIDTH, SCREEN_HEIGHT))
+        self.bg_menu = safe_load_image(resource_path("graphics/MISC/background_menu.png"), (SCREEN_WIDTH, SCREEN_HEIGHT))
+        self.bg_options = safe_load_image(resource_path("graphics/MISC/background_options.png"), (SCREEN_WIDTH, SCREEN_HEIGHT))
 
         self.backgrounds = {}
         bg_dir = resource_path("graphics/backgrounds")
-        for fname in os.listdir(bg_dir):
-            if fname.lower().endswith((".png", ".jpg", ".bmp")):
-                stem = os.path.splitext(fname)[0]
-                img = pygame.image.load(os.path.join(bg_dir, fname))
-                self.backgrounds[stem] = pygame.transform.scale(img, (SCREEN_WIDTH, SCREEN_HEIGHT))
+        if os.path.isdir(bg_dir):
+            for fname in sorted(os.listdir(bg_dir)):
+                if fname.lower().endswith((".png", ".jpg", ".bmp")):
+                    stem = os.path.splitext(fname)[0]
+                    img = safe_load_image(os.path.join(bg_dir, fname), (SCREEN_WIDTH, SCREEN_HEIGHT))
+                    self.backgrounds[stem] = img
         self.backgrounds["game"] = self.bg
         self.backgrounds["menu"] = self.bg_menu
         self.backgrounds["options"] = self.bg_options
@@ -228,15 +376,22 @@ class Gioco:
 
         self.mostri = []
         monster_dir = resource_path("graphics/monsters")
-        for fname in sorted(os.listdir(monster_dir)):
-            if fname.lower().startswith("monster") and fname.lower().endswith(".png"):
-                mi = int(fname.replace("monster", "").replace(".png", "").replace("M", ""))
-                if mi == 99:
-                    continue
-                path = os.path.join(monster_dir, fname)
-                frames = self.carica_spritesheet(path, 200, 4, row=0, rows=2, cols=4)
-                hit = self.carica_spritesheet(path, 200, 1, row=1, rows=2, cols=4, frame_offset=3)[0]
-                self.mostri.append({"frames": frames, "hit": hit, "idx": mi})
+        if os.path.isdir(monster_dir):
+            for fname in sorted(os.listdir(monster_dir)):
+                if fname.lower().startswith("monster") and fname.lower().endswith(".png"):
+                    try:
+                        mi = int(fname.replace("monster", "").replace(".png", "").replace("M", ""))
+                    except ValueError:
+                        continue
+                    if mi == 99:
+                        continue
+                    path = os.path.join(monster_dir, fname)
+                    frames = self.carica_spritesheet(path, 200, 4, row=0, rows=2, cols=4)
+                    hit = self.carica_spritesheet(path, 200, 1, row=1, rows=2, cols=4, frame_offset=3)[0]
+                    self.mostri.append({"frames": frames, "hit": hit, "idx": mi})
+        if not self.mostri:
+            placeholder_frame = make_placeholder_surface((200, 200))
+            self.mostri.append({"frames": [placeholder_frame], "hit": placeholder_frame, "idx": 1})
         self.monster_frames = self.mostri[0]["frames"]
         self.monster_hit_img = self.mostri[0]["hit"]
         self.monster_img = self.monster_frames[0]
@@ -252,19 +407,27 @@ class Gioco:
             boss_defeated = self.carica_spritesheet(boss_path, 390, 1, row=1, rows=2, cols=2, frame_offset=1, flip_x=False)[0]
             self.boss_data = {"walk": boss_walk, "hit": boss_hit, "defeated": boss_defeated}
 
-        self.heart_red = pygame.transform.scale(pygame.image.load(resource_path("graphics/misc/lives.png")).convert_alpha(), (35, 35))
-        self.heart_grey = pygame.transform.scale(pygame.image.load(resource_path("graphics/misc/lives_lost.png")).convert_alpha(), (35, 35))
+        self.heart_red = safe_load_image(resource_path("graphics/misc/lives.png"), (35, 35))
+        self.heart_grey = safe_load_image(resource_path("graphics/misc/lives_lost.png"), (35, 35))
 
-        self.logo = pygame.transform.scale(pygame.image.load(resource_path("graphics/misc/logo.png")).convert_alpha(), (SCREEN_WIDTH, SCREEN_HEIGHT))
-        self.gear_img = pygame.image.load(resource_path("graphics/misc/gear.png")).convert_alpha()
+        self.logo = safe_load_image(resource_path("graphics/misc/logo.png"), (SCREEN_WIDTH, SCREEN_HEIGHT))
+        self.gear_img = safe_load_image(resource_path("graphics/misc/gear.png"), None)
 
     def carica_spritesheet(self, path, target_w, frame_count, row=0, rows=1, cols=None, frame_offset=0, flip_x=True, scale=True):
-        sheet = pygame.image.load(path).convert_alpha()
+        try:
+            sheet = pygame.image.load(path).convert_alpha()
+        except (pygame.error, OSError) as e:
+            print(f"Warning: unable to load sprite sheet '{path}': {e}")
+            placeholder = make_placeholder_surface((target_w, target_w))
+            return [placeholder] * frame_count
         if flip_x:
             sheet = pygame.transform.flip(sheet, True, False)
         ncols = cols if cols is not None else frame_count
         fw = sheet.get_width() // ncols
         fh = sheet.get_height() // rows
+        if fw <= 0 or fh <= 0:
+            placeholder = make_placeholder_surface((target_w, target_w))
+            return [placeholder] * frame_count
         frames = []
         for i in range(frame_count):
             frame = sheet.subsurface(((i + frame_offset) * fw, row * fh, fw, fh))
@@ -310,11 +473,9 @@ class Gioco:
         for src in (data_path, resource_path):
             story_path = src("data/story.json")
             if os.path.exists(story_path):
-                try:
-                    with open(story_path, "r", encoding="utf-8") as f:
-                        self.storia_entries = json.load(f)
-                except (json.JSONDecodeError, Exception):
-                    self.storia_entries = []
+                data = load_json_file(story_path)
+                if isinstance(data, list):
+                    self.storia_entries = data
                 if self.storia_entries:
                     break
         self.storia_idx = 0
@@ -324,29 +485,27 @@ class Gioco:
 
         self.profili = []
         self.profilo_corrente = ""
-        if os.path.exists(idx_file):
-            try:
-                with open(idx_file, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                self.profili = [p for p in data.get("profiles", [])
-                                if os.path.isdir(os.path.join(PROFILES_DIR, p))]
-                self.profilo_corrente = data.get("current", "")
-                if self.profilo_corrente not in self.profili:
-                    self.profilo_corrente = ""
-            except (json.JSONDecodeError, Exception):
-                self.profili = []
-                self.profilo_corrente = ""
+        data = load_json_file(idx_file)
+        if isinstance(data, dict):
+            profiles = []
+            for p in data.get("profiles", []):
+                p = sanitize_profile_name(p)
+                if p and os.path.isdir(os.path.join(PROFILES_DIR, p)):
+                    profiles.append(p)
+            self.profili = list(dict.fromkeys(profiles))
+            current = sanitize_profile_name(data.get("current", ""))
+            self.profilo_corrente = current if current in self.profili else ""
         if self.profilo_corrente in self.profili:
             self.carica_config_profilo(self.profilo_corrente)
             self.aggiorna_char_img()
 
     def salva_profili(self):
         path = os.path.join(PROFILES_DIR, "profiles.json")
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump({"profiles": self.profili, "current": self.profilo_corrente}, f, indent=2)
+        save_json_file(path, {"profiles": self.profili, "current": self.profilo_corrente})
 
     def salva_config_profilo(self, nome=None):
         nome = nome or self.profilo_corrente
+        nome = sanitize_profile_name(nome)
         if not nome:
             return
         prof_dir = os.path.join(PROFILES_DIR, nome)
@@ -361,40 +520,50 @@ class Gioco:
         }
         for op in ["moltiplicazione", "addizione", "sottrazione", "divisione"]:
             data[op] = dict(self.config_per_op[op])
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2)
+        save_json_file(path, data)
 
     def carica_config_profilo(self, nome):
+        nome = sanitize_profile_name(nome)
+        if not nome:
+            return
         path = os.path.join(PROFILES_DIR, nome, "config.json")
-        if os.path.exists(path):
-            with open(path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            if "moltiplicazione" in data and isinstance(data["moltiplicazione"], dict):
-                for op in ["moltiplicazione", "addizione", "sottrazione", "divisione"]:
-                    if op in data:
-                        self.config_per_op[op].update(data[op])
-                self.config_genere = data.get("genere", self.config_genere)
-                self.config_storia_operazione = data.get("storia_operazione", self.config_storia_operazione)
-                self.auto_timeout = data.get("auto_timeout", self.auto_timeout)
-                self.livello_iniziale = data.get("livello_iniziale", self.livello_iniziale)
-                self.storia_progresso = data.get("storia_progresso", self.storia_progresso)
-            else:
-                # Legacy format
-                self.config_genere = data.get("genere", self.config_genere)
-                self.auto_timeout = data.get("timeout", self.auto_timeout)
-                for op in self.config_per_op:
-                    self.config_per_op[op]["pool_a"] = list(data.get("pool_a", self.config_per_op[op]["pool_a"]))
-                    self.config_per_op[op]["pool_b"] = list(data.get("pool_b", self.config_per_op[op]["pool_b"]))
-                    self.config_per_op[op]["domande"] = data.get("domande", self.config_per_op[op]["domande"])
-                    self.config_per_op[op]["swap"] = data.get("swap", self.config_per_op[op]["swap"])
-                    self.config_per_op[op]["timeout"] = data.get("timeout", self.config_per_op[op]["timeout"])
-                self.config_per_op["addizione"]["somma_massima"] = data.get("somma_massima", self.config_per_op["addizione"]["somma_massima"])
-                self.config_per_op["sottrazione"]["differenza_positiva"] = data.get("differenza_positiva", self.config_per_op["sottrazione"]["differenza_positiva"])
-                self.config_per_op["divisione"]["risultato_intero"] = data.get("risultato_intero", self.config_per_op["divisione"]["risultato_intero"])
-            self.cfg = self.config_per_op[self.config_operazione]
+        if not os.path.exists(path):
+            return
+        data = load_json_file(path)
+        if not isinstance(data, dict):
+            return
+        if "moltiplicazione" in data and isinstance(data["moltiplicazione"], dict):
+            for op in ["moltiplicazione", "addizione", "sottrazione", "divisione"]:
+                if op in data and isinstance(data[op], dict):
+                    if "pool_a" in data[op]:
+                        self.config_per_op[op]["pool_a"] = normalize_pool_list(data[op]["pool_a"], 100)
+                    if "pool_b" in data[op]:
+                        self.config_per_op[op]["pool_b"] = normalize_pool_list(data[op]["pool_b"], 100)
+                    self.config_per_op[op].update({k: v for k, v in data[op].items() if k not in ("pool_a", "pool_b")})
+            self.config_genere = data.get("genere", self.config_genere)
+            self.config_storia_operazione = data.get("storia_operazione", self.config_storia_operazione)
+            self.auto_timeout = data.get("auto_timeout", self.auto_timeout)
+            self.livello_iniziale = data.get("livello_iniziale", self.livello_iniziale)
+            storia_progress = data.get("storia_progresso", self.storia_progresso)
+            if isinstance(storia_progress, dict):
+                self.storia_progresso.update(storia_progress)
+        else:
+            # Legacy format
+            self.config_genere = data.get("genere", self.config_genere)
+            self.auto_timeout = data.get("timeout", self.auto_timeout)
+            for op in self.config_per_op:
+                self.config_per_op[op]["pool_a"] = normalize_pool_list(data.get("pool_a", self.config_per_op[op]["pool_a"]), 100)
+                self.config_per_op[op]["pool_b"] = normalize_pool_list(data.get("pool_b", self.config_per_op[op]["pool_b"]), 100)
+                self.config_per_op[op]["domande"] = data.get("domande", self.config_per_op[op]["domande"])
+                self.config_per_op[op]["swap"] = data.get("swap", self.config_per_op[op]["swap"])
+                self.config_per_op[op]["timeout"] = data.get("timeout", self.config_per_op[op]["timeout"])
+            self.config_per_op["addizione"]["somma_massima"] = data.get("somma_massima", self.config_per_op["addizione"]["somma_massima"])
+            self.config_per_op["sottrazione"]["differenza_positiva"] = data.get("differenza_positiva", self.config_per_op["sottrazione"]["differenza_positiva"])
+            self.config_per_op["divisione"]["risultato_intero"] = data.get("risultato_intero", self.config_per_op["divisione"]["risultato_intero"])
+        self.cfg = self.config_per_op[self.config_operazione]
 
     def percorso_sessioni(self):
-        nome = self.profilo_corrente or "_fallback"
+        nome = sanitize_profile_name(self.profilo_corrente) or ".fallback"
         prof_dir = os.path.join(PROFILES_DIR, nome)
         os.makedirs(prof_dir, exist_ok=True)
         return os.path.join(prof_dir, "sessions.txt")
@@ -541,6 +710,8 @@ class Gioco:
             self.swap_operandi = True if self.operazione == "sottrazione" else self.cfg["swap"]
         if self.modalita == "auto" and self.storia_entries:
             op_cfg = self.config_per_op.get(self.config_storia_operazione, {})
+            self.operazione = self.config_storia_operazione
+            self.cfg = self.config_per_op.get(self.config_storia_operazione, self.cfg)
             self.risultato_intero = op_cfg.get("risultato_intero", True)
             self.mostra_storia()
         else:
@@ -575,7 +746,10 @@ class Gioco:
             self.state = "gameover"
             return
         entry = self.storia_entries[self.storia_idx]
-        if entry["tipo"] == "livello":
+        if not isinstance(entry, dict):
+            entry = {"tipo": "testo", "testo": str(entry)}
+        entry_type = entry.get("tipo", "testo")
+        if entry_type == "livello":
             self.state = "storia"
             self.storia_is_livello = True
             self.storia_monsters = entry.get("monsters", list(range(1, 9)))
@@ -664,22 +838,12 @@ class Gioco:
             lv = self.livello_effettivo()
             lv_data = self.livelli[lv]
             self.operazione = self.config_storia_operazione
-            if self.operazione == "divisione":
-                self.a, self.b = genera_operandi_divisione(lv_data["pool_a"], lv_data["pool_b"], self.coda_rinforzo, self.risultato_intero)
-            else:
-                self.a, self.b = genera_operandi(lv_data["pool_a"], lv_data["pool_b"], self.coda_rinforzo)
+            self.a, self.b = seleziona_operandi(lv_data["pool_a"], lv_data["pool_b"], self.coda_rinforzo, self.operazione, self.risultato_intero)
             if self.operazione == "sottrazione" and self.a < self.b:
                 self.a, self.b = self.b, self.a
             if (self.a, self.b) == (self.prev_a, self.prev_b):
                 self.a, self.b = self.b, self.a
-            if self.operazione == "addizione":
-                self.risultato_atteso = self.a + self.b
-            elif self.operazione == "sottrazione":
-                self.risultato_atteso = self.a - self.b
-            elif self.operazione == "divisione":
-                self.risultato_atteso = self.a // self.b if self.b != 0 else 0
-            else:
-                self.risultato_atteso = self.a * self.b
+            self.risultato_atteso = calcola_risultato(self.a, self.b, self.operazione, self.risultato_intero)
             self.boss_domande_fatte += 1
             self.domanda_attiva = True
             self.input_utente = ""
@@ -723,10 +887,7 @@ class Gioco:
             lv = self.livello_effettivo()
             lv_data = self.livelli[lv]
             self.operazione = self.config_storia_operazione
-            if self.operazione == "divisione":
-                self.a, self.b = genera_operandi_divisione(lv_data["pool_a"], lv_data["pool_b"], self.coda_rinforzo, self.risultato_intero)
-            else:
-                self.a, self.b = genera_operandi(lv_data["pool_a"], lv_data["pool_b"], self.coda_rinforzo)
+            self.a, self.b = seleziona_operandi(lv_data["pool_a"], lv_data["pool_b"], self.coda_rinforzo, self.operazione, self.risultato_intero)
             if self.operazione == "sottrazione" and self.a < self.b:
                 self.a, self.b = self.b, self.a
             self.domande_fatte += 1
@@ -737,22 +898,14 @@ class Gioco:
                 self.player_exit_x = 75
                 self.state = "player_exit"
                 return
-            if self.coda_rinforzo and random.random() < 0.4:
-                self.a, self.b = self.coda_rinforzo.popleft()
-            elif self.operazione == "divisione":
-                self.a, self.b = genera_operandi_divisione(self.pool_a, self.pool_b, self.coda_rinforzo, self.risultato_intero)
-            else:
-                self.a = random.choice(self.pool_a)
-                self.b = random.choice(self.pool_b)
-                if self.operazione == "addizione":
-                    for _ in range(50):
-                        if self.a + self.b <= self.somma_massima:
-                            break
-                        self.a = random.choice(self.pool_a)
-                        self.b = random.choice(self.pool_b)
-                    else:
-                        self.a = min(self.pool_a, key=lambda x: abs(x - self.somma_massima))
-                        self.b = 0
+            self.a, self.b = seleziona_operandi(
+                self.pool_a,
+                self.pool_b,
+                self.coda_rinforzo,
+                self.operazione,
+                self.risultato_intero,
+                self.somma_massima,
+            )
             if self.swap_operandi and random.random() < 0.5:
                 if self.operazione != "divisione" or not self.risultato_intero:
                     self.a, self.b = self.b, self.a
@@ -776,24 +929,7 @@ class Gioco:
                 if self.modalita == "fisso" and self.operazione == "sottrazione" and self.differenza_positiva and self.a < self.b:
                     self.a, self.b = self.b, self.a
 
-        if self.modalita == "fisso":
-            if self.operazione == "addizione":
-                self.risultato_atteso = self.a + self.b
-            elif self.operazione == "sottrazione":
-                self.risultato_atteso = self.a - self.b
-            elif self.operazione == "divisione":
-                self.risultato_atteso = self.a // self.b if self.b != 0 else 0
-            else:
-                self.risultato_atteso = self.a * self.b
-        else:
-            if self.operazione == "addizione":
-                self.risultato_atteso = self.a + self.b
-            elif self.operazione == "sottrazione":
-                self.risultato_atteso = self.a - self.b
-            elif self.operazione == "divisione":
-                self.risultato_atteso = self.a // self.b if self.b != 0 else 0
-            else:
-                self.risultato_atteso = self.a * self.b
+        self.risultato_atteso = calcola_risultato(self.a, self.b, self.operazione, self.risultato_intero)
         if self.modalita == "auto":
             mostri_disponibili = [m for m in self.mostri if m["idx"] in self.storia_monsters]
         else:
@@ -860,8 +996,11 @@ class Gioco:
                             self.profilo_genere_mode = False
                         elif event.key == pygame.K_f:
                             self.config_genere = "F"
-                            nuovo = self.profilo_input.strip()
-                            self.profili.append(nuovo)
+                            nuovo = sanitize_profile_name(self.profilo_input)
+                            if not nuovo:
+                                return
+                            if nuovo not in self.profili:
+                                self.profili.append(nuovo)
                             self.salva_config_profilo(nuovo)
                             self.profilo_corrente = nuovo
                             self.aggiorna_char_img()
@@ -872,8 +1011,11 @@ class Gioco:
                             self.state = "menu"
                         elif event.key == pygame.K_m:
                             self.config_genere = "M"
-                            nuovo = self.profilo_input.strip()
-                            self.profili.append(nuovo)
+                            nuovo = sanitize_profile_name(self.profilo_input)
+                            if not nuovo:
+                                return
+                            if nuovo not in self.profili:
+                                self.profili.append(nuovo)
                             self.salva_config_profilo(nuovo)
                             self.profilo_corrente = nuovo
                             self.aggiorna_char_img()
@@ -1008,6 +1150,8 @@ class Gioco:
                             self.input_utente += str(NUMPAD_DIGIT[event.key])
                     elif event.key == pygame.K_KP_MINUS and not self.input_utente:
                         self.input_utente += "-"
+                    elif event.unicode == "." and self.operazione == "divisione" and not self.risultato_intero and "." not in self.input_utente and len(self.input_utente) < 6:
+                        self.input_utente += "."
                     elif event.unicode.isdigit() and len(self.input_utente) < 6:
                         self.input_utente += event.unicode
                     elif event.unicode == "-" and not self.input_utente:
@@ -1111,8 +1255,11 @@ class Gioco:
                         box_rect = pygame.Rect(sx, y, 280, box_h)
                         if box_rect.collidepoint(mx, my):
                             self.config_genere = key
-                            nuovo = self.profilo_input.strip()
-                            self.profili.append(nuovo)
+                            nuovo = sanitize_profile_name(self.profilo_input)
+                            if not nuovo:
+                                return
+                            if nuovo not in self.profili:
+                                self.profili.append(nuovo)
                             self.salva_config_profilo(nuovo)
                             self.profilo_corrente = nuovo
                             self.aggiorna_char_img()
@@ -1450,38 +1597,27 @@ class Gioco:
         self.stats.setdefault(livello, {"corrette": 0, "sbagliate": 0, "tempi": []})
 
         testo = self.input_utente.strip()
-        if testo.startswith("-") and testo[1:].isdigit():
-            risposta = int(testo)
-        elif testo.isdigit():
-            risposta = int(testo)
-            if risposta == self.risultato_atteso:
-                self.corretto = True
-                self.stats[livello]["corrette"] += 1
-                if self.boss_active and self.boss_fase == "fight":
-                    self.boss_colpito = True
-                    self.boss_colpito_start = pygame.time.get_ticks()
-                    self.zap_timer = 12
-                else:
-                    self.mostro_colpito = True
-                    self.mostro_fade_start = pygame.time.get_ticks()
-                    self.monster_img = self.monster_hit_img
-                    self.zap_timer = 12
+        risposta = None
+        try:
+            if "." in testo:
+                risposta = float(testo)
             else:
-                self.corretto = False
-                self.stats[livello]["sbagliate"] += 1
-                self.vite -= 1
-                if self.boss_active and self.boss_fase == "fight":
-                    self.boss_domande_totali += 1
+                risposta = int(testo)
+        except ValueError:
+            risposta = None
+
+        if risposta is not None and is_answer_correct(risposta, self.risultato_atteso):
+            self.corretto = True
+            self.stats[livello]["corrette"] += 1
+            if self.boss_active and self.boss_fase == "fight":
+                self.boss_colpito = True
+                self.boss_colpito_start = pygame.time.get_ticks()
+                self.zap_timer = 12
+            else:
                 self.mostro_colpito = True
                 self.mostro_fade_start = pygame.time.get_ticks()
                 self.monster_img = self.monster_hit_img
                 self.zap_timer = 12
-                self.zap_reverse = True
-                self.player_hit = True
-                self.blocco_corrente.clear()
-                for _ in range(3):
-                    self.coda_rinforzo.append((self.a, self.b))
-                self.hit_timer = 12
         else:
             self.corretto = False
             self.stats[livello]["sbagliate"] += 1
@@ -2433,14 +2569,7 @@ class Gioco:
                 col = (255, 255, int(255 * self.zap_timer / 12)) if abs(offset) <= 2 else (100, 100, 255)
                 pygame.draw.lines(self.screen, col, False, points, width)
 
-        if hasattr(self, 'operazione') and self.operazione == "sottrazione":
-            segno = "-"
-        elif hasattr(self, 'operazione') and self.operazione == "addizione":
-            segno = "+"
-        elif hasattr(self, 'operazione') and self.operazione == "divisione":
-            segno = ":"
-        else:
-            segno = "x"
+        segno = get_operation_symbol(self.operazione if hasattr(self, 'operazione') else None)
         domanda = self.font_grande.render(f"{self.a}  {segno}  {self.b}  =  ?", True, WHITE)
         rect = domanda.get_rect(center=(SCREEN_WIDTH // 2, 80))
         self.screen.blit(domanda, rect)
@@ -2553,7 +2682,7 @@ class Gioco:
             pygame.draw.rect(self.screen, (0, 255, 255), bg_l, 1)
             self.screen.blit(label, rect)
             dx, dy = 20, 80
-            segno_debug = "-" if self.operazione == "sottrazione" else "+" if self.operazione == "addizione" else ":" if self.operazione == "divisione" else "x"
+            segno_debug = get_operation_symbol(self.operazione)
             lines = [
                 "DEBUG",
                 f"Modalita: {'Storia' if self.modalita == 'auto' else 'Allenamento'}",
@@ -2858,15 +2987,22 @@ class Gioco:
                 extra = " | Ris. intero: ON"
             riga = f"{now} | Allenamento | {op_txt} | Corrette: {tot_corrette} | Sbagliate: {tot_sbagliate} | Pool A: [{pool_a_txt}] | Pool B: [{pool_b_txt}] | Domande: {self.domande_fatte}/{self.domande_totali} | Tempo medio: {tempo_medio:.1f}s{extra}"
         path = self.percorso_sessioni()
-        with open(path, "a", encoding="utf-8") as f:
-            f.write(riga + "\n")
+        try:
+            with open(path, "a", encoding="utf-8") as f:
+                f.write(riga + "\n")
+        except OSError as e:
+            print(f"Warning: unable to write session file '{path}': {e}")
 
     def carica_sessioni(self):
         path = self.percorso_sessioni()
         if not os.path.exists(path):
             return []
-        with open(path, "r", encoding="utf-8") as f:
-            righe = f.readlines()
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                righe = f.readlines()
+        except OSError as e:
+            print(f"Warning: unable to read session file '{path}': {e}")
+            return []
         ultime = [r.strip() for r in righe if r.strip()]
         return list(reversed(ultime[-6:]))
 
