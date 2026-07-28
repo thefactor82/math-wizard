@@ -481,7 +481,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="0.8.000"
+        self .version ="0.8.001"
 
         self .profiles =[]
         self .current_profile =""
@@ -2569,7 +2569,7 @@ class Game :
                 col =(255 ,255 ,int (255 *self .zap_timer /12 ))if abs (offset )<=2 else (100 ,100 ,255 )
                 pygame .draw .lines (self .screen ,col ,False ,points ,width )
 
-        segno =get_operation_symbol (self .operation if hasattr (self ,'operazione')else None )
+        segno =get_operation_symbol (self .operation if hasattr (self ,'operation')else None )
         domanda =self .font_large .render (f"{self .a }  {segno }  {self .b }  =  ?",True ,WHITE )
         rect =domanda .get_rect (center =(SCREEN_WIDTH //2 ,80 ))
         self .screen .blit (domanda ,rect )
@@ -2977,7 +2977,7 @@ class Game :
         if self .mode =="auto":
             line_text =f"{now } | Storia | {self .config_story_operation .capitalize ()} | Corrette: {total_correct } | Sbagliate: {total_wrong } | Livello: {self .effective_level ()+1 }/{len (self .levels )} | Tempo medio: {average_time :.1f}s"
         else :
-            op_txt =self .operation .capitalize ()if hasattr (self ,'operazione')else "Moltiplicazione"
+            op_txt =self .operation .capitalize ()if hasattr (self ,'operation')else "Moltiplicazione"
             pool_a_txt =",".join (str (n )for n in self .pool_a )
             pool_b_txt =",".join (str (n )for n in self .pool_b )
             extra =""
