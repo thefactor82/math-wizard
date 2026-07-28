@@ -73,6 +73,8 @@ Sembrava promettente.
 
 Peccato che l'80% del tempo fosse dedicato alla parte platform, che diventava via via sempre più difficile, assorbendo sempre più tempo e relegando la matematica in un angolino sempre più piccolo.
 
+Un altro errore che ho identificato in questi giochi è la gestione del tempo di risposta. In quasi tutti il tempo limite per dare una risposta è assolutamente inappropriato. L'obiettivo non è creare ansia nel giocatore, ma renderlo conscio che non si può stare un'ora a pensare ad una risposta: il tempo è un bene fondamentale, e la velocità è una caratteristica da allenare.
+
 ### 🎮 3. Giochi "tristi"
 
 Una storia, secondo me, in un videogioco è importante. Serve a creare coinvolgimento, soprattutto quando si parla di matematica, che per qualcuno potrebbe persino essere una parola da censurare.
