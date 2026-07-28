@@ -481,7 +481,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="0.8.001"
+        self .version ="0.8.002"
 
         self .profiles =[]
         self .current_profile =""
@@ -1694,6 +1694,7 @@ class Game :
         self .hit_timer =12 
         self .consecutive_correct =0 
         if self .boss_active and self .boss_phase =="fight":
+            self .lives =0 
             self .game_over =True 
         elif self .lives <=0 :
             self .game_over =True 
