@@ -214,6 +214,8 @@ for src in (data_path ,resource_path ):
         if isinstance (data ,dict ):
             LEVELS =data 
             for op in LEVELS :
+                if not isinstance (LEVELS [op ],list ):
+                    continue 
                 for lv in LEVELS [op ]:
                     lv ["pool_a"]=parse_pool (lv ["pool_a"])
                     lv ["pool_b"]=parse_pool (lv ["pool_b"])
@@ -504,7 +506,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="0.8.019"
+        self .version ="0.8.020"
 
         self .profiles =[]
         self .current_profile =""
@@ -731,6 +733,9 @@ class Game :
                 self .pool_b =[0 ]
             self .total_questions =self .config ["domande"]
             self .swap_operandi =True if self .operation =="sottrazione"else self .config ["swap"]
+            training_cfg =LEVELS .get ("training",{}).get (self .config_operation ,{})
+            self .training_monsters =training_cfg .get ("monsters",list (range (1 ,9 )))
+            self .training_flying_monsters =training_cfg .get ("flying",[])
         if self .mode =="auto"and self .story_entries :
             op_cfg =self .config_by_operation .get (self .config_story_operation ,{})
             self .operation =self .config_story_operation 
@@ -957,10 +962,10 @@ class Game :
         if self .mode =="auto":
             mostri_disponibili =[m for m in self .monsters if m ["idx"]in self .story_monsters ]
         else :
-            mostri_disponibili =self .monsters 
+            mostri_disponibili =[m for m in self .monsters if m ["idx"]in self .training_monsters ]
         scelto =random .choice ([m for m in mostri_disponibili if m is not self .previous_monster ])if len (mostri_disponibili )>1 else mostri_disponibili [0 ]
         self .previous_monster =scelto 
-        self .monster_type ="fly"if scelto ["idx"]in self .story_flying_monsters else "walk"
+        self .monster_type ="fly"if scelto ["idx"]in (self .story_flying_monsters if self .mode =="auto"else self .training_flying_monsters )else "walk"
         self .monster_y_offset =0 
         self .monster_frames =scelto ["frames"]
         self .monster_hit_img =scelto ["hit"]
