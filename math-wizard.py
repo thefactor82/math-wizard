@@ -384,6 +384,7 @@ class Game :
             idle_frames =self .load_spritesheet (path ,160 ,1 ,row =1 ,rows =2 ,cols =4 ,frame_offset =0 ,flip_x =False ,scale =False )
             frame0 =idle_frames [0 ].copy ()
             frame1 =pygame .transform .scale (frame0 ,(frame0 .get_width (),frame0 .get_height ()-3 ))
+            self .idle_h =frame0 .get_height ()
             idle_frames =[frame0 ,frame1 ]
             profile_img =self .load_spritesheet (path ,160 ,1 ,row =1 ,rows =2 ,cols =4 ,frame_offset =0 ,flip_x =False ,scale =False )[0 ]
             hit_frame =self .load_spritesheet (path ,160 ,1 ,row =1 ,rows =2 ,cols =4 ,frame_offset =3 ,flip_x =False ,scale =False )[0 ]
@@ -503,7 +504,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="0.8.017"
+        self .version ="0.8.018"
 
         self .profiles =[]
         self .current_profile =""
@@ -2516,6 +2517,7 @@ class Game :
 
         wx =self .player_stand_x +shake [0 ]
         data =self .char_data .get (self .config_gender ,self .char_data ["F"])
+        is_idle =not self .player_hit and not ((self .question_active and self .input_utente )or self .zap_timer >0 )
         if self .player_hit :
             char_img =data ["hit"]
         elif (self .question_active and self .input_utente )or self .zap_timer >0 :
@@ -2528,6 +2530,8 @@ class Game :
         cw ,ch =char_img .get_size ()
         base_y =SCREEN_HEIGHT //2 -ch //2 
         wy =base_y +130 +shake [1 ]
+        if is_idle and hasattr (self ,'idle_h')and ch <self .idle_h :
+            wy +=(self .idle_h -ch )-(self .idle_h //2 -ch //2 )
         wy_monster =base_y +170 +35 +self .monster_y_offset 
         self .screen .blit (char_img ,(wx ,wy ))
 
