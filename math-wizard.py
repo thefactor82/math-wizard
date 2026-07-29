@@ -500,7 +500,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="0.8.003"
+        self .version ="0.8.004"
 
         self .profiles =[]
         self .current_profile =""
@@ -797,10 +797,11 @@ class Game :
                 self .boss_progress =0.0 
                 self .boss_anim_frame =0 
                 boss_w =self .boss_hit_img .get_width ()
-                self .boss_end_x =float (SCREEN_WIDTH -75 -boss_w )
                 if self .boss_in_dir =="dx":
+                    self .boss_end_x =float (SCREEN_WIDTH -75 -boss_w )
                     self .boss_start_x =float (SCREEN_WIDTH +30 )
                 else :
+                    self .boss_end_x =75.0 
                     self .boss_start_x =float (-boss_w -30 )
                 self .boss_x =self .boss_start_x 
             else :
