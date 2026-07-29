@@ -500,7 +500,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="0.8.011"
+        self .version ="0.8.012"
 
         self .profiles =[]
         self .current_profile =""
@@ -2629,12 +2629,17 @@ class Game :
         if self .mode =="auto":
             richieste =5 +sum (range (1 ,self .level +1 ))
             corr =sum (1 for esito ,_ in self .current_block if esito )
-            self .draw_text_shadow (self .font_small ,f"Livello {self .effective_level ()+1 }/{len (self .levels )}",WHITE ,(20 ,20 ))
+            stato_txt =f"Livello {self .effective_level ()+1 }/{len (self .levels )}"
             mode_txt ="Storia"
         else :
-            self .draw_text_shadow (self .font_small ,f"Domanda {self .questions_asked }/{self .total_questions }",WHITE ,(20 ,20 ))
+            stato_txt =f"Domanda {self .questions_asked }/{self .total_questions }"
             mode_txt ="Allenamento"
-        self .draw_text_shadow (self .font_small ,mode_txt ,WHITE ,midright =(SCREEN_WIDTH -20 ,20 ))
+        mode_surf =self .font_small .render (mode_txt ,True ,WHITE )
+        stato_surf =self .font_small .render (stato_txt ,True ,WHITE )
+        y_top =20 
+        self .draw_text_shadow (self .font_small ,mode_txt ,WHITE ,(20 ,y_top ))
+        sx_stato =20 +mode_surf .get_width ()+20 
+        self .draw_text_shadow (self .font_small ,stato_txt ,WHITE ,(sx_stato ,y_top ))
 
         for i in range (WIZARD_LIVES ):
             cx =SCREEN_WIDTH -70 -i *50 
