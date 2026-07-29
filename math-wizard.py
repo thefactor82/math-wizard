@@ -500,7 +500,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="0.8.004"
+        self .version ="0.8.005"
 
         self .profiles =[]
         self .current_profile =""
@@ -2591,8 +2591,11 @@ class Game :
                 pygame .draw .lines (self .screen ,col ,False ,points ,width )
 
         segno =get_operation_symbol (self .operation if hasattr (self ,'operation')else None )
-        domanda =self .font_large .render (f"{self .a }  {segno }  {self .b }  =  ?",True ,WHITE )
+        domanda_text =f"{self .a }  {segno }  {self .b }  =  ?"
+        ombra =self .font_large .render (domanda_text ,True ,(30 ,30 ,30 ))
+        domanda =self .font_large .render (domanda_text ,True ,WHITE )
         rect =domanda .get_rect (center =(SCREEN_WIDTH //2 ,80 ))
+        self .screen .blit (ombra ,(rect .x +2 ,rect .y +2 ))
         self .screen .blit (domanda ,rect )
 
         if self .question_active :
