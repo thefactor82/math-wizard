@@ -500,7 +500,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="0.8.006"
+        self .version ="0.8.007"
 
         self .profiles =[]
         self .current_profile =""
@@ -677,7 +677,7 @@ class Game :
         if self .mode =="auto":
             self .initial_timeout_limit =self .auto_timeout 
             self .levels =LEVELS [self .config_story_operation ]
-            self .level =0 
+            self .level =self .initial_level 
         self .story_idx =0 
         self .story_is_level =False 
         self .story_monsters =list (range (1 ,9 ))
@@ -737,10 +737,10 @@ class Game :
             self .start_level ()
 
     def effective_level (self ):
-        return min (self .level +self .initial_level ,len (self .levels )-1 )
+        return min (self .level ,len (self .levels )-1 )
 
     def is_last_story_level (self ):
-        return self .level +self .initial_level >=self .num_story_levels -1 
+        return self .level >=self .num_story_levels -1 
 
     def start_level (self ):
         if self .mode =="auto":
