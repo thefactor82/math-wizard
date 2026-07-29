@@ -500,7 +500,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="0.8.008"
+        self .version ="0.8.009"
 
         self .profiles =[]
         self .current_profile =""
@@ -1936,6 +1936,21 @@ class Game :
 
         pygame .display .flip ()
 
+    def draw_text_shadow (self ,font ,text ,color ,pos =None ,center =None ,midleft =None ,midright =None ,offset =2 ):
+        ombra =font .render (text ,True ,(30 ,30 ,30 ))
+        surf =font .render (text ,True ,color )
+        if center is not None :
+            rect =surf .get_rect (center =center )
+        elif midleft is not None :
+            rect =surf .get_rect (midleft =midleft )
+        elif midright is not None :
+            rect =surf .get_rect (midright =midright )
+        else :
+            rect =surf .get_rect (topleft =pos )if pos else surf .get_rect ()
+        self .screen .blit (ombra ,(rect .x +offset ,rect .y +offset ))
+        self .screen .blit (surf ,rect )
+        return rect 
+
     def draw_splash (self ):
         elapsed =pygame .time .get_ticks ()-self .splash_start 
         logo_rect =self .logo .get_rect (center =(SCREEN_WIDTH //2 ,SCREEN_HEIGHT //2 ))
@@ -2606,17 +2621,17 @@ class Game :
             box_rect .width =max (box_rect .width ,120 )
             pygame .draw .rect (self .screen ,(40 ,40 ,60 ),box_rect ,border_radius =8 )
             pygame .draw .rect (self .screen ,(100 ,100 ,180 ),box_rect ,2 ,border_radius =8 )
+            ombra =self .font_input .render (text_input ,True ,(30 ,30 ,30 ))
+            self .screen .blit (ombra ,(input_rect .x +2 ,input_rect .y +2 ))
             self .screen .blit (input_surf ,input_rect )
 
         if self .mode =="auto":
             richieste =5 +sum (range (1 ,self .level +1 ))
             corr =sum (1 for esito ,_ in self .current_block if esito )
-            stato =self .font_small .render (f"Livello {self .effective_level ()+1 }/{len (self .levels )}",True ,WHITE )
-            self .screen .blit (stato ,(20 ,20 ))
+            self .draw_text_shadow (self .font_small ,f"Livello {self .effective_level ()+1 }/{len (self .levels )}",WHITE ,(20 ,20 ))
             mode_txt ="Storia"
         else :
-            stato =self .font_small .render (f"Domanda {self .questions_asked }/{self .total_questions }",True ,WHITE )
-            self .screen .blit (stato ,(20 ,20 ))
+            self .draw_text_shadow (self .font_small ,f"Domanda {self .questions_asked }/{self .total_questions }",WHITE ,(20 ,20 ))
             mode_txt ="Allenamento"
         mode =self .font_small .render (mode_txt ,True ,GRAY )
         rect_m =mode .get_rect (midright =(SCREEN_WIDTH -20 ,20 ))
@@ -2648,6 +2663,8 @@ class Game :
 
             time_text =self .font_small .render (f"{self .timeout_limit *(1 -timer_progresso ):.0f}s",True ,WHITE )
             rect =time_text .get_rect (midleft =(bar_x +bar_w +15 ,bar_y +bar_h //2 ))
+            ombra_t =self .font_small .render (f"{self .timeout_limit *(1 -timer_progresso ):.0f}s",True ,(30 ,30 ,30 ))
+            self .screen .blit (ombra_t ,(rect .x +2 ,rect .y +2 ))
             self .screen .blit (time_text ,rect )
 
         if not self .question_active and self .feedback is not None :
@@ -2663,6 +2680,8 @@ class Game :
                 fb =self .font_large .render (f"SBAGLIATO! Era {self .expected_result }",True ,RED )
                 prossimo =self .font_small .render ("",True ,GRAY )
             rect =fb .get_rect (center =(SCREEN_WIDTH //2 ,SCREEN_HEIGHT //2 -30 ))
+            ombra_fb =self .font_large .render ("CORRETTO!"if self .feedback else f"SBAGLIATO! Era {self .expected_result }",True ,(30 ,30 ,30 ))
+            self .screen .blit (ombra_fb ,(rect .x +2 ,rect .y +2 ))
             self .screen .blit (fb ,rect )
             rect =prossimo .get_rect (center =(SCREEN_WIDTH //2 ,SCREEN_HEIGHT //2 +30 ))
             self .screen .blit (prossimo ,rect )
@@ -2745,9 +2764,7 @@ class Game :
         overlay .fill (BG_DARK )
         self .screen .blit (overlay ,(0 ,0 ))
 
-        title =self .font_title .render (f"LIVELLO {self .effective_level ()+1 } COMPLETATO",True ,GOLD )
-        rect =title .get_rect (center =(SCREEN_WIDTH //2 ,80 ))
-        self .screen .blit (title ,rect )
+        self .draw_text_shadow (self .font_title ,f"LIVELLO {self .effective_level ()+1 } COMPLETATO",GOLD ,center =(SCREEN_WIDTH //2 ,80 ))
 
         tot =len (self .monster_times )
         correct_count =self .stats .get (self .level ,{}).get ("corrette",0 )
@@ -2765,14 +2782,10 @@ class Game :
 
         y =180 
         for text_value ,colore in lines :
-            surf =self .font_medium .render (text_value ,True ,colore )
-            rect =surf .get_rect (center =(SCREEN_WIDTH //2 ,y ))
-            self .screen .blit (surf ,rect )
+            self .draw_text_shadow (self .font_medium ,text_value ,colore ,center =(SCREEN_WIDTH //2 ,y ))
             y +=46 
 
-        prompt =self .font_small .render ("Premi INVIO per continuare",True ,WHITE )
-        rect =prompt .get_rect (center =(SCREEN_WIDTH //2 ,SCREEN_HEIGHT -80 ))
-        self .screen .blit (prompt ,rect )
+        self .draw_text_shadow (self .font_small ,"Premi INVIO per continuare",WHITE ,center =(SCREEN_WIDTH //2 ,SCREEN_HEIGHT -80 ),offset =1 )
 
     def draw_story (self ):
         entry =self .story_entries [self .story_idx ]if self .story_idx <len (self .story_entries )else {}
@@ -2801,17 +2814,13 @@ class Game :
             for word in words :
                 test =line +" "+word if line else word 
                 if self .story_font .size (test )[0 ]>SCREEN_WIDTH -x_margine *2 :
-                    surf =self .story_font .render (line ,True ,WHITE )
-                    rect =surf .get_rect (midleft =(x_margine ,y ))
-                    self .screen .blit (surf ,rect )
+                    self .draw_text_shadow (self .story_font ,line ,WHITE ,midleft =(x_margine ,y ))
                     y +=46 
                     line =word 
                 else :
                     line =test 
             if line :
-                surf =self .story_font .render (line ,True ,WHITE )
-                rect =surf .get_rect (midleft =(x_margine ,y ))
-                self .screen .blit (surf ,rect )
+                self .draw_text_shadow (self .story_font ,line ,WHITE ,midleft =(x_margine ,y ))
                 y +=46 
 
         if self .story_fade_alpha >0 :
@@ -2864,11 +2873,9 @@ class Game :
 
     def draw_gameover_story (self ):
         if self .lives <=0 or (self .boss_active and self .boss_phase =="fight"):
-            title =self .font_title .render ("GAME OVER",True ,RED )
+            self .draw_text_shadow (self .font_title ,"GAME OVER",RED ,center =(SCREEN_WIDTH //2 ,50 ))
         else :
-            title =self .font_title .render ("PARTITA TERMINATA",True ,GOLD )
-        rect =title .get_rect (center =(SCREEN_WIDTH //2 ,50 ))
-        self .screen .blit (title ,rect )
+            self .draw_text_shadow (self .font_title ,"PARTITA TERMINATA",GOLD ,center =(SCREEN_WIDTH //2 ,50 ))
 
         total_correct =sum (v ["corrette"]for v in self .stats .values ())
         total_wrong =sum (v ["sbagliate"]for v in self .stats .values ())
@@ -2884,9 +2891,7 @@ class Game :
             lines .append ((f"Tempo medio: {average_monster_time :.1f}s",WHITE ))
         y =110 
         for text_value ,colore in lines :
-            surf =self .font_medium .render (text_value ,True ,colore )
-            rect =surf .get_rect (center =(SCREEN_WIDTH //2 ,y ))
-            self .screen .blit (surf ,rect )
+            self .draw_text_shadow (self .font_medium ,text_value ,colore ,center =(SCREEN_WIDTH //2 ,y ))
             y +=46 
 
         data =self .char_data .get (self .config_gender ,self .char_data ["F"])
@@ -2915,9 +2920,7 @@ class Game :
 
         y_text =char_y +char_img .get_height ()+20 
         for line in lines :
-            surf =self .font_small .render (line ,True ,WHITE )
-            rect =surf .get_rect (center =(SCREEN_WIDTH //2 ,y_text ))
-            self .screen .blit (surf ,rect )
+            self .draw_text_shadow (self .font_small ,line ,WHITE ,center =(SCREEN_WIDTH //2 ,y_text ))
             y_text +=35 
 
         mx ,my =pygame .mouse .get_pos ()
@@ -2936,17 +2939,14 @@ class Game :
             pygame .draw .rect (self .screen ,bg_col ,btn_rect ,border_radius =6 )
             if hovered :
                 pygame .draw .rect (self .screen ,GOLD ,btn_rect ,2 ,border_radius =6 )
-            surf =self .font_small .render (label ,True ,WHITE )
-            self .screen .blit (surf ,surf .get_rect (center =btn_rect .center ))
+            self .draw_text_shadow (self .font_small ,label ,WHITE ,center =btn_rect .center )
             self .gameover_buttons [action ]=btn_rect 
 
     def draw_gameover_fixed (self ):
         if self .lives <=0 :
-            title =self .font_title .render ("GAME OVER",True ,RED )
+            self .draw_text_shadow (self .font_title ,"GAME OVER",RED ,center =(SCREEN_WIDTH //2 ,50 ))
         else :
-            title =self .font_title .render ("PARTITA TERMINATA",True ,GOLD )
-        rect =title .get_rect (center =(SCREEN_WIDTH //2 ,50 ))
-        self .screen .blit (title ,rect )
+            self .draw_text_shadow (self .font_title ,"PARTITA TERMINATA",GOLD ,center =(SCREEN_WIDTH //2 ,50 ))
 
         total_correct =sum (v ["corrette"]for v in self .stats .values ())
         total_wrong =sum (v ["sbagliate"]for v in self .stats .values ())
@@ -2960,22 +2960,16 @@ class Game :
         ]
         y =110 
         for text_value ,colore in lines :
-            surf =self .font_medium .render (text_value ,True ,colore )
-            rect =surf .get_rect (center =(SCREEN_WIDTH //2 ,y ))
-            self .screen .blit (surf ,rect )
+            self .draw_text_shadow (self .font_medium ,text_value ,colore ,center =(SCREEN_WIDTH //2 ,y ))
             y +=46 
 
         sessioni =self .load_sessions ()
         if sessioni :
             y +=14 
-            session_title =self .font_medium .render ("Ultime sessioni:",True ,GOLD )
-            rect =session_title .get_rect (center =(SCREEN_WIDTH //2 ,y ))
-            self .screen .blit (session_title ,rect )
+            self .draw_text_shadow (self .font_medium ,"Ultime sessioni:",GOLD ,center =(SCREEN_WIDTH //2 ,y ))
             y +=34 
             for s in sessioni :
-                surf =self .font_tiny .render (s ,True ,(180 ,180 ,180 ))
-                rect =surf .get_rect (center =(SCREEN_WIDTH //2 ,y ))
-                self .screen .blit (surf ,rect )
+                self .draw_text_shadow (self .font_tiny ,s ,(180 ,180 ,180 ),center =(SCREEN_WIDTH //2 ,y ))
                 y +=24 
 
         mx ,my =pygame .mouse .get_pos ()
@@ -2989,8 +2983,7 @@ class Game :
             pygame .draw .rect (self .screen ,bg_col ,btn_rect ,border_radius =6 )
             if hovered :
                 pygame .draw .rect (self .screen ,GOLD ,btn_rect ,2 ,border_radius =6 )
-            surf =self .font_small .render (label ,True ,WHITE )
-            self .screen .blit (surf ,surf .get_rect (center =btn_rect .center ))
+            self .draw_text_shadow (self .font_small ,label ,WHITE ,center =btn_rect .center )
             self .gameover_buttons [action ]=btn_rect 
 
     def save_session (self ):
