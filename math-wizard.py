@@ -500,7 +500,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="0.8.010"
+        self .version ="0.8.011"
 
         self .profiles =[]
         self .current_profile =""
@@ -2634,9 +2634,7 @@ class Game :
         else :
             self .draw_text_shadow (self .font_small ,f"Domanda {self .questions_asked }/{self .total_questions }",WHITE ,(20 ,20 ))
             mode_txt ="Allenamento"
-        mode =self .font_small .render (mode_txt ,True ,GRAY )
-        rect_m =mode .get_rect (midright =(SCREEN_WIDTH -20 ,20 ))
-        self .screen .blit (mode ,rect_m )
+        self .draw_text_shadow (self .font_small ,mode_txt ,WHITE ,midright =(SCREEN_WIDTH -20 ,20 ))
 
         for i in range (WIZARD_LIVES ):
             cx =SCREEN_WIDTH -70 -i *50 
