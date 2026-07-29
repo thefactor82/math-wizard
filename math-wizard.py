@@ -383,7 +383,7 @@ class Game :
         for key ,path in [("F",resource_path ("graphics/players/playerf.png")),("M",resource_path ("graphics/players/playerm.png"))]:
             idle_frames =self .load_spritesheet (path ,160 ,1 ,row =1 ,rows =2 ,cols =4 ,frame_offset =0 ,flip_x =False ,scale =False )
             frame0 =idle_frames [0 ].copy ()
-            frame1 =pygame .transform .scale (frame0 ,(frame0 .get_width (),frame0 .get_height ()-2 ))
+            frame1 =pygame .transform .scale (frame0 ,(frame0 .get_width (),frame0 .get_height ()-3 ))
             idle_frames =[frame0 ,frame1 ]
             profile_img =self .load_spritesheet (path ,160 ,1 ,row =1 ,rows =2 ,cols =4 ,frame_offset =0 ,flip_x =False ,scale =False )[0 ]
             hit_frame =self .load_spritesheet (path ,160 ,1 ,row =1 ,rows =2 ,cols =4 ,frame_offset =3 ,flip_x =False ,scale =False )[0 ]
@@ -503,7 +503,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="0.8.016"
+        self .version ="0.8.017"
 
         self .profiles =[]
         self .current_profile =""
