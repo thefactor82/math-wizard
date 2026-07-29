@@ -500,7 +500,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="0.8.005"
+        self .version ="0.8.006"
 
         self .profiles =[]
         self .current_profile =""
@@ -1853,7 +1853,7 @@ class Game :
                 elapsed =(pygame .time .get_ticks ()-self .question_start -self .boss_paused_ms )/1000.0 
                 self .boss_progress =min (elapsed /self .boss_timeout ,1.0 )
                 boss_w =self .boss_hit_img .get_width ()
-                fight_end =float (self .player_stand_x +self .char_w -100 )
+                fight_end =float (self .player_stand_x -100 )if self .boss_end_x <self .player_stand_x else float (self .player_stand_x +self .char_w -100 )
                 self .boss_x =self .boss_end_x +(fight_end -self .boss_end_x )*self .boss_progress 
                 if not self .boss_hit :
                     self .boss_anim_frame =(pygame .time .get_ticks ()//self .boss_anim_speed )%len (self .boss_frames )
