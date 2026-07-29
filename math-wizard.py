@@ -500,7 +500,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="0.8.009"
+        self .version ="0.8.010"
 
         self .profiles =[]
         self .current_profile =""
@@ -2610,7 +2610,8 @@ class Game :
         ombra =self .font_large .render (domanda_text ,True ,(30 ,30 ,30 ))
         domanda =self .font_large .render (domanda_text ,True ,WHITE )
         rect =domanda .get_rect (center =(SCREEN_WIDTH //2 ,80 ))
-        self .screen .blit (ombra ,(rect .x +2 ,rect .y +2 ))
+        for dx ,dy in [(-2 ,-2 ),(-2 ,0 ),(-2 ,2 ),(0 ,-2 ),(0 ,2 ),(2 ,-2 ),(2 ,0 ),(2 ,2 )]:
+            self .screen .blit (ombra ,(rect .x +dx ,rect .y +dy ))
         self .screen .blit (domanda ,rect )
 
         if self .question_active :
@@ -2675,7 +2676,7 @@ class Game :
 
             if self .feedback :
                 fb =self .font_large .render ("CORRETTO!",True ,GREEN )
-                prossimo =self .font_small .render ("Prossima domanda...",True ,GRAY )
+                prossimo =self .font_small .render ("Prossima domanda...",True ,WHITE )
             else :
                 fb =self .font_large .render (f"SBAGLIATO! Era {self .expected_result }",True ,RED )
                 prossimo =self .font_small .render ("",True ,GRAY )
@@ -2684,6 +2685,8 @@ class Game :
             self .screen .blit (ombra_fb ,(rect .x +2 ,rect .y +2 ))
             self .screen .blit (fb ,rect )
             rect =prossimo .get_rect (center =(SCREEN_WIDTH //2 ,SCREEN_HEIGHT //2 +30 ))
+            ombra_pro =self .font_small .render ("Prossima domanda..."if self .feedback else "",True ,(30 ,30 ,30 ))
+            self .screen .blit (ombra_pro ,(rect .x +2 ,rect .y +2 ))
             self .screen .blit (prossimo ,rect )
 
         if self .monster_hit :
