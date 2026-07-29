@@ -1,17 +1,17 @@
 [
   {
     "tipo": "testo",
-    "bg": "background1",
+    "bg": "forest1",
     "testo": "NOMEPROFILOINUSO vive nel regno di Math, un posto pacifico e tranquillo, dove le giornate scorrono serene.\n\nMa come in ogni regno succede, anche a Math ci sono alcuni problemi...\n\nGli Hop, dei simpatici mostriciattoli, passano le loro dispettose giornate ad importunare gli abitanti di Math con le loro...\n\nOperazioni!"
   },
   {
     "tipo": "testo",
-    "bg": "background0",
+    "bg": "home",
     "testo": "NOMEPROFILOINUSO si è appena svegliat-o-a- per quella che è un'importantissima giornata...\n\nIl Re ha espressamente chiesto di vederl-o-a-!\n\nNOMEPROFILOINUSO non vede l'ora di arrivare al castello, ma dovrà affrontare un lungo sentiero, e probabilmente parecchi Hop che verranno a disturbarl-o-a-..."
   },
   {
     "tipo": "livello",
-    "bg": "background0",
+    "bg": "home",
     "monsters": [1,2,8],
     "player_in": "sx",
     "player_out": "dx",
@@ -20,7 +20,7 @@
   },
   {
     "tipo": "livello",
-    "bg": "background1",
+    "bg": "forest1",
     "monsters": [1,2,3,4,6,8],
     "player_in": "sx",
     "player_out": "dx",
@@ -29,7 +29,7 @@
   },
   {
     "tipo": "livello",
-    "bg": "background2",
+    "bg": "forest2",
     "monsters": [1,2,3,4,6,8],
     "player_in": "sx",
     "player_out": "dx",
@@ -38,7 +38,7 @@
   },
   {
     "tipo": "livello",
-    "bg": "background3",
+    "bg": "forest3",
     "monsters": [1,2,3,4,5,6,8],
     "player_in": "sx",
     "player_out": "dx",
@@ -47,33 +47,70 @@
   },
   {
     "tipo": "livello",
-    "bg": "background5",
+    "bg": "forest4",
+    "monsters": [1,2,3,4,6,8],
+    "player_in": "sx",
+    "player_out": "dx",
+    "player_entrance": "y",
+    "monster_in": "dx"
+  },
+  {
+    "tipo": "livello",
+    "bg": "grass",
+    "monsters": [1,2,3,4,6,8],
+    "player_in": "sx",
+    "player_out": "dx",
+    "player_entrance": "y",
+    "monster_in": "dx"
+  },
+  {
+    "tipo": "livello",
+    "bg": "village",
     "monsters": [1,2,3,4,5,6,8],
     "player_in": "sx",
-    "player_out": "dx",
+    "player_out": "sx",
     "player_entrance": "y",
     "monster_in": "dx"
   },
   {
     "tipo": "livello",
-    "bg": "background6",
-    "monsters": [3,7,9,10,11],
-    "flying": [9,10,11],
-    "player_in": "sx",
-    "player_out": "dx",
+    "bg": "grass",
+    "monsters": [1,2,3,4,6,8],
+    "player_in": "dx",
+    "player_out": "sx",
     "player_entrance": "y",
-    "monster_in": "dx"
+    "monster_in": "sx"
   },
   {
     "tipo": "livello",
-    "bg": "background7",
+    "bg": "cavern_entrance",
     "monsters": [3,7,9,10,11],
     "flying": [9,10,11],
-    "player_in": "sx",
-    "player_out": "dx",
+    "player_in": "dx",
+    "player_out": "sx",
     "player_entrance": "y",
-    "monster_in": "dx",
+    "monster_in": "sx"
+  },
+  {
+    "tipo": "livello",
+    "bg": "cavern1",
+    "monsters": [3,7,9,10,11],
+    "flying": [9,10,11],
+    "player_in": "dx",
+    "player_out": "sx",
+    "player_entrance": "y",
+    "monster_in": "sx"
+  },
+  {
+    "tipo": "livello",
+    "bg": "cavern2",
+    "monsters": [3,7,9,10,11],
+    "flying": [9,10,11],
+    "player_in": "dx",
+    "player_out": "sx",
+    "player_entrance": "y",
+    "monster_in": "sx",
     "boss": "monster99",
-    "boss_in": "dx"
+    "boss_in": "sx"
   }
 ]
