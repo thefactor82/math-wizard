@@ -248,3 +248,67 @@ Un pannello di debug (attivabile digitando D E B U G), utile per sviluppo
 - **Sessioni di gioco** salvate in `history/` (log testuali)
 
 ---
+
+## 🚀 Come eseguire il gioco dal codice sorgente
+
+Se hai scaricato il repository da GitHub, puoi eseguire Math Wizard sul tuo computer seguendo queste istruzioni.
+
+### Windows
+
+1. **Installa Python** (versione 3.8 o superiore) da [python.org](https://www.python.org/downloads/). Durante l'installazione spunta _"Add Python to PATH"_.
+2. Apri **PowerShell** o il **Prompt dei comandi** e spostati nella cartella del progetto:
+   ```
+   cd percorso\dove\hai\scaricato\math-wizard
+   ```
+3. **Installa Pygame**:
+   ```
+   pip install pygame
+   ```
+4. **Avvia il gioco**:
+   ```
+   python math-wizard.py
+   ```
+
+### macOS
+
+1. **Installa Python** (versione 3.8 o superiore) da [python.org](https://www.python.org/downloads/) oppure con Homebrew: `brew install python@3`
+2. Apri il **Terminale** e spostati nella cartella del progetto:
+   ```
+   cd /percorso/dove/hai/scaricato/math-wizard
+   ```
+3. **Installa Pygame**:
+   ```
+   pip3 install pygame
+   ```
+4. **Avvia il gioco**:
+   ```
+   python3 math-wizard.py
+   ```
+
+### Linux (Debian/Ubuntu derivate)
+
+1. **Installa Python e pip**:
+   ```
+   sudo apt update && sudo apt install python3 python3-pip
+   ```
+2. Spostati nella cartella del progetto:
+   ```
+   cd /percorso/dove/hai/scaricato/math-wizard
+   ```
+3. **Installa Pygame**:
+   ```
+   pip3 install pygame
+   ```
+4. **Avvia il gioco**:
+   ```
+   python3 math-wizard.py
+   ```
+
+### Note comuni
+
+- La prima esecuzione creerà automaticamente la cartella `profiles/` con un profilo predefinito.
+- Tutte le impostazioni, i progressi e le statistiche sono salvate in file JSON all'interno di `profiles/`.
+- Per personalizzare i pool di operandi della modalità Storia, modifica il file `data/levels.json`.
+- Per personalizzare i dialoghi della storia, modifica il file `data/story.json`.
+
+---
