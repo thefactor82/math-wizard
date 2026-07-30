@@ -371,10 +371,10 @@ class Game :
             frame1 =pygame .transform .scale (frame0 ,(frame0 .get_width (),frame0 .get_height ()-2 ))
             self .idle_h =frame0 .get_height ()
             idle_frames =[frame0 ,frame1 ]
-            profile_img =self .load_spritesheet (path ,160 ,1 ,row =1 ,rows =2 ,cols =4 ,frame_offset =0 ,flip_x =False ,scale =False )[0 ]
+            shake_frame =self .load_spritesheet (path ,160 ,1 ,row =1 ,rows =2 ,cols =4 ,frame_offset =1 ,flip_x =False ,scale =False )[0 ]
             hit_frame =self .load_spritesheet (path ,160 ,1 ,row =1 ,rows =2 ,cols =4 ,frame_offset =3 ,flip_x =False ,scale =False )[0 ]
             charge_frame =self .load_spritesheet (path ,160 ,1 ,row =1 ,rows =2 ,cols =4 ,frame_offset =2 ,flip_x =False ,scale =False )[0 ]
-            self .char_data [key ]={"idle":idle_frames ,"profile":profile_img ,"hit":hit_frame ,"charge":charge_frame }
+            self .char_data [key ]={"idle":idle_frames ,"profile":profile_img ,"hit":hit_frame ,"charge":charge_frame ,"shake":shake_frame }
             run_frames =self .load_spritesheet (path ,160 ,4 ,row =0 ,rows =2 ,cols =4 ,frame_offset =0 ,flip_x =False ,scale =False )
             self .char_data [key ]["run"]=run_frames 
         self .char_img =self .char_data ["F"]["idle"][0 ]
@@ -489,7 +489,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="0.8.022"
+        self .version ="0.8.023"
 
         self .profiles =[]
         self .current_profile =""
@@ -603,6 +603,7 @@ class Game :
         self .zap_timer =0 
         self .zap_reverse =False 
         self .player_hit =False 
+        self .player_shake =False 
         self .game_over =False 
         self .question_start =0 
         self .timeout_handled =False 
@@ -1813,7 +1814,8 @@ class Game :
 
         if self .boss_active and self .boss_phase =="shake":
             elapsed =pygame .time .get_ticks ()-self .boss_shake_start 
-            duration =600 
+            duration =2000 
+            self .player_shake =True 
             if elapsed >=duration :
                 self .boss_phase ="entrance"
                 self .boss_entrance_start =pygame .time .get_ticks ()
@@ -1821,12 +1823,13 @@ class Game :
 
         if self .boss_active and self .boss_phase =="entrance":
             elapsed =pygame .time .get_ticks ()-self .boss_entrance_start 
-            duration =800 
+            duration =2000 
             progress =min (elapsed /duration ,1.0 )
             ease =1 -(1 -progress )**3 
             self .boss_x =self .boss_start_x +(self .boss_end_x -self .boss_start_x )*ease 
             if progress >=1.0 :
                 self .boss_phase ="fight"
+                self .player_shake =False 
                 self .boss_progress =0.0 
                 self .boss_questions_asked =0 
                 self .boss_hit =False 
@@ -2506,7 +2509,9 @@ class Game :
         wx =self .player_stand_x +shake [0 ]
         data =self .char_data .get (self .config_gender ,self .char_data ["F"])
         is_idle =not self .player_hit and not ((self .question_active and self .input_utente )or self .zap_timer >0 )
-        if self .player_hit :
+        if self .player_shake :
+            char_img =data ["shake"]
+        elif self .player_hit :
             char_img =data ["hit"]
         elif (self .question_active and self .input_utente )or self .zap_timer >0 :
             char_img =data ["charge"]
