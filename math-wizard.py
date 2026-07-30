@@ -489,7 +489,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="0.8.021"
+        self .version ="0.8.022"
 
         self .profiles =[]
         self .current_profile =""
@@ -1839,7 +1839,7 @@ class Game :
         if self .boss_active and self .boss_phase =="fight":
             if self .boss_hit :
                 hit_elapsed =pygame .time .get_ticks ()-self .boss_hit_start 
-                if hit_elapsed >500 :
+                if hit_elapsed >1450 :
                     self .boss_hit =False 
             if self .question_active :
                 elapsed =(pygame .time .get_ticks ()-self .question_start -self .boss_paused_ms )/1000.0 
