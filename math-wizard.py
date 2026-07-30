@@ -326,35 +326,18 @@ class Game :
 
     def setup_cursor (self ):
         try :
-            import struct ,io ,os 
+            import os 
             path =resource_path (os .path .join ("graphics","misc","wand.cur"))
             if not os .path .exists (path ):
                 return 
-            with open (path ,"rb")as f :
-                data =f .read ()
-            _ ,_ ,count =struct .unpack ("<HHH",data [:6 ])
-            # Pick the best entry: prefer 32x32, fallback to largest
-            best =None 
-            for i in range (count ):
-                w ,h ,_ ,_ ,_ ,_ ,sz ,off =struct .unpack ("<BBBBHHII",data [6 +i *16 :22 +i *16 ])
-                if w ==32 :
-                    best =(off ,sz ,w ,h )
-                    break 
-                if best is None or w >best [2 ]:
-                    best =(off ,sz ,w ,h )
-            if best is None :
-                return 
-            off ,sz ,w ,h =best 
-            buf =io .BytesIO (data [off :off +sz ])
-            surf =pygame .image .load (buf )
+            surf =pygame .image .load (path )
             if not (surf .get_flags ()&pygame .SRCALPHA ):
                 surf =surf .convert_alpha ()
-            surf =pygame .transform .scale_by (surf ,3 )
+            surf =pygame .transform .scale_by (surf ,2 )
             cursor =pygame .cursors .Cursor ((0 ,0 ),surf )
             pygame .mouse .set_cursor (cursor )
-        except (OSError ,struct .error ,pygame .error )as e :
+        except (pygame .error ,OSError )as e :
             print (f"Warning: unable to set custom cursor from wand.cur: {e }")
-            return 
 
     def update_char_image (self ):
         data =self .char_data .get (self .config_gender ,self .char_data ["F"])
@@ -506,7 +489,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="0.8.020"
+        self .version ="0.8.021"
 
         self .profiles =[]
         self .current_profile =""
