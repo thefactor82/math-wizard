@@ -355,7 +355,7 @@ class Game :
         self .char_w ,self .char_h =self .char_img .get_size ()
 
     def load_resources (self ):
-        self .bg =safe_load_image (resource_path ("graphics/backgrounds/background1.png"),(SCREEN_WIDTH ,SCREEN_HEIGHT ))
+        self .bg =safe_load_image (resource_path ("graphics/backgrounds/village.png"),(SCREEN_WIDTH ,SCREEN_HEIGHT ))
         self .bg_menu =safe_load_image (resource_path ("graphics/MISC/background_menu.png"),(SCREEN_WIDTH ,SCREEN_HEIGHT ))
         self .bg_options =safe_load_image (resource_path ("graphics/MISC/background_options.png"),(SCREEN_WIDTH ,SCREEN_HEIGHT ))
 
@@ -500,7 +500,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="0.9.005"
+        self .version ="0.9.006"
 
         self .profiles =[]
         self .current_profile =""
