@@ -498,9 +498,9 @@ class Game :
                 if self .story_entries :
                     break 
         self .story_idx =0 
-        self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")in ("livello","scena"))
+        self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="0.9.002"
+        self .version ="0.9.003"
 
         self .profiles =[]
         self .current_profile =""
@@ -783,10 +783,9 @@ class Game :
         else :
             if self .level_is_scene :
                 if self .level_scene_before :
-                    self .start_scene (self .level_scene_before ,"level_complete")
+                    self .start_scene (self .level_scene_before ,"scena_end")
                 else :
-                    self .save_session ()
-                    self .state ="level_complete"
+                    self .end_scena ()
             else :
                 self .new_question ()
 
@@ -969,6 +968,18 @@ class Game :
         elif on_complete =="level_complete":
             self .save_session ()
             self .state ="level_complete"
+        elif on_complete =="scena_end":
+            self .end_scena ()
+
+    def end_scena (self ):
+        if self .player_out_dir in ("sx","dx"):
+            self .return_to_game =True 
+            self .player_exit_start =pygame .time .get_ticks ()
+            self .player_exit_x =75 
+            self .state ="player_exit"
+        else :
+            self .story_idx +=1 
+            self .show_story ()
 
     def scene_chars_shown (self ):
         if self .scene_dialogue_start ==0 :
@@ -982,7 +993,7 @@ class Game :
         if idx <len (dialogues ):
             n =dialogues [idx ]
             who =n .get ("who",0 )
-            if 0 <=who <len (self .scene_npcs ):
+            if isinstance (who ,int )and not who <0 and who <len (self .scene_npcs ):
                 pose =n .get ("frame",self .scene_npcs [who ]["pose_idx"])
                 pose =max (0 ,min (len (self .scene_npcs [who ]["poses"])-1 ,int (pose )))
                 self .scene_npcs [who ]["pose_idx"]=pose
@@ -1010,13 +1021,20 @@ class Game :
             return 
         line =dialogues [self .scene_dialogue_idx ]
         who =line .get ("who",0 )
-        if not (0 <=who <len (self .scene_npcs )):
-            return 
-        npc =self .scene_npcs [who ]
-        frame =npc ["poses"][npc ["pose_idx"]]
-        img_w ,img_h =frame .get_size ()
-        nx =npc ["x"]
-        ny =SCREEN_HEIGHT //2 -img_h //2 +130 +npc ["y_off"]
+        is_player =who in ("player","io",-1 )
+        if is_player :
+            img =self .char_data .get (self .config_gender ,self .char_data ["F"])["idle"][0 ]
+            img_w ,img_h =img .get_size ()
+            nx =self .player_stand_x
+            ny =SCREEN_HEIGHT //2 -img_h //2 +130
+        else :
+            if not (0 <=who <len (self .scene_npcs )):
+                return 
+            npc =self .scene_npcs [who ]
+            frame =npc ["poses"][npc ["pose_idx"]]
+            img_w ,img_h =frame .get_size ()
+            nx =npc ["x"]
+            ny =SCREEN_HEIGHT //2 -img_h //2 +130 +npc ["y_off"]
         text_value =line .get ("text","")
         text_value =text_value .replace ("NOMEPROFILOINUSO",self .current_profile )
         shown =text_value [:self .scene_chars_shown ()]
@@ -2017,7 +2035,7 @@ class Game :
                             cnt =0 
                             skip_to =None 
                             for i ,e in enumerate (self .story_entries ):
-                                if e ["tipo"]in ("livello","scena"):
+                                if e ["tipo"]=="livello":
                                     if cnt ==self .initial_level :
                                         skip_to =i 
                                         break 
@@ -2074,10 +2092,9 @@ class Game :
                 self .character_entry =False 
                 if self .level_is_scene :
                     if self .level_scene_before :
-                        self .start_scene (self .level_scene_before ,"level_complete")
+                        self .start_scene (self .level_scene_before ,"scena_end")
                     else :
-                        self .save_session ()
-                        self .state ="level_complete"
+                        self .end_scena ()
                 elif self .mode =="auto"and self .level_scene_before :
                     self .start_scene (self .level_scene_before ,"question")
                 else :
@@ -2920,25 +2937,24 @@ class Game :
             self .screen .blit (ombra ,(input_rect .x +2 ,input_rect .y +2 ))
             self .screen .blit (input_surf ,input_rect )
 
-        if self .mode =="auto":
-            richieste =5 +sum (range (1 ,self .level +1 ))
-            corr =sum (1 for esito ,_ in self .current_block if esito )
-            stato_txt =f"Livello {self .effective_level ()+1 }/{len (self .levels )}"
-            mode_txt ="Storia"
-        else :
-            stato_txt =f"Domanda {self .questions_asked }/{self .total_questions }"
-            mode_txt ="Allenamento"
-        mode_surf =self .font_small .render (mode_txt ,True ,WHITE )
-        stato_surf =self .font_small .render (stato_txt ,True ,WHITE )
-        y_top =20 
-        self .draw_text_shadow (self .font_small ,mode_txt ,WHITE ,(20 ,y_top ))
-        sx_stato =20 +mode_surf .get_width ()+20 
-        self .draw_text_shadow (self .font_small ,stato_txt ,WHITE ,(sx_stato ,y_top ))
+        if not self .level_is_scene :
+            if self .mode =="auto":
+                stato_txt =f"Livello {self .effective_level ()+1 }/{len (self .levels )}"
+                mode_txt ="Storia"
+            else :
+                stato_txt =f"Domanda {self .questions_asked }/{self .total_questions }"
+                mode_txt ="Allenamento"
+            mode_surf =self .font_small .render (mode_txt ,True ,WHITE )
+            stato_surf =self .font_small .render (stato_txt ,True ,WHITE )
+            y_top =20 
+            self .draw_text_shadow (self .font_small ,mode_txt ,WHITE ,(20 ,y_top ))
+            sx_stato =20 +mode_surf .get_width ()+20 
+            self .draw_text_shadow (self .font_small ,stato_txt ,WHITE ,(sx_stato ,y_top ))
 
-        for i in range (WIZARD_LIVES ):
-            cx =SCREEN_WIDTH -70 -i *50 
-            img =self .heart_red if i <self .lives else self .heart_grey 
-            self .screen .blit (img ,(cx -17 ,30 ))
+            for i in range (WIZARD_LIVES ):
+                cx =SCREEN_WIDTH -70 -i *50 
+                img =self .heart_red if i <self .lives else self .heart_grey 
+                self .screen .blit (img ,(cx -17 ,30 ))
 
         if self .question_active :
             bar_w =400 
