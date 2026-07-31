@@ -142,8 +142,7 @@
   {
     "tipo": "livello",
     "bg": "cavern_entrance",
-    "monsters": [3,7,9,10,11],
-    "flying": [9,10,11],
+    "monsters": [1,2,3,4,6,7,8],
     "player_in": "sx",
     "player_out": "dx",
     "player_entrance": "y",
@@ -179,7 +178,8 @@
   {
     "tipo": "livello",
     "bg": "castle1",
-    "monsters": [1,2,3,4,5,6,8],
+    "monsters": [1,2,3,4,5,6,7,8,9,10,11],
+    "flying": [9,10,11],
     "player_in": "sx",
     "player_out": "dx",
     "player_entrance": "y",
@@ -188,7 +188,7 @@
   {
     "tipo": "livello",
     "bg": "castle2",
-    "monsters": [3,7,9,10,11],
+    "monsters": [1,2,3,4,5,6,7,8,9,10,11],
     "flying": [9,10,11],
     "player_in": "sx",
     "player_out": "dx",
