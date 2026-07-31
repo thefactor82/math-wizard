@@ -500,7 +500,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="0.9.007"
+        self .version ="0.9.008"
 
         self .profiles =[]
         self .current_profile =""
@@ -939,6 +939,7 @@ class Game :
             "id":n .get ("id",f"npc{i }"),
             "walk":walk ,
             "poses":poses ,
+            "poses_idle":[pygame .transform .scale (f ,(max (1 ,f .get_width ()),max (1 ,f .get_height ()-2 )))for f in poses ],
             "pose_idx":0 ,
             "walk_idx":0 ,
             "x":start_x ,
@@ -951,6 +952,11 @@ class Game :
             "y_off":n .get ("y_off",0 ),
             "offset":i *400 ,
             })
+
+    def npc_idle_frame (self ,npc ,now =None ):
+        now =now if now is not None else pygame .time .get_ticks ()
+        frame_idx =(now //400 )%2 
+        return npc ["poses_idle" if frame_idx else "poses"][npc ["pose_idx"]]
 
     def start_scene (self ,scene ,on_complete ):
         self .load_npc_scene (scene )
@@ -2811,7 +2817,7 @@ class Game :
                     frame =walk [npc ["walk_idx"]]
                     img =pygame .transform .flip (frame ,True ,False )if npc ["flip_in"]else frame 
                 else :
-                    frame =npc ["poses"][npc ["pose_idx"]]
+                    frame =self .npc_idle_frame (npc ,now_npc )
                     img =pygame .transform .flip (frame ,True ,False )if npc ["flip_in"]else frame 
                 nx =npc ["x"]
                 ny =SCREEN_HEIGHT //2 -img .get_height ()//2 +130 +npc ["y_off"]
@@ -3177,7 +3183,7 @@ class Game :
         else :
             self .screen .blit (self .game_bg ,(0 ,0 ))
         for npc in self .scene_npcs :
-            frame =npc ["poses"][npc ["pose_idx"]]
+            frame =self .npc_idle_frame (npc )
             img =pygame .transform .flip (frame ,True ,False )if npc ["flip_in"]else frame 
             nx =npc ["x"]
             ny =SCREEN_HEIGHT //2 -img .get_height ()//2 +130 +npc ["y_off"]
