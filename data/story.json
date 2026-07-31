@@ -82,21 +82,20 @@
     "monster_in": "dx",
     "scenes": [
       {
-        "when": "after",
-        "exit": true,
+        "when": "before",
         "npcs": [
           {
             "id": "re",
             "sheet": "king.png",
             "pos": "right",
             "in": "dx",
-            "flip": true,
+            "out": "sx",
             "y_off": 0
           }
         ],
         "dialogues": [
           { "who": 0, "frame": 0, "text": "Ciao, NOMEPROFILOINUSO!" },
-          { "who": 1, "frame": 0, "text": "Il Re ti attende." }
+          { "who": 0, "frame": 0, "text": "Il Re ti attende." }
         ]
       }
     ]

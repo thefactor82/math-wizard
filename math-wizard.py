@@ -498,9 +498,9 @@ class Game :
                 if self .story_entries :
                     break 
         self .story_idx =0 
-        self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
+        self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")in ("livello","scena"))
 
-        self .version ="0.9.001"
+        self .version ="0.9.002"
 
         self .profiles =[]
         self .current_profile =""
@@ -659,6 +659,7 @@ class Game :
         self .scene_on_complete =None 
         self .level_scene_before =None 
         self .level_scene_after =None 
+        self .level_is_scene =False 
 
         self .menu_cursor =0 
         self .options_cursor =0 
@@ -698,6 +699,7 @@ class Game :
         self .scene_on_complete =None 
         self .level_scene_before =None 
         self .level_scene_after =None 
+        self .level_is_scene =False 
         self .story_monsters =list (range (1 ,9 ))
         self .story_flying_monsters =[]
         self .story_fade_speed =8 
@@ -779,7 +781,14 @@ class Game :
             start_x =-100 if self .player_in_dir =="sx"else SCREEN_WIDTH +80 
             self .character_entry_x =start_x 
         else :
-            self .new_question ()
+            if self .level_is_scene :
+                if self .level_scene_before :
+                    self .start_scene (self .level_scene_before ,"level_complete")
+                else :
+                    self .save_session ()
+                    self .state ="level_complete"
+            else :
+                self .new_question ()
 
     def show_story (self ):
         if self .story_idx >=len (self .story_entries ):
@@ -789,17 +798,20 @@ class Game :
         if not isinstance (entry ,dict ):
             entry ={"tipo":"testo","testo":str (entry )}
         entry_type =entry .get ("tipo","testo")
-        if entry_type =="livello":
+        if entry_type in ("livello","scena"):
             self .state ="story"
             self .story_is_level =True 
-            self .story_monsters =entry .get ("monsters",list (range (1 ,9 )))
-            self .story_flying_monsters =entry .get ("flying",[])
+            self .level_is_scene =(entry_type =="scena")
+            if not self .level_is_scene :
+                self .story_monsters =entry .get ("monsters",list (range (1 ,9 )))
+                self .story_flying_monsters =entry .get ("flying",[])
             bg_name =entry .get ("bg","game")
             self .story_next_bg =self .backgrounds .get (bg_name ,self .bg )
             self .player_in_dir =entry .get ("player_in","sx")
             self .player_out_dir =entry .get ("player_out","dx")
             self .player_entrance =entry .get ("player_entrance","y")=="y"
-            self .monster_in_dir =entry .get ("monster_in","dx")
+            if not self .level_is_scene :
+                self .monster_in_dir =entry .get ("monster_in","dx")
             self .player_flip =(self .player_in_dir =="dx")
             self .player_stand_x =(SCREEN_WIDTH -75 -self .char_w )if self .player_flip else 75 
             scenes =entry .get ("scenes",[])
@@ -807,7 +819,7 @@ class Game :
             self .level_scene_after =next ((s for s in scenes if s .get ("when")=="after"),None )
 
             boss_name =entry .get ("boss")
-            if boss_name and self .boss_data :
+            if not self .level_is_scene and boss_name and self .boss_data :
                 self .boss_active =True 
                 self .boss_phase =None 
                 self .boss_in_dir =entry .get ("boss_in","dx")
@@ -872,20 +884,25 @@ class Game :
         self .scene_data =scene 
         self .scene_npcs =[]
         npc_dir =resource_path ("graphics/npcs")
+        ref_h =self .char_h if hasattr (self ,"char_h")and self .char_h else 293 
+        def fit (frames ):
+            out =[]
+            for f in frames :
+                if f .get_height ()==ref_h :
+                    out .append (f )
+                else :
+                    w =max (1 ,int (f .get_width ()*ref_h /f .get_height ()))
+                    out .append (pygame .transform .scale (f ,(w ,ref_h )))
+            return out 
         for i ,n in enumerate (scene .get ("npcs",[])):
             sheet_name =n .get ("sheet")
             if sheet_name :
                 sheet_path =os .path .join (npc_dir ,sheet_name )
-                walk =self .load_spritesheet (sheet_path ,200 ,4 ,row =0 ,rows =2 ,cols =4 ,frame_offset =0 ,flip_x =False ,scale =False )
-                poses =self .load_spritesheet (sheet_path ,200 ,4 ,row =1 ,rows =2 ,cols =4 ,frame_offset =0 ,flip_x =False ,scale =False )
+                walk =fit (self .load_spritesheet (sheet_path ,200 ,4 ,row =0 ,rows =2 ,cols =4 ,frame_offset =0 ,flip_x =False ,scale =False ))
+                poses =fit (self .load_spritesheet (sheet_path ,200 ,4 ,row =1 ,rows =2 ,cols =4 ,frame_offset =0 ,flip_x =False ,scale =False ))
             else :
-                walk =[]
-                poses =[]
-                for fname in n .get ("frames",[]):
-                    img =safe_load_image (os .path .join (npc_dir ,fname ))
-                    poses .append (img )
-                    if len (walk )<4 :
-                        walk .append (img )
+                poses =fit ([safe_load_image (os .path .join (npc_dir ,fname ))for fname in n .get ("frames",[])])
+                walk =poses [:4 ]if len (poses )>=4 else poses 
             if not poses :
                 continue 
             frame0 =poses [0 ]
@@ -904,6 +921,18 @@ class Game :
                 start_x =float (SCREEN_WIDTH +80 )
             else :
                 start_x =float (-frame0 .get_width ()-80 )
+            out_side =n .get ("out")
+            has_out =out_side is not None 
+            if out_side is None :
+                out_side ="dx"if direzione =="sx"else "sx"
+            flip_in =direzione =="dx"
+            flip_out =out_side =="sx"
+            if direzione ==out_side :
+                flip_out =not flip_in 
+            if out_side =="sx":
+                exit_x =float (-frame0 .get_width ()-80 )
+            else :
+                exit_x =float (SCREEN_WIDTH +80 )
             self .scene_npcs .append ({
             "id":n .get ("id",f"npc{i }"),
             "walk":walk ,
@@ -913,8 +942,10 @@ class Game :
             "x":start_x ,
             "start_x":start_x ,
             "end_x":end_x ,
-            "dir":direzione ,
-            "flip":bool (n .get ("flip",False )),
+            "has_out":has_out ,
+            "exit_x":exit_x ,
+            "flip_in":flip_in ,
+            "flip_out":flip_out ,
             "y_off":n .get ("y_off",0 ),
             "offset":i *400 ,
             })
@@ -965,7 +996,7 @@ class Game :
             self .scene_dialogue_start =pygame .time .get_ticks ()-(len (text_value )*40 )
             return 
         if self .scene_dialogue_idx +1 >=len (dialogues ):
-            if self .scene_data .get ("exit",True ):
+            if any (npc ["has_out"]for npc in self .scene_npcs ):
                 self .scene_phase ="exit"
                 self .scene_exit_start =pygame .time .get_ticks ()
             else :
@@ -1986,7 +2017,7 @@ class Game :
                             cnt =0 
                             skip_to =None 
                             for i ,e in enumerate (self .story_entries ):
-                                if e ["tipo"]=="livello":
+                                if e ["tipo"]in ("livello","scena"):
                                     if cnt ==self .initial_level :
                                         skip_to =i 
                                         break 
@@ -2020,10 +2051,12 @@ class Game :
                 dur =1200 
                 done =True 
                 for npc in self .scene_npcs :
+                    if not npc ["has_out"]:
+                        continue 
                     e =now -self .scene_exit_start 
                     p =min (e /dur ,1.0 )
                     ease =1 -(1 -p )**3 
-                    npc ["x"]=npc ["end_x"]+(npc ["start_x"]-npc ["end_x"])*ease 
+                    npc ["x"]=npc ["end_x"]+(npc ["exit_x"]-npc ["end_x"])*ease 
                     if p <1.0 :
                         done =False 
                 if done :
@@ -2039,7 +2072,13 @@ class Game :
             self .character_entry_x =start_x +(end_x -start_x )*progress 
             if progress >=1.0 :
                 self .character_entry =False 
-                if self .mode =="auto"and self .level_scene_before :
+                if self .level_is_scene :
+                    if self .level_scene_before :
+                        self .start_scene (self .level_scene_before ,"level_complete")
+                    else :
+                        self .save_session ()
+                        self .state ="level_complete"
+                elif self .mode =="auto"and self .level_scene_before :
                     self .start_scene (self .level_scene_before ,"question")
                 else :
                     self .new_question ()
@@ -2727,13 +2766,17 @@ class Game :
         if self .scene_phase is not None and self .scene_npcs :
             now_npc =pygame .time .get_ticks ()
             for npc in self .scene_npcs :
-                if self .scene_phase =="dialogue":
-                    frame =npc ["poses"][npc ["pose_idx"]]
-                else :
+                if self .scene_phase =="exit":
+                    frame =npc ["walk"][npc ["walk_idx"]]
+                    img =pygame .transform .flip (frame ,True ,False )if npc ["flip_out"]else frame 
+                elif self .scene_phase =="enter":
                     walk =npc ["walk"]
                     npc ["walk_idx"]=(now_npc //120 )%len (walk )
                     frame =walk [npc ["walk_idx"]]
-                img =pygame .transform .flip (frame ,True ,False )if npc ["flip"]else frame 
+                    img =pygame .transform .flip (frame ,True ,False )if npc ["flip_in"]else frame 
+                else :
+                    frame =npc ["poses"][npc ["pose_idx"]]
+                    img =pygame .transform .flip (frame ,True ,False )if npc ["flip_in"]else frame 
                 nx =npc ["x"]
                 ny =SCREEN_HEIGHT //2 -img .get_height ()//2 +130 +npc ["y_off"]
                 self .screen .blit (img ,(nx ,ny ))
