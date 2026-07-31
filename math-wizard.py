@@ -309,6 +309,16 @@ class Game :
         self .monster_y_offset =0 
         self .debug =False 
         self .debug_buf =""
+        self .scene_phase =None 
+        self .scene_data =None 
+        self .scene_npcs =[]
+        self .scene_start =0 
+        self .scene_exit_start =0 
+        self .scene_dialogue_idx =0 
+        self .scene_dialogue_start =0 
+        self .scene_on_complete =None 
+        self .level_scene_before =None 
+        self .level_scene_after =None 
 
         self .font_title =pygame .font .Font (None ,80 )
         self .font_large =pygame .font .Font (None ,64 )
@@ -490,7 +500,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="0.8.024"
+        self .version ="0.9.000"
 
         self .profiles =[]
         self .current_profile =""
@@ -639,6 +649,17 @@ class Game :
         self .boss_paused_ms =0 
         self .boss_pause_start =0 
 
+        self .scene_phase =None 
+        self .scene_data =None 
+        self .scene_npcs =[]
+        self .scene_start =0 
+        self .scene_exit_start =0 
+        self .scene_dialogue_idx =0 
+        self .scene_dialogue_start =0 
+        self .scene_on_complete =None 
+        self .level_scene_before =None 
+        self .level_scene_after =None 
+
         self .menu_cursor =0 
         self .options_cursor =0 
 
@@ -671,6 +692,12 @@ class Game :
             self .level =self .initial_level 
         self .story_idx =0 
         self .story_is_level =False 
+        self .scene_phase =None 
+        self .scene_data =None 
+        self .scene_npcs =[]
+        self .scene_on_complete =None 
+        self .level_scene_before =None 
+        self .level_scene_after =None 
         self .story_monsters =list (range (1 ,9 ))
         self .story_flying_monsters =[]
         self .story_fade_speed =8 
@@ -775,6 +802,9 @@ class Game :
             self .monster_in_dir =entry .get ("monster_in","dx")
             self .player_flip =(self .player_in_dir =="dx")
             self .player_stand_x =(SCREEN_WIDTH -75 -self .char_w )if self .player_flip else 75 
+            scenes =entry .get ("scenes",[])
+            self .level_scene_before =next ((s for s in scenes if s .get ("when")=="before"),None )
+            self .level_scene_after =next ((s for s in scenes if s .get ("when")=="after"),None )
 
             boss_name =entry .get ("boss")
             if boss_name and self .boss_data :
@@ -838,6 +868,148 @@ class Game :
                 self .story_phase ="enter"
                 self .story_fade_speed =3 
 
+    def load_npc_scene (self ,scene ):
+        self .scene_data =scene 
+        self .scene_npcs =[]
+        npc_dir =resource_path ("graphics/npcs")
+        for i ,n in enumerate (scene .get ("npcs",[])):
+            frames =[]
+            for fname in n .get ("frames",[]):
+                frames .append (safe_load_image (os .path .join (npc_dir ,fname )))
+            if not frames :
+                continue 
+            frame0 =frames [0 ]
+            pos =n .get ("pos","left")
+            if isinstance (pos ,str ):
+                if pos =="center":
+                    end_x =float (SCREEN_WIDTH //2 -frame0 .get_width ()//2 )
+                elif pos =="right":
+                    end_x =float (SCREEN_WIDTH -75 -frame0 .get_width ())
+                else :
+                    end_x =75.0 
+            else :
+                end_x =float (pos )
+            direzione =n .get ("in","sx")
+            if direzione =="dx":
+                start_x =float (SCREEN_WIDTH +80 )
+            else :
+                start_x =float (-frame0 .get_width ()-80 )
+            self .scene_npcs .append ({
+            "id":n .get ("id",f"npc{i }"),
+            "frames":frames ,
+            "frame_idx":0 ,
+            "x":start_x ,
+            "start_x":start_x ,
+            "end_x":end_x ,
+            "dir":direzione ,
+            "flip":bool (n .get ("flip",False )),
+            "y_off":n .get ("y_off",0 ),
+            "offset":i *400 ,
+            })
+
+    def start_scene (self ,scene ,on_complete ):
+        self .load_npc_scene (scene )
+        self .scene_phase ="enter"
+        self .scene_start =pygame .time .get_ticks ()
+        self .scene_dialogue_idx =0 
+        self .scene_dialogue_start =0 
+        self .scene_on_complete =on_complete 
+
+    def finish_scene (self ):
+        self .scene_data =None 
+        self .scene_phase =None 
+        self .scene_npcs =[]
+        on_complete =self .scene_on_complete 
+        self .scene_on_complete =None 
+        if on_complete =="question":
+            self .new_question ()
+        elif on_complete =="level_complete":
+            self .save_session ()
+            self .state ="level_complete"
+
+    def scene_chars_shown (self ):
+        if self .scene_dialogue_start ==0 :
+            return 0 
+        return (pygame .time .get_ticks ()-self .scene_dialogue_start )//40 
+
+    def set_scene_dialogue (self ,idx ):
+        self .scene_dialogue_idx =idx 
+        self .scene_dialogue_start =pygame .time .get_ticks ()
+        dialogues =self .scene_data .get ("dialogues",[])if self .scene_data else []
+        if idx <len (dialogues ):
+            n =dialogues [idx ]
+            who =n .get ("who",0 )
+            if 0 <=who <len (self .scene_npcs ):
+                self .scene_npcs [who ]["frame_idx"]=n .get ("frame",self .scene_npcs [who ]["frame_idx"])
+
+    def advance_scene_dialogue (self ):
+        dialogues =self .scene_data .get ("dialogues",[])if self .scene_data else []
+        if self .scene_dialogue_idx >=len (dialogues ):
+            return 
+        text_value =dialogues [self .scene_dialogue_idx ].get ("text","")
+        if self .scene_chars_shown ()<len (text_value ):
+            self .scene_dialogue_start =pygame .time .get_ticks ()-(len (text_value )*40 )
+            return 
+        if self .scene_dialogue_idx +1 >=len (dialogues ):
+            if self .scene_data .get ("exit",True ):
+                self .scene_phase ="exit"
+                self .scene_exit_start =pygame .time .get_ticks ()
+            else :
+                self .finish_scene ()
+        else :
+            self .set_scene_dialogue (self .scene_dialogue_idx +1 )
+
+    def draw_speech_bubble (self ):
+        dialogues =self .scene_data .get ("dialogues",[])if self .scene_data else []
+        if self .scene_dialogue_idx >=len (dialogues ):
+            return 
+        line =dialogues [self .scene_dialogue_idx ]
+        who =line .get ("who",0 )
+        if not (0 <=who <len (self .scene_npcs )):
+            return 
+        npc =self .scene_npcs [who ]
+        frame =npc ["frames"][npc ["frame_idx"]]
+        img_w ,img_h =frame .get_size ()
+        nx =npc ["x"]
+        ny =SCREEN_HEIGHT //2 -img_h //2 +130 +npc ["y_off"]
+        text_value =line .get ("text","")
+        text_value =text_value .replace ("NOMEPROFILOINUSO",self .current_profile )
+        shown =text_value [:self .scene_chars_shown ()]
+        font =self .font_small 
+        max_w =520 
+        lines =[]
+        for para in shown .split ("\n"):
+            words =para .split ()
+            if not words :
+                lines .append ("")
+                continue 
+            cur =""
+            for w in words :
+                t =cur +" "+w if cur else w 
+                if font .size (t )[0 ]>max_w :
+                    lines .append (cur )
+                    cur =w 
+                else :
+                    cur =t 
+            lines .append (cur )
+        bubble_w =max_w +40 
+        line_h =font .get_height ()+6 
+        bubble_h =max (44 ,len (lines )*line_h +22 )
+        bubble_x =int (nx +img_w //2 -bubble_w //2 )
+        bubble_x =max (10 ,min (SCREEN_WIDTH -bubble_w -10 ,bubble_x ))
+        bubble_y =int (ny -bubble_h -14 )
+        tail_x =int (nx +img_w //2 -bubble_x )
+        surf_h =bubble_h +18 
+        bubble_surf =pygame .Surface ((bubble_w ,surf_h ),pygame .SRCALPHA )
+        pygame .draw .rect (bubble_surf ,(255 ,255 ,255 ,240 ),(0 ,0 ,bubble_w ,bubble_h ),border_radius =14 )
+        pygame .draw .polygon (bubble_surf ,(255 ,255 ,255 ,240 ),[(tail_x -14 ,bubble_h ),(tail_x +14 ,bubble_h ),(tail_x ,bubble_h +18 )])
+        self .screen .blit (bubble_surf ,(bubble_x ,bubble_y ))
+        y =bubble_y +14 
+        for ln in lines :
+            surf =font .render (ln ,True ,(20 ,20 ,35 ))
+            self .screen .blit (surf ,(bubble_x +20 ,y ))
+            y +=line_h 
+
     def new_question (self ):
         if self .lives <=0 :
             return 
@@ -894,6 +1066,9 @@ class Game :
                     self .boss_shake_start =pygame .time .get_ticks ()
                     self .boss_x =self .boss_start_x 
                     self .boss_entrance_start =0 
+                    return 
+                if self .mode =="auto"and self .level_scene_after :
+                    self .start_scene (self .level_scene_after ,"level_complete")
                     return 
                 self .save_session ()
                 self .state ="level_complete"
@@ -1134,6 +1309,12 @@ class Game :
             elif self .state =="config_fixed":
                 self .handle_config (event )
             elif self .state =="game":
+                if self .scene_phase =="dialogue":
+                    if event .key in (pygame .K_RETURN ,pygame .K_KP_ENTER ,pygame .K_SPACE ):
+                        self .advance_scene_dialogue ()
+                    elif event .key ==pygame .K_ESCAPE :
+                        self .state ="menu"
+                    return 
                 if self .game_over :
                     if event .key ==pygame .K_r :
                         self .start_game ()
@@ -1204,6 +1385,9 @@ class Game :
 
         if event .type ==pygame .MOUSEBUTTONDOWN :
             mx ,my =event .pos 
+            if self .state =="game"and self .scene_phase =="dialogue":
+                self .advance_scene_dialogue ()
+                return 
             if self .state =="story":
                 if self .story_phase =="show":
                     if self .story_characters_shown <len (self .story_text_full ):
@@ -1801,6 +1985,37 @@ class Game :
         if self .state not in ("game",):
             return 
 
+        if self .scene_phase is not None :
+            now =pygame .time .get_ticks ()
+            if self .scene_phase =="enter":
+                dur =1200 
+                max_offset =max ([npc ["offset"]for npc in self .scene_npcs ],default =0 )
+                for npc in self .scene_npcs :
+                    e =now -self .scene_start -npc ["offset"]
+                    if e <=0 :
+                        continue 
+                    p =min (e /dur ,1.0 )
+                    ease =1 -(1 -p )**3 
+                    npc ["x"]=npc ["start_x"]+(npc ["end_x"]-npc ["start_x"])*ease 
+                if now -self .scene_start >=max_offset +dur :
+                    self .scene_phase ="dialogue"
+                    self .set_scene_dialogue (0 )
+            elif self .scene_phase =="dialogue":
+                pass 
+            elif self .scene_phase =="exit":
+                dur =1200 
+                done =True 
+                for npc in self .scene_npcs :
+                    e =now -self .scene_exit_start 
+                    p =min (e /dur ,1.0 )
+                    ease =1 -(1 -p )**3 
+                    npc ["x"]=npc ["end_x"]+(npc ["start_x"]-npc ["end_x"])*ease 
+                    if p <1.0 :
+                        done =False 
+                if done :
+                    self .finish_scene ()
+            return 
+
         if self .character_entry :
             elapsed =pygame .time .get_ticks ()-self .character_entry_start 
             duration =1200 
@@ -1810,7 +2025,10 @@ class Game :
             self .character_entry_x =start_x +(end_x -start_x )*progress 
             if progress >=1.0 :
                 self .character_entry =False 
-                self .new_question ()
+                if self .mode =="auto"and self .level_scene_before :
+                    self .start_scene (self .level_scene_before ,"question")
+                else :
+                    self .new_question ()
             return 
 
         if self .boss_active and self .boss_phase =="shake":
@@ -1875,6 +2093,9 @@ class Game :
                 if alpha <=0 :
                     self .boss_active =False 
                     self .boss_phase =None 
+                    if self .level_scene_after :
+                        self .start_scene (self .level_scene_after ,"level_complete")
+                        return 
                     self .save_session ()
                     self .state ="level_complete"
             return 
@@ -2489,6 +2710,14 @@ class Game :
         else :
             self .screen .blit (self .game_bg ,(0 ,0 ))
 
+        if self .scene_phase is not None and self .scene_npcs :
+            for npc in self .scene_npcs :
+                frame =npc ["frames"][npc ["frame_idx"]]
+                img =pygame .transform .flip (frame ,True ,False )if npc ["flip"]else frame 
+                nx =npc ["x"]
+                ny =SCREEN_HEIGHT //2 -img .get_height ()//2 +130 +npc ["y_off"]
+                self .screen .blit (img ,(nx ,ny ))
+
         if self .character_entry :
             elapsed =pygame .time .get_ticks ()-self .character_entry_start 
             frame_idx =(elapsed //120 )%4 
@@ -2544,7 +2773,7 @@ class Game :
                 pygame .draw .circle (surf ,(*col ,alpha ),(r ,r ),r )
                 self .screen .blit (surf ,(glow_x -r ,glow_y -r ))
 
-        if self .boss_active and self .boss_phase in ("entrance","fight","defeated"):
+        if self .scene_phase is None and self .boss_active and self .boss_phase in ("entrance","fight","defeated"):
             boss_img =None 
             if self .boss_phase =="defeated":
                 elapsed_def =pygame .time .get_ticks ()-self .boss_defeated_start 
@@ -2565,7 +2794,7 @@ class Game :
                 boss_draw_x =self .boss_x +shake [0 ]
                 boss_draw_y =wy_monster -(bh -215 )+15 
                 self .screen .blit (boss_img ,(boss_draw_x ,boss_draw_y ))
-        elif self .monster_hit :
+        elif self .scene_phase is None and self .monster_hit :
             elapsed =pygame .time .get_ticks ()-self .monster_fade_start 
             if elapsed <self .monster_hit_delay :
                 self .screen .blit (self .monster_img ,(self .monster_x +shake [0 ],wy_monster ))
@@ -2608,7 +2837,7 @@ class Game :
                 pygame .draw .lines (self .screen ,col ,False ,points ,width )
 
         segno =get_operation_symbol (self .operation if hasattr (self ,'operation')else None )
-        domanda_text =f"{self .a }  {segno }  {self .b }  =  ?"
+        domanda_text =f"{self .a }  {segno }  {self .b }  =  ?"if self .scene_phase is None else ""
         ombra =self .font_large .render (domanda_text ,True ,(30 ,30 ,30 ))
         domanda =self .font_large .render (domanda_text ,True ,WHITE )
         rect =domanda .get_rect (center =(SCREEN_WIDTH //2 ,80 ))
@@ -2673,7 +2902,7 @@ class Game :
             self .screen .blit (ombra_t ,(rect .x +2 ,rect .y +2 ))
             self .screen .blit (time_text ,rect )
 
-        if not self .question_active and self .feedback is not None :
+        if self .scene_phase is None and not self .question_active and self .feedback is not None :
             overlay =pygame .Surface ((SCREEN_WIDTH ,SCREEN_HEIGHT ))
             overlay .set_alpha (80 )
             overlay .fill (BLACK )
@@ -2724,6 +2953,9 @@ class Game :
                 self .screen .blit (heart_img ,(hx ,hy ))
             else :
                 self .heart_reward_active =False 
+
+        if self .scene_phase =="dialogue"and self .scene_npcs :
+            self .draw_speech_bubble ()
 
         if self .debug :
             label =self .font_stats .render ("DEBUG ON",True ,(0 ,255 ,255 ))
