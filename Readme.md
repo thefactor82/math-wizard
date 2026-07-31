@@ -2,9 +2,11 @@
 
 > **Un videogioco per "allenare" le basi fondamentali della matematica... e forse non solo.**
 
+![Screenshot del gioco](screenshot.png)
+
 ## ⚡ TL;DR
 
-Math Wizard nasce da un'esperienza molto personale: vedere le mie due figlie affrontare con fatica le tabelline mi ha spinto a creare un videogioco che trasformasse l'apprendimento in qualcosa di divertente. Non trovando giochi che fossero davvero veloci, coinvolgenti e focalizzati sulla matematica, ho deciso di svilupparne uno io, con il loro aiuto e i loro suggerimenti. Il risultato è un gioco opensource, senza pubblicità, pensato per allenare le quattro operazioni fondamentali e, in futuro, perchè no, molti altri argomenti scolastici.
+Math Wizard nasce da un'esperienza molto personale: vedere le mie due figlie affrontare con fatica le tabelline mi ha spinto a creare un videogioco che trasformasse l'apprendimento in qualcosa di divertente. Non trovando giochi che fossero davvero veloci, coinvolgenti e focalizzati sulla matematica, ho deciso di svilupparne uno io, con il loro aiuto e i loro suggerimenti. Il risultato è Math Wizard, un gioco pensato per allenare le quattro operazioni fondamentali e, in futuro, perchè no, molti altri argomenti scolastici.
 
 ---
 
@@ -156,9 +158,11 @@ Così ho aggiunto addizioni e sottrazioni, permettendo anche alla mia prima figl
 
 ## 📵 Perché non un'app per smartphone?
 
-All'inizio pensavo di sviluppare un'app per smartphone, ma ho cambiato idea.
+All'inizio pensavo di sviluppare un'app per smartphone, ma (per adesso) ho cambiato idea.
 
 Forse Math Wizard deve rimanere un gioco per PC. Perché usare una tastiera significa anche imparare a conoscere i tasti, digitare rapidamente e prendere confidenza con il computer. A swipare e tappare, ormai, sono già bravissimi tutti.
+
+Trasformare il gioco in un app per dispositivi mobili è particolarmente impegnativo, ed in questo momento non è la priorità.
 
 ---
 
