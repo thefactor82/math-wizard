@@ -500,7 +500,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="0.9.009"
+        self .version ="0.9.010"
 
         self .profiles =[]
         self .current_profile =""
@@ -2854,6 +2854,12 @@ class Game :
             base_y =SCREEN_HEIGHT //2 -ch //2 
             wy =base_y +130 
             self .screen .blit (char_img ,(self .character_entry_x ,wy ))
+            if self .story_fade_alpha >0 :
+                fade_surf =pygame .Surface ((SCREEN_WIDTH ,SCREEN_HEIGHT ))
+                fade_surf .set_alpha (self .story_fade_alpha )
+                fade_surf .fill (self .story_fade_color )
+                self .screen .blit (fade_surf ,(0 ,0 ))
+            return 
         if self .story_fade_alpha >0 :
             fade_surf =pygame .Surface ((SCREEN_WIDTH ,SCREEN_HEIGHT ))
             fade_surf .set_alpha (self .story_fade_alpha )
