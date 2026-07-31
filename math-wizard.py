@@ -286,6 +286,13 @@ class Game :
         pygame .init ()
         self .fullscreen =False 
         self .flags =pygame .SCALED 
+        try :
+            icon =pygame .image .load (resource_path ("graphics/misc/icon.png"))
+            if not (icon .get_flags ()&pygame .SRCALPHA ):
+                icon =icon .convert_alpha ()
+            pygame .display .set_icon (icon )
+        except (pygame .error ,OSError ):
+            pass 
         self .screen =pygame .display .set_mode ((SCREEN_WIDTH ,SCREEN_HEIGHT ),self .flags )
         pygame .display .set_caption ("Math Wizard")
         self .setup_cursor ()
@@ -337,7 +344,7 @@ class Game :
     def setup_cursor (self ):
         try :
             import os 
-            path =resource_path (os .path .join ("graphics","misc","wand.cur"))
+            path =resource_path (os .path .join ("graphics","misc","mouse.cur"))
             if not os .path .exists (path ):
                 return 
             surf =pygame .image .load (path )
@@ -347,7 +354,7 @@ class Game :
             cursor =pygame .cursors .Cursor ((0 ,0 ),surf )
             pygame .mouse .set_cursor (cursor )
         except (pygame .error ,OSError )as e :
-            print (f"Warning: unable to set custom cursor from wand.cur: {e }")
+            print (f"Warning: unable to set custom cursor from mouse.cur: {e }")
 
     def update_char_image (self ):
         data =self .char_data .get (self .config_gender ,self .char_data ["F"])
@@ -500,7 +507,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.0.001"
+        self .version ="1.0.002"
 
         self .profiles =[]
         self .current_profile =""
