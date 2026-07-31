@@ -507,7 +507,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.0.004"
+        self .version ="1.0.005"
 
         self .profiles =[]
         self .current_profile =""
@@ -2932,7 +2932,7 @@ class Game :
             if boss_img :
                 bw ,bh =boss_img .get_size ()
                 boss_draw_x =self .boss_x +shake [0 ]
-                boss_draw_y =wy_monster -(bh -215 )+15 
+                boss_draw_y =wy_monster -(bh -215 )+19 
                 self .screen .blit (boss_img ,(boss_draw_x ,boss_draw_y ))
         elif self .scene_phase is None and self .monster_hit :
             elapsed =pygame .time .get_ticks ()-self .monster_fade_start 
@@ -2957,7 +2957,7 @@ class Game :
             elif self .boss_active and self .boss_phase in ("entrance","fight","defeated"):
                 bw =self .boss_hit_img .get_width ()if self .boss_hit_img else 200 
                 bh =self .boss_hit_img .get_height ()if self .boss_hit_img else 200 
-                boss_draw_y =wy_monster -(bh -215 )+15 
+                boss_draw_y =wy_monster -(bh -215 )+19 
                 end_x ,end_y =self .boss_x +bw //2 ,boss_draw_y +bh //2 
             else :
                 end_x ,end_y =self .monster_x +100 ,wy_monster +self .char_h //2 
