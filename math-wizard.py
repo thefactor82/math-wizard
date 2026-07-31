@@ -507,7 +507,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.0.005"
+        self .version ="1.0.006"
 
         self .profiles =[]
         self .current_profile =""
@@ -920,7 +920,7 @@ class Game :
         for i ,n in enumerate (scene .get ("npcs",[])):
             sheet_name =n .get ("sheet")
             if sheet_name :
-                sheet_path =os .path .join (npc_dir ,sheet_name )
+                sheet_path =os .path .join (npc_dir ,sheet_name if sheet_name .lower ().endswith (".png")else sheet_name +".png")
                 walk =fit (self .load_spritesheet (sheet_path ,200 ,4 ,row =0 ,rows =2 ,cols =4 ,frame_offset =0 ,flip_x =False ,scale =False ))
                 poses =fit (self .load_spritesheet (sheet_path ,200 ,4 ,row =1 ,rows =2 ,cols =4 ,frame_offset =0 ,flip_x =False ,scale =False ))
             else :

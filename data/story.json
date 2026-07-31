@@ -84,7 +84,7 @@
         "npcs": [
           {
             "id": "re",
-            "sheet": "king.png",
+            "sheet": "king",
             "pos": "right",
             "in": "dx",
             "y_off": 0
@@ -224,7 +224,7 @@
         "npcs": [
           {
             "id": "re",
-            "sheet": "king.png",
+            "sheet": "king",
             "pos": "right",
             "in": "dx",
             "out": "dx",
@@ -265,7 +265,7 @@
         "npcs": [
           {
             "id": "re",
-            "sheet": "king.png",
+            "sheet": "king",
             "pos": "right",
             "in": "dx",
             "y_off": 0
