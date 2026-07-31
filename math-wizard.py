@@ -507,7 +507,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.0.003"
+        self .version ="1.0.004"
 
         self .profiles =[]
         self .current_profile =""
@@ -1389,13 +1389,13 @@ class Game :
                     if self .options_cursor ==0 :
                         self .auto_timeout =min (99 ,self .auto_timeout +1 )
                     elif self .options_cursor ==1 :
-                        prog_max =max (0 ,self .story_progress .get (self .config_story_operation ,0 )-1 )
+                        prog_max =max (0 ,self .story_progress .get (self .config_story_operation ,0 ))
                         self .initial_level =min (prog_max ,self .initial_level +1 )
                     else :
                         ops =["moltiplicazione","addizione","sottrazione","divisione"]
                         idx =(ops .index (self .config_story_operation )+1 )%4 
                         self .config_story_operation =ops [idx ]
-                        prog_max =max (0 ,self .story_progress .get (self .config_story_operation ,0 )-1 )
+                        prog_max =max (0 ,self .story_progress .get (self .config_story_operation ,0 ))
                         self .initial_level =min (self .initial_level ,prog_max )
                     self .save_profile_config ()
                 elif event .key in (pygame .K_MINUS ,pygame .K_KP_MINUS ):
@@ -1407,7 +1407,7 @@ class Game :
                         ops =["moltiplicazione","addizione","sottrazione","divisione"]
                         idx =(ops .index (self .config_story_operation )-1 )%4 
                         self .config_story_operation =ops [idx ]
-                        prog_max =max (0 ,self .story_progress .get (self .config_story_operation ,0 )-1 )
+                        prog_max =max (0 ,self .story_progress .get (self .config_story_operation ,0 ))
                         self .initial_level =min (self .initial_level ,prog_max )
                     self .save_profile_config ()
                 elif event .key in (pygame .K_RETURN ,pygame .K_KP_ENTER ):
@@ -1603,7 +1603,7 @@ class Game :
                     if mx <sx +lw :
                         self .initial_level =max (0 ,self .initial_level -1 )
                     elif mx >=sx +lw +vw :
-                        prog_max =max (0 ,self .story_progress .get (self .config_story_operation ,0 )-1 )
+                        prog_max =max (0 ,self .story_progress .get (self .config_story_operation ,0 ))
                         self .initial_level =min (prog_max ,self .initial_level +1 )
                     self .save_profile_config ()
                     # Operazione — 4 pulsanti
@@ -1613,7 +1613,7 @@ class Game :
                         if btn .collidepoint (mx ,my ):
                             self .options_cursor =2 
                             self .config_story_operation =ops [i ]
-                            prog_max =max (0 ,self .story_progress .get (self .config_story_operation ,0 )-1 )
+                            prog_max =max (0 ,self .story_progress .get (self .config_story_operation ,0 ))
                             self .initial_level =min (self .initial_level ,prog_max )
                             self .save_profile_config ()
                             break 
@@ -2544,7 +2544,6 @@ class Game :
         l_surf =self .font_tiny .render (str (self .initial_level +1 ),True ,WHITE )
         self .screen .blit (l_surf ,l_surf .get_rect (center =(sx +lw +vw //2 ,y +17 )))
         prog =self .story_progress .get (self .config_story_operation ,0 )
-        max_start =max (0 ,prog -1 )
         prog_surf =self .font_tiny .render (f"(max {max (1 ,prog )})",True ,GRAY )
         self .screen .blit (prog_surf ,prog_surf .get_rect (midleft =(sx +lw +vw +rw +10 ,y +17 )))
 
