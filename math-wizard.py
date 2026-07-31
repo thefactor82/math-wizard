@@ -287,7 +287,7 @@ class Game :
         self .fullscreen =False 
         self .flags =pygame .SCALED 
         self .screen =pygame .display .set_mode ((SCREEN_WIDTH ,SCREEN_HEIGHT ),self .flags )
-        pygame .display .set_caption ("Math Wizard - Impara la matematica")
+        pygame .display .set_caption ("Math Wizard")
         self .setup_cursor ()
         self .clock =pygame .time .Clock ()
         self .running =True 
@@ -500,7 +500,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.0.000"
+        self .version ="1.0.001"
 
         self .profiles =[]
         self .current_profile =""
