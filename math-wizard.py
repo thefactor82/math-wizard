@@ -500,7 +500,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="0.9.011"
+        self .version ="0.9.012"
 
         self .profiles =[]
         self .current_profile =""
@@ -1481,8 +1481,8 @@ class Game :
                     if self .story_phase =="show":
                         if self .story_characters_shown <len (self .story_text_full ):
                             self .story_characters_shown =len (self .story_text_full )
-                        elif self .story_object_img is not None and self .story_object_alpha <255 :
-                            self .story_object_alpha =255 
+                        elif self .story_object_img is not None and self .story_object_alpha ==0 :
+                            self .story_object_alpha =3 
                         else :
                             self .story_fade_speed =3 
                             self .story_phase ="exit"
@@ -1496,8 +1496,8 @@ class Game :
                 if self .story_phase =="show":
                     if self .story_characters_shown <len (self .story_text_full ):
                         self .story_characters_shown =len (self .story_text_full )
-                    elif self .story_object_img is not None and self .story_object_alpha <255 :
-                        self .story_object_alpha =255 
+                    elif self .story_object_img is not None and self .story_object_alpha ==0 :
+                        self .story_object_alpha =3 
                     else :
                         self .story_fade_speed =3 
                         self .story_phase ="exit"
@@ -2065,7 +2065,7 @@ class Game :
                     if self .story_typing_frame >=2 :
                         self .story_typing_frame =0 
                         self .story_characters_shown +=1 
-                elif self .story_object_img is not None and self .story_object_alpha <255 :
+                elif self .story_object_img is not None and self .story_object_alpha >0 and self .story_object_alpha <255 :
                     self .story_object_alpha =min (255 ,self .story_object_alpha +3 )
             elif self .story_phase =="exit":
                 self .story_fade_alpha =min (255 ,self .story_fade_alpha +self .story_fade_speed )
