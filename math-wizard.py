@@ -500,7 +500,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="0.9.000"
+        self .version ="0.9.001"
 
         self .profiles =[]
         self .current_profile =""
@@ -873,12 +873,22 @@ class Game :
         self .scene_npcs =[]
         npc_dir =resource_path ("graphics/npcs")
         for i ,n in enumerate (scene .get ("npcs",[])):
-            frames =[]
-            for fname in n .get ("frames",[]):
-                frames .append (safe_load_image (os .path .join (npc_dir ,fname )))
-            if not frames :
+            sheet_name =n .get ("sheet")
+            if sheet_name :
+                sheet_path =os .path .join (npc_dir ,sheet_name )
+                walk =self .load_spritesheet (sheet_path ,200 ,4 ,row =0 ,rows =2 ,cols =4 ,frame_offset =0 ,flip_x =False ,scale =False )
+                poses =self .load_spritesheet (sheet_path ,200 ,4 ,row =1 ,rows =2 ,cols =4 ,frame_offset =0 ,flip_x =False ,scale =False )
+            else :
+                walk =[]
+                poses =[]
+                for fname in n .get ("frames",[]):
+                    img =safe_load_image (os .path .join (npc_dir ,fname ))
+                    poses .append (img )
+                    if len (walk )<4 :
+                        walk .append (img )
+            if not poses :
                 continue 
-            frame0 =frames [0 ]
+            frame0 =poses [0 ]
             pos =n .get ("pos","left")
             if isinstance (pos ,str ):
                 if pos =="center":
@@ -896,8 +906,10 @@ class Game :
                 start_x =float (-frame0 .get_width ()-80 )
             self .scene_npcs .append ({
             "id":n .get ("id",f"npc{i }"),
-            "frames":frames ,
-            "frame_idx":0 ,
+            "walk":walk ,
+            "poses":poses ,
+            "pose_idx":0 ,
+            "walk_idx":0 ,
             "x":start_x ,
             "start_x":start_x ,
             "end_x":end_x ,
@@ -940,7 +952,9 @@ class Game :
             n =dialogues [idx ]
             who =n .get ("who",0 )
             if 0 <=who <len (self .scene_npcs ):
-                self .scene_npcs [who ]["frame_idx"]=n .get ("frame",self .scene_npcs [who ]["frame_idx"])
+                pose =n .get ("frame",self .scene_npcs [who ]["pose_idx"])
+                pose =max (0 ,min (len (self .scene_npcs [who ]["poses"])-1 ,int (pose )))
+                self .scene_npcs [who ]["pose_idx"]=pose
 
     def advance_scene_dialogue (self ):
         dialogues =self .scene_data .get ("dialogues",[])if self .scene_data else []
@@ -968,7 +982,7 @@ class Game :
         if not (0 <=who <len (self .scene_npcs )):
             return 
         npc =self .scene_npcs [who ]
-        frame =npc ["frames"][npc ["frame_idx"]]
+        frame =npc ["poses"][npc ["pose_idx"]]
         img_w ,img_h =frame .get_size ()
         nx =npc ["x"]
         ny =SCREEN_HEIGHT //2 -img_h //2 +130 +npc ["y_off"]
@@ -2711,8 +2725,14 @@ class Game :
             self .screen .blit (self .game_bg ,(0 ,0 ))
 
         if self .scene_phase is not None and self .scene_npcs :
+            now_npc =pygame .time .get_ticks ()
             for npc in self .scene_npcs :
-                frame =npc ["frames"][npc ["frame_idx"]]
+                if self .scene_phase =="dialogue":
+                    frame =npc ["poses"][npc ["pose_idx"]]
+                else :
+                    walk =npc ["walk"]
+                    npc ["walk_idx"]=(now_npc //120 )%len (walk )
+                    frame =walk [npc ["walk_idx"]]
                 img =pygame .transform .flip (frame ,True ,False )if npc ["flip"]else frame 
                 nx =npc ["x"]
                 ny =SCREEN_HEIGHT //2 -img .get_height ()//2 +130 +npc ["y_off"]
