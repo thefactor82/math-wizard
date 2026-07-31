@@ -490,7 +490,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="0.8.023"
+        self .version ="0.8.024"
 
         self .profiles =[]
         self .current_profile =""
@@ -2526,7 +2526,8 @@ class Game :
         wy =base_y +130 +shake [1 ]
         if is_idle and hasattr (self ,'idle_h')and ch <self .idle_h :
             wy +=(self .idle_h -ch )-(self .idle_h //2 -ch //2 )
-        wy_monster =base_y +170 +35 +self .monster_y_offset 
+        base_h =self .idle_h if hasattr (self ,'idle_h')else ch 
+        wy_monster =SCREEN_HEIGHT //2 -base_h //2 +170 +35 +self .monster_y_offset 
         self .screen .blit (char_img ,(wx ,wy ))
 
         if self .question_active and self .input_utente :
