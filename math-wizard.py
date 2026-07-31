@@ -500,7 +500,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="0.9.012"
+        self .version ="1.0.000"
 
         self .profiles =[]
         self .current_profile =""
