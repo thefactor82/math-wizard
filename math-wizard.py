@@ -507,7 +507,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.0.002"
+        self .version ="1.0.003"
 
         self .profiles =[]
         self .current_profile =""
@@ -2392,7 +2392,7 @@ class Game :
             self .screen .blit (txt ,rect )
             if i <nuovo_idx and voce ==self .current_profile :
                 ok =self .font_small .render ("(attivo)",True ,GRAY )
-                rect =ok .get_rect (midleft =(SCREEN_WIDTH //2 +150 ,y +20 ))
+                rect =ok .get_rect (midleft =(SCREEN_WIDTH //2 +150 ,y ))
                 self .screen .blit (ok ,rect )
 
     def draw_menu (self ):
