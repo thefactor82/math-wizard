@@ -500,7 +500,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="0.9.008"
+        self .version ="0.9.009"
 
         self .profiles =[]
         self .current_profile =""
@@ -707,6 +707,8 @@ class Game :
         self .story_fade_alpha =0 
         self .story_phase ="show"
         self .story_fade_color =(0 ,0 ,0 )
+        self .story_object_img =None 
+        self .story_object_alpha =0 
         self .story_first_step =True 
         self .consecutive_correct =0 
         self .heart_reward_active =False 
@@ -847,6 +849,8 @@ class Game :
 
             self .story_text_full =""
             self .story_characters_shown =0 
+            self .story_object_img =None 
+            self .story_object_alpha =0 
             if self .story_fade_alpha >=255 :
                 self .game_bg =self .story_next_bg 
                 self .story_phase ="enter"
@@ -865,6 +869,16 @@ class Game :
             self .story_text_full =re .sub (r'-([^-]+)-([^-]+)-',lambda g :g .group (1 )if m else g .group (2 ),raw_text )
             self .story_characters_shown =0 
             self .story_typing_frame =0 
+            obj_file =entry .get ("oggetto")
+            self .story_object_img =None 
+            self .story_object_alpha =0 
+            if obj_file :
+                obj_img =safe_load_image (resource_path (os .path .join ("graphics","MISC",obj_file )))
+                ow ,oh =obj_img .get_size ()
+                if oh >300 :
+                    s =300 /oh 
+                    obj_img =pygame .transform .scale (obj_img ,(max (1 ,int (ow *s )),300 ))
+                self .story_object_img =obj_img 
             if self .story_first_step :
                 self .story_fade_alpha =255 
                 self .story_fade_color =(255 ,255 ,255 )
@@ -1467,6 +1481,8 @@ class Game :
                     if self .story_phase =="show":
                         if self .story_characters_shown <len (self .story_text_full ):
                             self .story_characters_shown =len (self .story_text_full )
+                        elif self .story_object_img is not None and self .story_object_alpha <255 :
+                            self .story_object_alpha =255 
                         else :
                             self .story_fade_speed =3 
                             self .story_phase ="exit"
@@ -1480,6 +1496,8 @@ class Game :
                 if self .story_phase =="show":
                     if self .story_characters_shown <len (self .story_text_full ):
                         self .story_characters_shown =len (self .story_text_full )
+                    elif self .story_object_img is not None and self .story_object_alpha <255 :
+                        self .story_object_alpha =255 
                     else :
                         self .story_fade_speed =3 
                         self .story_phase ="exit"
@@ -2047,6 +2065,8 @@ class Game :
                     if self .story_typing_frame >=2 :
                         self .story_typing_frame =0 
                         self .story_characters_shown +=1 
+                elif self .story_object_img is not None and self .story_object_alpha <255 :
+                    self .story_object_alpha =min (255 ,self .story_object_alpha +3 )
             elif self .story_phase =="exit":
                 self .story_fade_alpha =min (255 ,self .story_fade_alpha +self .story_fade_speed )
                 if self .story_fade_alpha >=255 :
@@ -2834,11 +2854,11 @@ class Game :
             base_y =SCREEN_HEIGHT //2 -ch //2 
             wy =base_y +130 
             self .screen .blit (char_img ,(self .character_entry_x ,wy ))
-            if self .story_fade_alpha >0 :
-                fade_surf =pygame .Surface ((SCREEN_WIDTH ,SCREEN_HEIGHT ))
-                fade_surf .set_alpha (self .story_fade_alpha )
-                fade_surf .fill (self .story_fade_color )
-                self .screen .blit (fade_surf ,(0 ,0 ))
+        if self .story_fade_alpha >0 :
+            fade_surf =pygame .Surface ((SCREEN_WIDTH ,SCREEN_HEIGHT ))
+            fade_surf .set_alpha (self .story_fade_alpha )
+            fade_surf .fill (self .story_fade_color )
+            self .screen .blit (fade_surf ,(0 ,0 ))
             return 
 
         wx =self .player_stand_x +shake [0 ]
@@ -3166,6 +3186,11 @@ class Game :
             if line :
                 self .draw_text_shadow (self .story_font ,line ,WHITE ,midleft =(x_margine ,y ))
                 y +=46 
+
+        if self .story_object_img is not None and self .story_object_alpha >0 :
+            obj =self .story_object_img .copy ()
+            obj .set_alpha (self .story_object_alpha )
+            self .screen .blit (obj ,obj .get_rect (center =(SCREEN_WIDTH //2 ,SCREEN_HEIGHT //2 )))
 
         if self .story_fade_alpha >0 :
             fade_surf =pygame .Surface ((SCREEN_WIDTH ,SCREEN_HEIGHT ))
