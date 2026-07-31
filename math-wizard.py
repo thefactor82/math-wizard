@@ -500,7 +500,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="0.9.006"
+        self .version ="0.9.007"
 
         self .profiles =[]
         self .current_profile =""
@@ -1017,7 +1017,7 @@ class Game :
         dialogues =self .scene_data .get ("dialogues",[])if self .scene_data else []
         if self .scene_dialogue_idx >=len (dialogues ):
             return 
-        text_value =dialogues [self .scene_dialogue_idx ].get ("text","")
+        text_value =self .scene_dialogue_text (dialogues [self .scene_dialogue_idx ])
         if self .scene_chars_shown ()<len (text_value ):
             self .scene_dialogue_start =pygame .time .get_ticks ()-(len (text_value )*40 )
             return 
@@ -1029,6 +1029,12 @@ class Game :
                 self .finish_scene ()
         else :
             self .set_scene_dialogue (self .scene_dialogue_idx +1 )
+
+    def scene_dialogue_text (self ,line ):
+        text_value =line .get ("text","")
+        text_value =text_value .replace ("NOMEPROFILOINUSO",self .current_profile )
+        m =self .config_gender =="M"
+        return re .sub (r'-([^-]+)-([^-]+)-',lambda g :g .group (1 )if m else g .group (2 ),text_value )
 
     def draw_speech_bubble (self ):
         dialogues =self .scene_data .get ("dialogues",[])if self .scene_data else []
@@ -1049,8 +1055,7 @@ class Game :
             ny =SCREEN_HEIGHT //2 -img_h //2 +130 +speaker ["y_off"]
         else :
             return 
-        text_value =line .get ("text","")
-        text_value =text_value .replace ("NOMEPROFILOINUSO",self .current_profile )
+        text_value =self .scene_dialogue_text (line )
         shown =text_value [:self .scene_chars_shown ()]
         font =self .font_small 
         max_w =520 
