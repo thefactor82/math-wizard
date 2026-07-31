@@ -217,7 +217,26 @@
     "player_in": "sx",
     "player_out": "dx",
     "player_entrance": "y",
-    "monster_in": "dx"
+    "monster_in": "dx",
+    "scenes": [
+      {
+        "when": "before",
+        "npcs": [
+          {
+            "id": "re",
+            "sheet": "king.png",
+            "pos": "right",
+            "in": "dx",
+            "out": "dx",
+            "y_off": 0
+          }
+        ],
+        "dialogues": [
+          { "who": "re", "frame": 2, "text": "Aiuto NOMEPROFILOINUSO!" },
+          { "who": "re", "frame": 2, "text": "Gli Hop hanno invaso il mio castello!!!" }
+        ]
+      }
+    ]
   },
   {
     "tipo": "livello",
@@ -239,6 +258,30 @@
     "player_entrance": "y",
     "monster_in": "dx",
     "boss": "monster99",
-    "boss_in": "dx"
+    "boss_in": "dx",
+    "scenes": [
+      {
+        "when": "after",
+        "npcs": [
+          {
+            "id": "re",
+            "sheet": "king.png",
+            "pos": "right",
+            "in": "dx",
+            "y_off": 0
+          }
+        ],
+        "dialogues": [
+          { "who": "re", "frame": 0, "text": "Ben fatto, NOMEPROFILOINUSO, davvero ben fatto!" },
+          { "who": "player", "frame": 0, "text": "Ho riportato il ciondolo che aveva chiesto, mio Re" },
+          { "who": "re", "frame": 1, "text": "Non solo! Hai anche salvato il mio trono dall'arrivo di quell'Hop gigante!" },
+          { "who": "re", "frame": 1, "text": "(e decisamente sovrappeso...)" },
+          { "who": "player", "frame": 0, "text": "Grazie, mio Re! Posso adesso sapere a cosa servirà quel ciondolo?" },
+          { "who": "re", "frame": 2, "text": "Vuoi saperlo proprio adesso?" },
+          { "who": "player", "frame": 0, "text": "Beh, se possibile..." },
+          { "who": "re", "frame": 1, "text": "Temo che dovrai attendere la prossima avventura..." }
+        ]
+      }
+    ]
   }
 ]
