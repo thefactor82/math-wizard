@@ -500,7 +500,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="0.9.003"
+        self .version ="0.9.004"
 
         self .profiles =[]
         self .current_profile =""
@@ -775,6 +775,9 @@ class Game :
         self .boss_times =[]
         self .current_block =[]
         self .timeout_handled =False 
+        self .scene_data =None 
+        self .scene_phase =None 
+        self .scene_npcs =[]
         if self .player_entrance :
             self .character_entry =True 
             self .character_entry_start =pygame .time .get_ticks ()
@@ -960,7 +963,7 @@ class Game :
     def finish_scene (self ):
         self .scene_data =None 
         self .scene_phase =None 
-        self .scene_npcs =[]
+        self .scene_npcs =[n for n in self .scene_npcs if not n ["has_out"]]
         on_complete =self .scene_on_complete 
         self .scene_on_complete =None 
         if on_complete =="question":
@@ -2780,7 +2783,7 @@ class Game :
         else :
             self .screen .blit (self .game_bg ,(0 ,0 ))
 
-        if self .scene_phase is not None and self .scene_npcs :
+        if self .scene_npcs :
             now_npc =pygame .time .get_ticks ()
             for npc in self .scene_npcs :
                 if self .scene_phase =="exit":
@@ -2885,7 +2888,7 @@ class Game :
                     faded =self .monster_img .copy ()
                     faded .set_alpha (alpha )
                     self .screen .blit (faded ,(self .monster_x +shake [0 ],wy_monster ))
-        else :
+        elif self .scene_phase is None :
             n_frames =len (self .monster_frames )
             self .monster_anim_frame =(pygame .time .get_ticks ()//self .monster_anim_speed )%n_frames 
             self .screen .blit (self .monster_frames [self .monster_anim_frame ],(self .monster_x +shake [0 ],wy_monster ))
@@ -3157,6 +3160,12 @@ class Game :
             self .screen .blit (overlay ,(0 ,0 ))
         else :
             self .screen .blit (self .game_bg ,(0 ,0 ))
+        for npc in self .scene_npcs :
+            frame =npc ["poses"][npc ["pose_idx"]]
+            img =pygame .transform .flip (frame ,True ,False )if npc ["flip_in"]else frame 
+            nx =npc ["x"]
+            ny =SCREEN_HEIGHT //2 -img .get_height ()//2 +130 +npc ["y_off"]
+            self .screen .blit (img ,(nx ,ny ))
         elapsed =pygame .time .get_ticks ()-self .player_exit_start 
         progress =min (elapsed /4000 ,1.0 )
         frame_idx =(elapsed //200 )%4 
