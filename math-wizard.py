@@ -500,7 +500,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="0.9.004"
+        self .version ="0.9.005"
 
         self .profiles =[]
         self .current_profile =""
@@ -989,6 +989,17 @@ class Game :
             return 0 
         return (pygame .time .get_ticks ()-self .scene_dialogue_start )//40 
 
+    def resolve_scene_speaker (self ,who ):
+        if who in ("player","io")or who ==-1 :
+            return ("player",None )
+        if isinstance (who ,int )and 0 <=who <len (self .scene_npcs ):
+            return ("npc",self .scene_npcs [who ])
+        if isinstance (who ,str ):
+            for n in self .scene_npcs :
+                if n ["id"]==who :
+                    return ("npc",n )
+        return ("missing",None )
+
     def set_scene_dialogue (self ,idx ):
         self .scene_dialogue_idx =idx 
         self .scene_dialogue_start =pygame .time .get_ticks ()
@@ -996,10 +1007,11 @@ class Game :
         if idx <len (dialogues ):
             n =dialogues [idx ]
             who =n .get ("who",0 )
-            if isinstance (who ,int )and not who <0 and who <len (self .scene_npcs ):
-                pose =n .get ("frame",self .scene_npcs [who ]["pose_idx"])
-                pose =max (0 ,min (len (self .scene_npcs [who ]["poses"])-1 ,int (pose )))
-                self .scene_npcs [who ]["pose_idx"]=pose
+            kind ,speaker =self .resolve_scene_speaker (who )
+            if kind =="npc"and speaker :
+                pose =n .get ("frame",speaker ["pose_idx"])
+                pose =max (0 ,min (len (speaker ["poses"])-1 ,int (pose )))
+                speaker ["pose_idx"]=pose
 
     def advance_scene_dialogue (self ):
         dialogues =self .scene_data .get ("dialogues",[])if self .scene_data else []
@@ -1024,20 +1036,19 @@ class Game :
             return 
         line =dialogues [self .scene_dialogue_idx ]
         who =line .get ("who",0 )
-        is_player =who in ("player","io",-1 )
-        if is_player :
+        kind ,speaker =self .resolve_scene_speaker (who )
+        if kind =="player":
             img =self .char_data .get (self .config_gender ,self .char_data ["F"])["idle"][0 ]
             img_w ,img_h =img .get_size ()
             nx =self .player_stand_x
             ny =SCREEN_HEIGHT //2 -img_h //2 +130
-        else :
-            if not (0 <=who <len (self .scene_npcs )):
-                return 
-            npc =self .scene_npcs [who ]
-            frame =npc ["poses"][npc ["pose_idx"]]
+        elif kind =="npc"and speaker :
+            frame =speaker ["poses"][speaker ["pose_idx"]]
             img_w ,img_h =frame .get_size ()
-            nx =npc ["x"]
-            ny =SCREEN_HEIGHT //2 -img_h //2 +130 +npc ["y_off"]
+            nx =speaker ["x"]
+            ny =SCREEN_HEIGHT //2 -img_h //2 +130 +speaker ["y_off"]
+        else :
+            return 
         text_value =line .get ("text","")
         text_value =text_value .replace ("NOMEPROFILOINUSO",self .current_profile )
         shown =text_value [:self .scene_chars_shown ()]
