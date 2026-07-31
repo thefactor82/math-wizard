@@ -73,13 +73,11 @@
     "monster_in": "dx"
   },
   {
-    "tipo": "livello",
+    "tipo": "scena",
     "bg": "castle_entrance",
-    "monsters": [1,2,3,4,5,6,8],
     "player_in": "sx",
     "player_out": "sx",
     "player_entrance": "y",
-    "monster_in": "dx",
     "scenes": [
       {
         "when": "before",
@@ -89,13 +87,24 @@
             "sheet": "king.png",
             "pos": "right",
             "in": "dx",
-            "out": "sx",
             "y_off": 0
           }
         ],
         "dialogues": [
-          { "who": 0, "frame": 0, "text": "Ciao, NOMEPROFILOINUSO!" },
-          { "who": 0, "frame": 0, "text": "Il Re ti attende." }
+          { "who": "player", "frame": 0, "text": "Eccomi, mio Re!" },
+          { "who": "re", "frame": 0, "text": "Benarrivat-o-a- al castello, NOMEPROFILOINUSO!" },
+          { "who": "re", "frame": 0, "text": "Spero che gli Hop non ti abbiano causato troppi problemi." },
+          { "who": "player", "frame": 0, "text": "Qualcuno, mio Re. E stanno diventando via via più fastidiosi..." },
+          { "who": "re", "frame": 0, "text": "Ed è proprio per questo che ti ho mandat-o-a- a chiamare!" },
+          { "who": "re", "frame": 0, "text": "I tuoi poteri magici potrebbero aiutarci a tenere a bada gli Hop!" },
+          { "who": "re", "frame": 0, "text": "Più avanti lungo il sentiero, troverai l'ingresso di una caverna" },
+          { "who": "re", "frame": 0, "text": "Al fondo della caverna è custodito un magico ciondolo." },
+          { "who": "re", "frame": 0, "text": "Va! E recuperalo per il tuo Re!" },
+          { "who": "re", "frame": 0, "text": "Ma bada bene, gli Hop non te lo lasceranno prendere tanto facilmente..." },
+          { "who": "re", "frame": 0, "text": "Mi raccomando. Resta concentrat-o-a-!" },
+          { "who": "player", "frame": 0, "text": "A cosa servirà quel ciondolo?" },
+          { "who": "re", "frame": 0, "text": "Lo scoprirai a tempo debito, ora vai!" },
+          { "who": "player", "frame": 0, "text": "Farò del mio meglio, mio Re!" }
         ]
       }
     ]
@@ -144,9 +153,25 @@
     "monsters": [3,7,9,10,11],
     "flying": [9,10,11],
     "player_in": "dx",
-    "player_out": "dx",
+    "player_out": "sx",
     "player_entrance": "y",
     "monster_in": "sx"
+  },
+  {
+    "tipo": "testo",
+    "bg": "cavern3",
+    "testo": "Dopo un grande numero di Hop affrontati, finalmente NOMEPROFILOINUSO è arrivat-o-a- nelle profondità di una splendida grotta...\n\nIl Re aveva ragione!\n\nUno splendido ciondolo è appoggiato una roccia, al centro della caverna.\n\nNOMEPROFILOINUSO lo prende e si appresta a fare ritorno dal suo Re.",
+    "oggetto": "pendant.png"
+  },
+  {
+    "tipo": "livello",
+    "bg": "cavern2",
+    "monsters": [3,7,9,10,11],
+    "flying": [9,10,11],
+    "player_in": "sx",
+    "player_out": "dx",
+    "player_entrance": "y",
+    "monster_in": "dx"
   },
   {
     "tipo": "livello",

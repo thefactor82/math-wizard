@@ -500,7 +500,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="0.9.010"
+        self .version ="0.9.011"
 
         self .profiles =[]
         self .current_profile =""
@@ -2085,7 +2085,10 @@ class Game :
                                         skip_to =i 
                                         break 
                                     cnt +=1 
-                            self .story_idx =skip_to if skip_to is not None else self .story_idx +1 
+                            if skip_to is not None and skip_to >self .story_idx :
+                                self .story_idx =skip_to 
+                            else :
+                                self .story_idx +=1 
                         else :
                             self .story_idx +=1 
                         self .show_story ()
