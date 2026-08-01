@@ -6,6 +6,7 @@ __pycache__/
 dist/
 build/
 *.spec
+!buildozer.spec
 
 # IDE
 .vscode/
@@ -18,3 +19,8 @@ Thumbs.db
 archived/
 profiles/
 ToDo.txt
+
+# Android build (Buildozer)
+.buildozer/
+bin/
+*.apk

@@ -17,7 +17,8 @@ def data_path (relative ):
     base =os .path .dirname (sys .executable )if getattr (sys ,'frozen',False )else os .path .dirname (os .path .abspath (__file__ ))
     return os .path .join (base ,relative )
 
-PROFILES_DIR ="profiles"
+ANDROID_ARG =os .environ .get ("ANDROID_ARGUMENT")
+PROFILES_DIR =os .path .join (ANDROID_ARG ,"profiles")if ANDROID_ARG else "profiles"
 
 WIZARD_LIVES =3 
 DEFAULT_TIMEOUT =12 
@@ -508,7 +509,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.0.007"
+        self .version ="1.0.008"
 
         self .profiles =[]
         self .current_profile =""
@@ -617,6 +618,7 @@ class Game :
         self .monster_anim_frame =0 
         self .hit_timer =0 
         self .question_active =False 
+        self .ime_active =False 
         self .feedback =None 
         self .feedback_timer =0 
         self .zap_timer =0 
@@ -1589,7 +1591,10 @@ class Game :
                     elif 289 <=my <=353 :
                         self .show_config ()
                 elif self .repo_link_rect and self .repo_link_rect .collidepoint (mx ,my ):
-                    webbrowser .open ("https://github.com/thefactor82/math-wizard")
+                    try :
+                        webbrowser .open ("https://github.com/thefactor82/math-wizard")
+                    except Exception as e :
+                        print (f"Warning: unable to open repo link: {e }")
             elif self .state =="options_auto":
                 sx =360 
                 lw ,vw ,rw =30 ,40 ,30 
@@ -3422,6 +3427,15 @@ class Game :
         ultime =[r .strip ()for r in lines if r .strip ()]
         return list (reversed (ultime [-6 :]))
 
+    def update_ime (self ):
+        needed =self .profile_input_mode or self .question_active 
+        if needed and not self .ime_active :
+            pygame .key .start_text_input ()
+            self .ime_active =True 
+        elif not needed and self .ime_active :
+            pygame .key .stop_text_input ()
+            self .ime_active =False 
+
     def run (self ):
         while self .running :
             for event in pygame .event .get ():
@@ -3432,6 +3446,7 @@ class Game :
 
             self .update ()
             self .draw ()
+            self .update_ime ()
             self .clock .tick (FPS )
 
         pygame .quit ()

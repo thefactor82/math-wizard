@@ -1,31 +1,60 @@
-FROM python:3.11
+FROM python:3.11-slim
 
-RUN apt-get update && \
-    apt-get install -y \
-    git zip unzip openjdk-17-jdk wget \
-    libffi-dev libssl-dev \
-    python3-pip \
-    build-essential \
+ENV USER="user"
+ENV HOME_DIR="/home/${USER}"
+ENV WORK_DIR="${HOME_DIR}/hostcwd" \
+    SRC_DIR="${HOME_DIR}/src" \
+    PATH="${HOME_DIR}/.local/bin:${PATH}"
+ENV LANG="en_US.UTF-8" \
+    LANGUAGE="en_US.UTF-8" \
+    LC_ALL="en_US.UTF-8"
+
+RUN apt update -qq > /dev/null \
+    && DEBIAN_FRONTEND=noninteractive apt install -qq --yes --no-install-recommends \
+    locales \
     autoconf \
     automake \
-    libtool \
-    pkg-config \
-    zlib1g-dev \
+    build-essential \
+    ccache \
+    cmake \
+    gettext \
+    git \
+    libffi-dev \
+    libltdl-dev \
     libncurses5-dev \
-    libsqlite3-dev \
-    libgdbm-dev \
-    libbz2-dev \
-    libreadline-dev \
-    liblzma-dev \
     libncursesw5-dev \
-    libgdbm-compat-dev \
-    libxml2-dev \
-    libxslt1-dev \
+    libssl-dev \
+    libtinfo5 \
+    libtool \
+    openjdk-17-jdk \
+    patch \
+    pkg-config \
+    sudo \
+    unzip \
+    zip \
+    zlib1g-dev \
+    && locale-gen en_US.UTF-8 \
+    && apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip install --upgrade pip setuptools cython buildozer
+RUN useradd --create-home --shell /bin/bash ${USER}
+RUN usermod -append --groups sudo ${USER}
+RUN echo "%sudo ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 
-ENV PATH="/root/.buildozer/android/platform/android-sdk/platform-tools/:$PATH"
+# Cython must stay below 3.0 (p4a recipes break with Cython 3+).
+RUN pip install --upgrade \
+    buildozer \
+    "Cython<0.30" \
+    virtualenv \
+    pip \
+    appdirs \
+    packaging \
+    colorama \
+    jinja2 \
+    toml \
+    build
 
-WORKDIR /app
+USER ${USER}
+WORKDIR ${WORK_DIR}
 
+ENTRYPOINT ["buildozer"]
