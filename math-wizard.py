@@ -35,8 +35,6 @@ GRAY =(100 ,100 ,100 )
 DARK =(20 ,20 ,30 )
 BG_DARK =(30 ,30 ,50 )
 SEL_BLUE =(60 ,130 ,200 )
-COFFEE =(150 ,95 ,55 )
-LIGHT_BROWN =(215 ,175 ,125 )
 
 def parse_pool (val ):
     if isinstance (val ,list ):
@@ -81,6 +79,13 @@ def safe_load_image (path ,scale =None ,convert_alpha =True ):
     except (pygame .error ,OSError )as e :
         print (f"Warning: unable to load image '{path }': {e }")
         return make_placeholder_surface (scale if scale is not None else (100 ,100 ))
+
+def scale_to_fit (img ,box ):
+    w ,h =img .get_size ()
+    f =min (box [0 ]/w ,box [1 ]/h )
+    nw =max (1 ,int (round (w *f )))
+    nh =max (1 ,int (round (h *f )))
+    return pygame .transform .smoothscale (img ,(nw ,nh ))
 
 
 def load_json_file (path ):
@@ -442,6 +447,9 @@ class Game :
         self .logo =safe_load_image (resource_path ("graphics/misc/logo.png"),(SCREEN_WIDTH ,SCREEN_HEIGHT ))
         self .gear_img =safe_load_image (resource_path ("graphics/misc/gear.png"),None )
 
+        self .git_icon =scale_to_fit (safe_load_image (resource_path ("graphics/misc/git.png"),None ),(30 ,30 ))
+        self .kofi_icon =scale_to_fit (safe_load_image (resource_path ("graphics/misc/kofi.png"),None ),(30 ,30 ))
+
     def load_spritesheet (self ,path ,target_w ,frame_count ,row =0 ,rows =1 ,cols =None ,frame_offset =0 ,flip_x =True ,scale =True ):
         try :
             sheet =pygame .image .load (path ).convert_alpha ()
@@ -510,7 +518,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.0.008"
+        self .version ="1.0.009"
 
         self .profiles =[]
         self .current_profile =""
@@ -1542,7 +1550,7 @@ class Game :
                     else :
                         self .profile_cursor =0 
                     self .state ="profile_select"
-                    # Offer me a Coffee (basso a sinistra)
+                    # Offrimi un caffè (basso a sinistra)
                 elif getattr (self ,'coffee_menu_rect',None )and self .coffee_menu_rect .collidepoint (mx ,my ):
                     try :
                         webbrowser .open ("https://ko-fi.com/thefactor82")
@@ -2409,14 +2417,9 @@ class Game :
                 rect =ok .get_rect (midleft =(SCREEN_WIDTH //2 +150 ,y ))
                 self .screen .blit (ok ,rect )
 
-    def draw_coffee_icon (self ,x ,y ,s =30 ):
-        steam =(190 ,190 ,190 )
-        pygame .draw .arc (self .screen ,steam ,(x +s *0.24 ,y ,s *0.14 ,s *0.28 ),math .pi ,math .pi *2 ,2 )
-        pygame .draw .arc (self .screen ,steam ,(x +s *0.44 ,y -s *0.06 ,s *0.14 ,s *0.28 ),math .pi ,math .pi *2 ,2 )
-        pygame .draw .circle (self .screen ,COFFEE ,(x +s *0.52 ,y +s *0.34 ),s *0.14 ,3 )
-        cup =pygame .Rect (x +s *0.10 ,y +s *0.26 ,s *0.46 ,s *0.40 )
-        pygame .draw .rect (self .screen ,COFFEE ,cup ,border_radius =max (2 ,int (s *0.08 )))
-        pygame .draw .ellipse (self .screen ,LIGHT_BROWN ,(x +s *0.02 ,y +s *0.66 ,s *0.62 ,s *0.14 ))
+    def blit_link_icon (self ,img ,rect ):
+        w ,h =img .get_size ()
+        self .screen .blit (img ,(rect .x +(rect .w -w )//2 ,rect .y +(rect .h -h )//2 ))
 
     def draw_menu (self ):
         mx ,my =pygame .mouse .get_pos ()
@@ -2470,15 +2473,15 @@ class Game :
 
         icon_size =30 
         icon_x =16 
-        icon_y =SCREEN_HEIGHT -16 -icon_size 
-        self .draw_coffee_icon (icon_x ,icon_y ,icon_size )
-        coffee_txt =self .font_small .render ("Offer me a Coffee",True ,WHITE )
+        coffee_txt =self .font_small .render ("Offrimi un caffè",True ,WHITE )
         coffee_rect =coffee_txt .get_rect (bottomleft =(icon_x +icon_size +10 ,SCREEN_HEIGHT -16 ))
         if coffee_rect .collidepoint (mx ,my ):
-            coffee_txt =self .font_small .render ("Offer me a Coffee",True ,GOLD )
+            coffee_txt =self .font_small .render ("Offrimi un caffè",True ,GOLD )
             coffee_rect =coffee_txt .get_rect (bottomleft =(icon_x +icon_size +10 ,SCREEN_HEIGHT -16 ))
+        coffee_icon_rect =pygame .Rect (icon_x ,coffee_rect .centery -icon_size //2 ,icon_size ,icon_size )
+        self .blit_link_icon (self .kofi_icon ,coffee_icon_rect )
         self .screen .blit (coffee_txt ,coffee_rect )
-        self .coffee_menu_rect =coffee_rect .union (pygame .Rect (icon_x ,icon_y ,icon_size ,icon_size ))
+        self .coffee_menu_rect =coffee_rect .union (coffee_icon_rect )
 
     def draw_options (self ):
         mx ,my =pygame .mouse .get_pos ()
@@ -2514,21 +2517,26 @@ class Game :
             self .screen .blit (surf ,rect )
             y +=22 
 
-        icon_size =26 
-        coffee_txt =self .font_small .render ("Offer me a Coffee",True ,WHITE )
-        coffee_rect =coffee_txt .get_rect (bottomright =(SCREEN_WIDTH -20 ,SCREEN_HEIGHT -40 ))
+        icon_size =30 
+        coffee_txt =self .font_small .render ("Offrimi un caffè",True ,WHITE )
+        coffee_rect =coffee_txt .get_rect (bottomright =(SCREEN_WIDTH -20 ,SCREEN_HEIGHT -48 ))
         if coffee_rect .collidepoint (mx ,my ):
-            coffee_txt =self .font_small .render ("Offer me a Coffee",True ,GOLD )
-            coffee_rect =coffee_txt .get_rect (bottomright =(SCREEN_WIDTH -20 ,SCREEN_HEIGHT -40 ))
-        coffee_icon_rect =pygame .Rect (coffee_rect .left -8 -icon_size ,SCREEN_HEIGHT -40 -icon_size ,icon_size ,icon_size )
-        self .draw_coffee_icon (coffee_icon_rect .x ,coffee_icon_rect .y ,icon_size )
+            coffee_txt =self .font_small .render ("Offrimi un caffè",True ,GOLD )
+            coffee_rect =coffee_txt .get_rect (bottomright =(SCREEN_WIDTH -20 ,SCREEN_HEIGHT -48 ))
+        coffee_icon_rect =pygame .Rect (coffee_rect .left -8 -icon_size ,coffee_rect .centery -icon_size //2 ,icon_size ,icon_size )
+        self .blit_link_icon (self .kofi_icon ,coffee_icon_rect )
         self .screen .blit (coffee_txt ,coffee_rect )
         self .coffee_options_rect =coffee_rect .union (coffee_icon_rect )
 
-        link_color =GOLD if self .repo_link_rect and self .repo_link_rect .collidepoint (mx ,my )else SEL_BLUE 
-        link_surf =self .font_small .render ("github.com/thefactor82/math-wizard",True ,link_color )
-        self .repo_link_rect =link_surf .get_rect (bottomright =(SCREEN_WIDTH -20 ,SCREEN_HEIGHT -10 ))
-        self .screen .blit (link_surf ,self .repo_link_rect )
+        link_txt =self .font_small .render ("Progetto Github",True ,WHITE )
+        link_rect =link_txt .get_rect (bottomright =(SCREEN_WIDTH -20 ,SCREEN_HEIGHT -10 ))
+        if link_rect .collidepoint (mx ,my ):
+            link_txt =self .font_small .render ("Progetto Github",True ,GOLD )
+            link_rect =link_txt .get_rect (bottomright =(SCREEN_WIDTH -20 ,SCREEN_HEIGHT -10 ))
+        link_icon_rect =pygame .Rect (link_rect .left -8 -icon_size ,link_rect .centery -icon_size //2 ,icon_size ,icon_size )
+        self .blit_link_icon (self .git_icon ,link_icon_rect )
+        self .screen .blit (link_txt ,link_rect )
+        self .repo_link_rect =link_rect .union (link_icon_rect )
 
     def draw_auto_options (self ):
         mx ,my =pygame .mouse .get_pos ()
