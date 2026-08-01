@@ -35,6 +35,8 @@ GRAY =(100 ,100 ,100 )
 DARK =(20 ,20 ,30 )
 BG_DARK =(30 ,30 ,50 )
 SEL_BLUE =(60 ,130 ,200 )
+COFFEE =(150 ,95 ,55 )
+LIGHT_BROWN =(215 ,175 ,125 )
 
 def parse_pool (val ):
     if isinstance (val ,list ):
@@ -508,7 +510,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.0.007"
+        self .version ="1.0.008"
 
         self .profiles =[]
         self .current_profile =""
@@ -1540,6 +1542,12 @@ class Game :
                     else :
                         self .profile_cursor =0 
                     self .state ="profile_select"
+                    # Offer me a Coffee (basso a sinistra)
+                elif getattr (self ,'coffee_menu_rect',None )and self .coffee_menu_rect .collidepoint (mx ,my ):
+                    try :
+                        webbrowser .open ("https://ko-fi.com/thefactor82")
+                    except Exception as e :
+                        print (f"Warning: unable to open coffee link: {e }")
             elif self .state =="profile_select":
                 if not self .profile_input_mode :
                     voci =self .profiles +["Nuovo profilo"]
@@ -1590,6 +1598,8 @@ class Game :
                         self .show_config ()
                 elif self .repo_link_rect and self .repo_link_rect .collidepoint (mx ,my ):
                     webbrowser .open ("https://github.com/thefactor82/math-wizard")
+                elif getattr (self ,'coffee_options_rect',None )and self .coffee_options_rect .collidepoint (mx ,my ):
+                    webbrowser .open ("https://ko-fi.com/thefactor82")
             elif self .state =="options_auto":
                 sx =360 
                 lw ,vw ,rw =30 ,40 ,30 
@@ -2399,6 +2409,15 @@ class Game :
                 rect =ok .get_rect (midleft =(SCREEN_WIDTH //2 +150 ,y ))
                 self .screen .blit (ok ,rect )
 
+    def draw_coffee_icon (self ,x ,y ,s =30 ):
+        steam =(190 ,190 ,190 )
+        pygame .draw .arc (self .screen ,steam ,(x +s *0.24 ,y ,s *0.14 ,s *0.28 ),math .pi ,math .pi *2 ,2 )
+        pygame .draw .arc (self .screen ,steam ,(x +s *0.44 ,y -s *0.06 ,s *0.14 ,s *0.28 ),math .pi ,math .pi *2 ,2 )
+        pygame .draw .circle (self .screen ,COFFEE ,(x +s *0.52 ,y +s *0.34 ),s *0.14 ,3 )
+        cup =pygame .Rect (x +s *0.10 ,y +s *0.26 ,s *0.46 ,s *0.40 )
+        pygame .draw .rect (self .screen ,COFFEE ,cup ,border_radius =max (2 ,int (s *0.08 )))
+        pygame .draw .ellipse (self .screen ,LIGHT_BROWN ,(x +s *0.02 ,y +s *0.66 ,s *0.62 ,s *0.14 ))
+
     def draw_menu (self ):
         mx ,my =pygame .mouse .get_pos ()
         overlay =pygame .Surface ((SCREEN_WIDTH ,SCREEN_HEIGHT ))
@@ -2449,6 +2468,18 @@ class Game :
         rect =version_surf .get_rect (bottomright =(SCREEN_WIDTH -8 ,SCREEN_HEIGHT -8 ))
         self .screen .blit (version_surf ,rect )
 
+        icon_size =30 
+        icon_x =16 
+        icon_y =SCREEN_HEIGHT -16 -icon_size 
+        self .draw_coffee_icon (icon_x ,icon_y ,icon_size )
+        coffee_txt =self .font_small .render ("Offer me a Coffee",True ,WHITE )
+        coffee_rect =coffee_txt .get_rect (bottomleft =(icon_x +icon_size +10 ,SCREEN_HEIGHT -16 ))
+        if coffee_rect .collidepoint (mx ,my ):
+            coffee_txt =self .font_small .render ("Offer me a Coffee",True ,GOLD )
+            coffee_rect =coffee_txt .get_rect (bottomleft =(icon_x +icon_size +10 ,SCREEN_HEIGHT -16 ))
+        self .screen .blit (coffee_txt ,coffee_rect )
+        self .coffee_menu_rect =coffee_rect .union (pygame .Rect (icon_x ,icon_y ,icon_size ,icon_size ))
+
     def draw_options (self ):
         mx ,my =pygame .mouse .get_pos ()
         overlay =pygame .Surface ((SCREEN_WIDTH ,SCREEN_HEIGHT ))
@@ -2476,12 +2507,23 @@ class Game :
         "Development, Beta testing: SL, GA, WF",
         "Graphics: Elena",
         ]
-        y =SCREEN_HEIGHT -48 -len (credits )*22 
+        y =SCREEN_HEIGHT -78 -len (credits )*22 
         for line in credits :
             surf =self .font_tiny .render (line ,True ,GRAY )
             rect =surf .get_rect (bottomright =(SCREEN_WIDTH -20 ,y ))
             self .screen .blit (surf ,rect )
             y +=22 
+
+        icon_size =26 
+        coffee_txt =self .font_small .render ("Offer me a Coffee",True ,WHITE )
+        coffee_rect =coffee_txt .get_rect (bottomright =(SCREEN_WIDTH -20 ,SCREEN_HEIGHT -40 ))
+        if coffee_rect .collidepoint (mx ,my ):
+            coffee_txt =self .font_small .render ("Offer me a Coffee",True ,GOLD )
+            coffee_rect =coffee_txt .get_rect (bottomright =(SCREEN_WIDTH -20 ,SCREEN_HEIGHT -40 ))
+        coffee_icon_rect =pygame .Rect (coffee_rect .left -8 -icon_size ,SCREEN_HEIGHT -40 -icon_size ,icon_size ,icon_size )
+        self .draw_coffee_icon (coffee_icon_rect .x ,coffee_icon_rect .y ,icon_size )
+        self .screen .blit (coffee_txt ,coffee_rect )
+        self .coffee_options_rect =coffee_rect .union (coffee_icon_rect )
 
         link_color =GOLD if self .repo_link_rect and self .repo_link_rect .collidepoint (mx ,my )else SEL_BLUE 
         link_surf =self .font_small .render ("github.com/thefactor82/math-wizard",True ,link_color )
