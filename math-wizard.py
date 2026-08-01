@@ -5,6 +5,7 @@ import os
 import json 
 import re 
 import math 
+import webbrowser 
 from datetime import datetime 
 from collections import deque 
 from fractions import Fraction 
@@ -507,7 +508,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.0.006"
+        self .version ="1.0.007"
 
         self .profiles =[]
         self .current_profile =""
@@ -670,6 +671,7 @@ class Game :
 
         self .menu_cursor =0 
         self .options_cursor =0 
+        self .repo_link_rect =None 
 
         self .config_cursor_row =0 
         self .config_cursor_col =0 
@@ -1586,6 +1588,8 @@ class Game :
                         self .state ="options_auto"
                     elif 289 <=my <=353 :
                         self .show_config ()
+                elif self .repo_link_rect and self .repo_link_rect .collidepoint (mx ,my ):
+                    webbrowser .open ("https://github.com/thefactor82/math-wizard")
             elif self .state =="options_auto":
                 sx =360 
                 lw ,vw ,rw =30 ,40 ,30 
@@ -2472,12 +2476,17 @@ class Game :
         "Development, Beta testing: SL, GA, WF",
         "Graphics: Elena",
         ]
-        y =SCREEN_HEIGHT -10 -len (credits )*22 
+        y =SCREEN_HEIGHT -48 -len (credits )*22 
         for line in credits :
             surf =self .font_tiny .render (line ,True ,GRAY )
             rect =surf .get_rect (bottomright =(SCREEN_WIDTH -20 ,y ))
             self .screen .blit (surf ,rect )
             y +=22 
+
+        link_color =GOLD if self .repo_link_rect and self .repo_link_rect .collidepoint (mx ,my )else SEL_BLUE 
+        link_surf =self .font_small .render ("github.com/thefactor82/math-wizard",True ,link_color )
+        self .repo_link_rect =link_surf .get_rect (bottomright =(SCREEN_WIDTH -20 ,SCREEN_HEIGHT -10 ))
+        self .screen .blit (link_surf ,self .repo_link_rect )
 
     def draw_auto_options (self ):
         mx ,my =pygame .mouse .get_pos ()
