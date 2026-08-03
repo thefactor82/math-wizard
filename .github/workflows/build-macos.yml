@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Tag della release a cui allegare il pacchetto (es. v1.0.18). Vuoto = ultimo tag del repo.'
+        description: 'Tag della release a cui allegare i pacchetti (es. v1.0.18). Vuoto = ultimo tag del repo.'
         required: false
         type: string
   release:
@@ -15,7 +15,18 @@ permissions:
 
 jobs:
   build-macos:
-    runs-on: macos-14
+    name: Build macOS (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: arm64
+            runner: macos-14
+            zip: MathWizard-macOS-arm64.zip
+          - arch: x86_64
+            runner: macos-15-intel
+            zip: MathWizard-macOS-x86_64.zip
+    runs-on: ${{ matrix.runner }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -59,30 +70,33 @@ jobs:
           sips -z 1024 1024 graphics/misc/icon.png --out icon.iconset/icon_512x512@2x.png
           iconutil -c icns icon.iconset -o MathWizard.icns
 
-      - name: Build .app con PyInstaller (arm64)
+      - name: Build .app con PyInstaller (${{ matrix.arch }})
         run: python -m PyInstaller --noconfirm --clean MathWizard-mac.spec
+        env:
+          TARGET_ARCH: ${{ matrix.arch }}
 
       - name: Copia la cartella data dentro il bundle
         run: cp -R data dist/MathWizard.app/Contents/MacOS/data
 
-      - name: Verifica bundle
+      - name: Verifica bundle e architettura
         run: |
           test -x dist/MathWizard.app/Contents/MacOS/MathWizard
           test -f dist/MathWizard.app/Contents/MacOS/data/story.json
           test -f dist/MathWizard.app/Contents/MacOS/data/levels.json
+          file dist/MathWizard.app/Contents/MacOS/MathWizard
           echo "bundle OK"
 
       - name: Crea lo zip
         run: |
           cd dist
-          ditto -c -k --keepParent MathWizard.app MathWizard-macOS.zip
-          ls -lh MathWizard-macOS.zip
+          ditto -c -k --keepParent MathWizard.app "${{ matrix.zip }}"
+          ls -lh "${{ matrix.zip }}"
 
       - name: Allega il pacchetto alla release
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ env.RELEASE_TAG }}
-          files: dist/MathWizard-macOS.zip
+          files: dist/${{ matrix.zip }}
           overwrite_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,12 +1,18 @@
 # -*- mode: python ; coding: utf-8 -*-
 #
-# Spec per il pacchetto macOS (.app, Apple Silicon arm64).
-# Usato dal workflow .github/workflows/build-macos.yml.
+# Spec per il pacchetto macOS (.app). Usato dal workflow
+# .github/workflows/build-macos.yml per entrambe le architetture:
+# l'architettura target arriva dalla variabile d'ambiente TARGET_ARCH
+# (arm64 | x86_64), altrimenti si usa quella della macchina di build.
 # - grafica inclusa nel bundle (datas)
 # - data/ copiata nel workflow in dist/MathWizard.app/Contents/MacOS/data
 #   (il gioco la cerca accanto all'eseguibile: data_path())
 # - icona MathWizard.icns generata nel workflow da graphics/misc/icon.png
 
+import os
+import platform
+
+target_arch = os.environ.get('TARGET_ARCH') or platform.machine()
 
 a = Analysis(
     ['math-wizard.py'],
@@ -37,7 +43,7 @@ exe = EXE(
     console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
-    target_arch=None,
+    target_arch=target_arch,
     codesign_identity=None,
     entitlements_file=None,
 )
