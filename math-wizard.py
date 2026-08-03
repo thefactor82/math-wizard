@@ -499,7 +499,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.0.013"
+        self .version ="1.0.014"
 
         self .profiles =[]
         self .current_profile =""
@@ -1590,6 +1590,7 @@ class Game :
                         box_h =max (90 ,img_h +20 )
                         box_rect =pygame .Rect (sx ,y ,280 ,box_h )
                         if box_rect .collidepoint (mx ,my ):
+                            self .reset_profile_config ()
                             self .config_gender =key 
                             nuovo =sanitize_profile_name (self .profile_input )
                             if not nuovo :
