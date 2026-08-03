@@ -2,10 +2,26 @@
 
 > **Un videogioco per "allenare" le basi fondamentali della matematica... e forse non solo.**
 
-![Screenshot del gioco](screenshot.png)
+## 📑 Indice
+
+- [⚡ TL;DR](#tl-dr)
+- [📖 La Storia](#la-storia)
+- [✨ Feature e funzionalità](#feature-e-funzionalità-e-cose-tecniche-per-chi-ne-capisce-qualcosa-in-più)
+  - [🎮 Modalità di gioco](#modalità-di-gioco)
+    - [📜 Storia](#storia)
+    - [🏋️ Allenamento](#allenamento)
+  - [🧮 Operazioni](#operazioni)
+  - [❤️ Sistema di vite e ricompense](#sistema-di-vite-e-ricompense)
+  - [📈 Sistema di progressione](#sistema-di-progressione)
+  - [👤 Profili utente](#profili-utente)
+  - [📊 Statistiche](#statistiche)
+  - [🐞 Debug](#debug)
+  - [🛠️ Dettagli tecnici](#dettagli-tecnici)
+  - [🚀 Come eseguire il gioco dal codice sorgente](#come-eseguire-il-gioco-dal-codice-sorgente)
 
 ## ⚡ TL;DR
 
+![Screenshot del gioco](screenshot.png)
 Math Wizard nasce da un'esperienza molto personale: vedere le mie due figlie affrontare con fatica le tabelline mi ha spinto a creare un videogioco che trasformasse l'apprendimento in qualcosa di divertente. Non trovando giochi che fossero davvero veloci, coinvolgenti e focalizzati sulla matematica, ho deciso di svilupparne uno io, con il loro aiuto e i loro suggerimenti. Il risultato è Math Wizard, un gioco pensato per allenare le quattro operazioni fondamentali e, in futuro, perchè no, molti altri argomenti scolastici.
 
 ---
