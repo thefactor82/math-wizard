@@ -499,7 +499,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.0.014"
+        self .version ="1.0.015"
 
         self .profiles =[]
         self .current_profile =""
@@ -2611,7 +2611,7 @@ class Game :
         l_surf =self .font_tiny .render (str (self .initial_level +1 ),True ,WHITE )
         self .screen .blit (l_surf ,l_surf .get_rect (center =(sx +lw +vw //2 ,y +17 )))
         prog =self .story_progress .get (self .config_story_operation ,0 )
-        prog_surf =self .font_tiny .render (f"(max {max (1 ,prog )})",True ,GRAY )
+        prog_surf =self .font_tiny .render (f"(max {max (1 ,prog +1 )})",True ,GRAY )
         self .screen .blit (prog_surf ,prog_surf .get_rect (midleft =(sx +lw +vw +rw +10 ,y +17 )))
 
         # Operazione
