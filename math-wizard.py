@@ -482,12 +482,45 @@ class Game :
         self .profile_input_mode =False 
         self .profile_gender_mode =False 
         self .new_profile_name =""
-        self .config_gender ="F"
-        self .config_story_operation ="moltiplicazione"
-        self .config_operation ="moltiplicazione"
         self .config_cursor_row =0 
         self .config_cursor_col =0 
         self .config_cursor_subrow =0 
+        self .reset_profile_config ()
+
+        self .story_entries =[]
+        for src in (data_path ,resource_path ):
+            story_path =src ("data/story.json")
+            if os .path .exists (story_path ):
+                data =load_json_file (story_path )
+                if isinstance (data ,list ):
+                    self .story_entries =data 
+                if self .story_entries :
+                    break 
+        self .story_idx =0 
+        self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
+
+        self .version ="1.0.013"
+
+        self .profiles =[]
+        self .current_profile =""
+        data =load_json_file (idx_file )
+        if isinstance (data ,dict ):
+            profiles =[]
+            for p in data .get ("profiles",[]):
+                p =sanitize_profile_name (p )
+                if p and os .path .isdir (os .path .join (PROFILES_DIR ,p )):
+                    profiles .append (p )
+            self .profiles =list (dict .fromkeys (profiles ))
+            current =sanitize_profile_name (data .get ("current",""))
+            self .current_profile =current if current in self .profiles else ""
+        if self .current_profile in self .profiles :
+            self .load_profile_config (self .current_profile )
+            self .update_char_image ()
+
+    def reset_profile_config (self ):
+        self .config_gender ="F"
+        self .config_story_operation ="moltiplicazione"
+        self .config_operation ="moltiplicazione"
         self .config_by_operation ={}
         for op in ["moltiplicazione","addizione","sottrazione","divisione"]:
             self .config_by_operation [op ]={
@@ -505,36 +538,6 @@ class Game :
         self .auto_timeout =DEFAULT_TIMEOUT 
         self .initial_level =0 
         self .story_progress ={"moltiplicazione":0 ,"addizione":0 ,"sottrazione":0 ,"divisione":0 }
-
-        self .story_entries =[]
-        for src in (data_path ,resource_path ):
-            story_path =src ("data/story.json")
-            if os .path .exists (story_path ):
-                data =load_json_file (story_path )
-                if isinstance (data ,list ):
-                    self .story_entries =data 
-                if self .story_entries :
-                    break 
-        self .story_idx =0 
-        self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
-
-        self .version ="1.0.012"
-
-        self .profiles =[]
-        self .current_profile =""
-        data =load_json_file (idx_file )
-        if isinstance (data ,dict ):
-            profiles =[]
-            for p in data .get ("profiles",[]):
-                p =sanitize_profile_name (p )
-                if p and os .path .isdir (os .path .join (PROFILES_DIR ,p )):
-                    profiles .append (p )
-            self .profiles =list (dict .fromkeys (profiles ))
-            current =sanitize_profile_name (data .get ("current",""))
-            self .current_profile =current if current in self .profiles else ""
-        if self .current_profile in self .profiles :
-            self .load_profile_config (self .current_profile )
-            self .update_char_image ()
 
     def save_profiles (self ):
         path =os .path .join (PROFILES_DIR ,"profiles.json")
@@ -1307,6 +1310,7 @@ class Game :
                         if event .key ==pygame .K_ESCAPE :
                             self .profile_gender_mode =False 
                         elif event .key ==pygame .K_f :
+                            self .reset_profile_config ()
                             self .config_gender ="F"
                             nuovo =sanitize_profile_name (self .profile_input )
                             if not nuovo :
@@ -1322,6 +1326,7 @@ class Game :
                             self .profile_gender_mode =False 
                             self .state ="menu"
                         elif event .key ==pygame .K_m :
+                            self .reset_profile_config ()
                             self .config_gender ="M"
                             nuovo =sanitize_profile_name (self .profile_input )
                             if not nuovo :
