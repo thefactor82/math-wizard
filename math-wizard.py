@@ -499,7 +499,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.0.016"
+        self .version ="1.0.017"
 
         self .profiles =[]
         self .current_profile =""
@@ -2124,6 +2124,8 @@ class Game :
                                         break 
                                     cnt +=1 
                             if skip_to is not None and skip_to >self .story_idx :
+                                while skip_to >0 and self .story_entries [skip_to -1 ].get ("tipo")=="scena":
+                                    skip_to -=1 
                                 self .story_idx =skip_to 
                             else :
                                 self .story_idx +=1 
