@@ -4,20 +4,20 @@
 
 ## 📑 Indice
 
-- [⚡ TL;DR](#tl-dr)
-- [📖 La Storia](#la-storia)
-- [✨ Feature e funzionalità](#feature-e-funzionalità-e-cose-tecniche-per-chi-ne-capisce-qualcosa-in-più)
-  - [🎮 Modalità di gioco](#modalità-di-gioco)
-    - [📜 Storia](#storia)
-    - [🏋️ Allenamento](#allenamento)
-  - [🧮 Operazioni](#operazioni)
-  - [❤️ Sistema di vite e ricompense](#sistema-di-vite-e-ricompense)
-  - [📈 Sistema di progressione](#sistema-di-progressione)
-  - [👤 Profili utente](#profili-utente)
-  - [📊 Statistiche](#statistiche)
-  - [🐞 Debug](#debug)
-  - [🛠️ Dettagli tecnici](#dettagli-tecnici)
-  - [🚀 Come eseguire il gioco dal codice sorgente](#come-eseguire-il-gioco-dal-codice-sorgente)
+- [⚡ TL;DR](#-tldr)
+- [📖 La Storia](#-la-storia)
+- [✨ Feature e funzionalità](#-feature-e-funzionalità-e-cose-tecniche-per-chi-ne-capisce-qualcosa-in-più)
+  - [🎮 Modalità di gioco](#-modalità-di-gioco)
+    - [📜 Storia](#-storia)
+    - [🏋️ Allenamento](#️-allenamento)
+  - [🧮 Operazioni](#-operazioni)
+  - [❤️ Sistema di vite e ricompense](#️-sistema-di-vite-e-ricompense)
+  - [📈 Sistema di progressione](#-sistema-di-progressione)
+  - [👤 Profili utente](#-profili-utente)
+  - [📊 Statistiche](#-statistiche)
+  - [🐞 Debug](#-debug)
+  - [🛠️ Dettagli tecnici](#️-dettagli-tecnici)
+  - [🚀 Come eseguire il gioco dal codice sorgente](#-come-eseguire-il-gioco-dal-codice-sorgente)
 
 ## ⚡ TL;DR
 
