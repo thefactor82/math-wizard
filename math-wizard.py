@@ -518,7 +518,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.0.010"
+        self .version ="1.0.011"
 
         self .profiles =[]
         self .current_profile =""
@@ -1130,6 +1130,8 @@ class Game :
             surf =font .render (ln ,True ,(20 ,20 ,35 ))
             self .screen .blit (surf ,(bubble_x +20 ,y ))
             y +=line_h 
+        if self .scene_chars_shown ()>=len (text_value ):
+            self .draw_text_shadow (self .font_small ,"Premi INVIO per continuare...",WHITE ,center =(SCREEN_WIDTH //2 ,SCREEN_HEIGHT -40 ),offset =1 )
 
     def new_question (self ):
         if self .lives <=0 :
@@ -3111,13 +3113,13 @@ class Game :
                 prossimo =self .font_small .render ("Prossima domanda...",True ,WHITE )
             else :
                 fb =self .font_large .render (f"SBAGLIATO! Era {self .expected_result }",True ,RED )
-                prossimo =self .font_small .render ("",True ,GRAY )
+                prossimo =self .font_small .render ("Premi INVIO per continuare...",True ,WHITE )
             rect =fb .get_rect (center =(SCREEN_WIDTH //2 ,SCREEN_HEIGHT //2 -30 ))
             ombra_fb =self .font_large .render ("CORRETTO!"if self .feedback else f"SBAGLIATO! Era {self .expected_result }",True ,(30 ,30 ,30 ))
             self .screen .blit (ombra_fb ,(rect .x +2 ,rect .y +2 ))
             self .screen .blit (fb ,rect )
             rect =prossimo .get_rect (center =(SCREEN_WIDTH //2 ,SCREEN_HEIGHT //2 +30 ))
-            ombra_pro =self .font_small .render ("Prossima domanda..."if self .feedback else "",True ,(30 ,30 ,30 ))
+            ombra_pro =self .font_small .render ("Prossima domanda..."if self .feedback else "Premi INVIO per continuare...",True ,(30 ,30 ,30 ))
             self .screen .blit (ombra_pro ,(rect .x +2 ,rect .y +2 ))
             self .screen .blit (prossimo ,rect )
 
@@ -3260,6 +3262,9 @@ class Game :
             if line :
                 self .draw_text_shadow (self .story_font ,line ,WHITE ,midleft =(x_margine ,y ))
                 y +=46 
+
+        if self .story_phase =="show"and self .story_characters_shown >=len (self .story_text_full ):
+            self .draw_text_shadow (self .font_small ,"Premi INVIO per continuare...",WHITE ,center =(SCREEN_WIDTH //2 ,SCREEN_HEIGHT -60 ),offset =1 )
 
         if self .story_object_img is not None and self .story_object_alpha >0 :
             obj =self .story_object_img .copy ()
