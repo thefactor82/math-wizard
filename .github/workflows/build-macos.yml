@@ -1,0 +1,88 @@
+name: Build macOS
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag della release a cui allegare il pacchetto (es. v1.0.18). Vuoto = ultimo tag del repo.'
+        required: false
+        type: string
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos:
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determina il tag della release
+        run: |
+          if [ -n "${{ github.event.inputs.tag }}" ]; then
+            RELEASE_TAG="${{ github.event.inputs.tag }}"
+          elif [ "${{ github.event_name }}" = "release" ]; then
+            RELEASE_TAG="${{ github.event.release.tag_name }}"
+          else
+            RELEASE_TAG="$(git describe --tags --abbrev=0 2>/dev/null || echo 'nessun-tag')"
+          fi
+          echo "RELEASE_TAG=$RELEASE_TAG"
+          echo "RELEASE_TAG=$RELEASE_TAG" >> "$GITHUB_ENV"
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Installa dipendenze
+        run: |
+          python -m pip install --upgrade pip
+          pip install pygame==2.6.1 pyinstaller==6.15.0
+
+      - name: Genera icona app (.icns)
+        run: |
+          mkdir -p icon.iconset
+          sips -z 16 16   graphics/misc/icon.png --out icon.iconset/icon_16x16.png
+          sips -z 32 32   graphics/misc/icon.png --out icon.iconset/icon_16x16@2x.png
+          sips -z 32 32   graphics/misc/icon.png --out icon.iconset/icon_32x32.png
+          sips -z 64 64   graphics/misc/icon.png --out icon.iconset/icon_32x32@2x.png
+          sips -z 128 128 graphics/misc/icon.png --out icon.iconset/icon_128x128.png
+          sips -z 256 256 graphics/misc/icon.png --out icon.iconset/icon_128x128@2x.png
+          sips -z 256 256 graphics/misc/icon.png --out icon.iconset/icon_256x256.png
+          sips -z 512 512 graphics/misc/icon.png --out icon.iconset/icon_256x256@2x.png
+          sips -z 512 512 graphics/misc/icon.png --out icon.iconset/icon_512x512.png
+          sips -z 1024 1024 graphics/misc/icon.png --out icon.iconset/icon_512x512@2x.png
+          iconutil -c icns icon.iconset -o MathWizard.icns
+
+      - name: Build .app con PyInstaller (arm64)
+        run: python -m PyInstaller --noconfirm --clean MathWizard-mac.spec
+
+      - name: Copia la cartella data dentro il bundle
+        run: cp -R data dist/MathWizard.app/Contents/MacOS/data
+
+      - name: Verifica bundle
+        run: |
+          test -x dist/MathWizard.app/Contents/MacOS/MathWizard
+          test -f dist/MathWizard.app/Contents/MacOS/data/story.json
+          test -f dist/MathWizard.app/Contents/MacOS/data/levels.json
+          echo "bundle OK"
+
+      - name: Crea lo zip
+        run: |
+          cd dist
+          ditto -c -k --keepParent MathWizard.app MathWizard-macOS.zip
+          ls -lh MathWizard-macOS.zip
+
+      - name: Allega il pacchetto alla release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          files: dist/MathWizard-macOS.zip
+          overwrite: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

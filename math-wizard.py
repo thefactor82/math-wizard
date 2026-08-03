@@ -17,7 +17,7 @@ def data_path (relative ):
     base =os .path .dirname (sys .executable )if getattr (sys ,'frozen',False )else os .path .dirname (os .path .abspath (__file__ ))
     return os .path .join (base ,relative )
 
-PROFILES_DIR ="profiles"
+PROFILES_DIR =os .path .join (os .path .dirname (sys .executable ),"profiles")if getattr (sys ,'frozen',False )else "profiles"
 
 WIZARD_LIVES =3 
 DEFAULT_TIMEOUT =12 
@@ -499,7 +499,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.0.018"
+        self .version ="1.0.019"
 
         self .profiles =[]
         self .current_profile =""
