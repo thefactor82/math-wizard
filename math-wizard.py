@@ -499,7 +499,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.0.015"
+        self .version ="1.0.016"
 
         self .profiles =[]
         self .current_profile =""
@@ -1495,6 +1495,7 @@ class Game :
                         self .level +=1 
                         if self .level >self .story_progress .get (self .config_story_operation ,0 ):
                             self .story_progress [self .config_story_operation ]=self .level 
+                            self .initial_level =self .level 
                             self .save_profile_config ()
                         if average <self .timeout_limit /2 :
                             self .timeout_limit =max (3 ,self .timeout_limit -1 )
