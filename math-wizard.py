@@ -499,7 +499,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.0.017"
+        self .version ="1.0.018"
 
         self .profiles =[]
         self .current_profile =""
@@ -2073,6 +2073,12 @@ class Game :
                     self .boss_timeout =60 
                     self .boss_paused_ms =0 
                     self .boss_pause_start =0 
+                    self .player_hit =False 
+                    self .hit_timer =0 
+                    self .player_shake =False 
+                    self .zap_timer =0 
+                    self .zap_reverse =False 
+                    self .monster_hit =False 
                     self .state ="game"
                     self .start_level ()
                 elif self .mode =="auto"and self .return_to_game :
