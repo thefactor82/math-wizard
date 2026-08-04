@@ -1,0 +1,111 @@
+name: Build Windows
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag della release a cui allegare il pacchetto (es. v1.0.21). Vuoto = ultimo tag del repo.'
+        required: false
+        type: string
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    name: Build Windows
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Determina il tag della release
+        shell: pwsh
+        run: |
+          if ("${{ github.event.inputs.tag }}" -ne "") {
+            $RELEASE_TAG = "${{ github.event.inputs.tag }}"
+          } elseif ("${{ github.event_name }}" -eq "release") {
+            $RELEASE_TAG = "${{ github.event.release.tag_name }}"
+          } else {
+            $RELEASE_TAG = git describe --tags --abbrev=0 2>$null
+            if (-not $RELEASE_TAG) { $RELEASE_TAG = "nessun-tag" }
+          }
+          Write-Host "RELEASE_TAG=$RELEASE_TAG"
+          Add-Content -Path $env:GITHUB_ENV -Value "RELEASE_TAG=$RELEASE_TAG"
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+
+      - name: Installa dipendenze
+        run: |
+          python -m pip install --upgrade pip
+          pip install pygame==2.6.1 pyinstaller==6.15.0 pillow
+
+      - name: Genera icona exe (.ico)
+        run: |
+          python -c "from PIL import Image; img=Image.open('graphics/misc/icon.png').convert('RGBA'); img.save('MathWizard.ico', sizes=[(16,16),(32,32),(48,48),(64,64),(128,128),(256,256)])"
+
+      - name: Build exe con PyInstaller
+        run: python -m PyInstaller --noconfirm --clean MathWizard.spec
+
+      - name: Copia la cartella data accanto all'exe
+        run: |
+          New-Item -ItemType Directory -Force -Path dist\data | Out-Null
+          Copy-Item -Path data\* -Destination dist\data -Recurse -Force
+
+      - name: Verifica exe e dati
+        shell: pwsh
+        run: |
+          $exe = Get-Item dist\MathWizard.exe -ErrorAction Stop
+          if ($exe.Length -lt 1000000) { Write-Error "exe sospettosamente piccolo: $($exe.Length) bytes"; exit 1 }
+          Write-Host "exe OK: $($exe.Length) bytes"
+          foreach ($f in @('data\story.json', 'data\levels.json')) {
+            if (-not (Test-Path "dist\$f")) { Write-Error "manca $f"; exit 1 }
+          }
+          Write-Host "data OK"
+
+      - name: Smoke test (SDL dummy, processo vivo dopo 8s)
+        shell: pwsh
+        run: |
+          $env:SDL_VIDEODRIVER = "dummy"
+          $env:SDL_AUDIODRIVER = "dummy"
+          $p = Start-Process -FilePath "dist\MathWizard.exe" -PassThru
+          Start-Sleep -Seconds 8
+          if ($p.HasExited) {
+            Write-Error "CRASH: exit code $($p.ExitCode)"
+            exit 1
+          }
+          Write-Host "ALIVE dopo 8s (PID $($p.Id))"
+          Stop-Process -Id $p.Id -Force
+
+      - name: Crea lo zip (exe + data)
+        working-directory: dist
+        shell: pwsh
+        run: |
+          tar -a -c -f "MathWizard-windows.zip" "MathWizard.exe" "data"
+          Get-Item MathWizard-windows.zip | Select-Object Name, Length
+
+      - name: Verifica contenuto zip
+        working-directory: dist
+        shell: pwsh
+        run: |
+          $list = tar -tf "MathWizard-windows.zip"
+          foreach ($needle in @('MathWizard.exe', 'data/story.json', 'data/levels.json')) {
+            if ($list -notcontains $needle) { Write-Error "zip senza $needle"; exit 1 }
+          }
+          Write-Host "zip OK (contiene exe e data alla radice)"
+
+      - name: Allega il pacchetto alla release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          files: dist/MathWizard-windows.zip
+          overwrite_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
