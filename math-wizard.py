@@ -21,7 +21,20 @@ def app_base_dir ():
 def data_path (relative ):
     return os .path .join (app_base_dir (),relative )
 
-PROFILES_DIR =os .path .join (app_base_dir (),"profiles")if getattr (sys ,'frozen',False )else "profiles"
+def resolve_profiles_dir ():
+    candidates =[os .path .join (app_base_dir (),"profiles")]
+    if getattr (sys ,"frozen",False )and sys .platform =="darwin":
+        candidates .append (os .path .join (os .path .expanduser ("~"),"Library","Application Support","MathWizard","profiles"))
+    for cand in candidates :
+        try :
+            os .makedirs (cand ,exist_ok =True )
+            if os .access (cand ,os .W_OK ):
+                return cand
+        except OSError :
+            continue
+    return candidates [0]
+
+PROFILES_DIR =resolve_profiles_dir ()
 
 WIZARD_LIVES =3 
 DEFAULT_TIMEOUT =12 
@@ -503,7 +516,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.0.020"
+        self .version ="1.0.021"
 
         self .profiles =[]
         self .current_profile =""

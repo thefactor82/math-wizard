@@ -1,19 +1,16 @@
 # -*- mode: python ; coding: utf-8 -*-
 #
-# Spec per il pacchetto macOS (.app) in modalita' ONEDIR (COLLECT + BUNDLE),
-# il pattern supportato da PyInstaller per i bundle Finder: il bundle
-# "onefile" (EXE autonomo dentro Contents/MacOS) causa crash all'avvio da
-# Finder (estrazione in tmp + firma dei file estratti + ambiente ridotto).
+# Spec per il pacchetto macOS (.app) in stile onefile-in-bundle
+# (EXE autonomo dentro Contents/MacOS): bundle compatto (~50 MB).
 # Usato dal workflow .github/workflows/build-macos.yml per entrambe le
 # architetture: l'architettura target arriva dalla variabile d'ambiente
 # TARGET_ARCH (arm64 | x86_64), altrimenti si usa quella della macchina di
 # build.
-# Layout del bundle prodotto da PyInstaller 6.15:
-#   Contents/MacOS/MathWizard     -> eseguibile (bootloader)
-#   Contents/Frameworks/          -> binari (sys._MEIPASS)
-#   Contents/Resources/           -> dati (grafica), cross-link in Frameworks
-# - data/ e profili NON sono nel bundle: il gioco (app_base_dir) li cerca
-#   nella cartella che contiene MathWizard.app, e il workflow li copia li'.
+# - grafica E data/ incorporati nel onefile (datas): fallback che funziona
+#   anche sotto App Translocation (dati accanto all'app inaccessibili).
+# - il workflow copia comunque data/ nella cartella che contiene
+#   MathWizard.app: il gioco (data_path) preferisce la cartella esterna,
+#   quindi i JSON restano modificabili quando l'app e' nella posizione reale.
 # - icona MathWizard.icns generata nel workflow da graphics/misc/icon.png
 
 import os
@@ -25,7 +22,7 @@ a = Analysis(
     ['math-wizard.py'],
     pathex=[],
     binaries=[],
-    datas=[('graphics', 'graphics')],
+    datas=[('graphics', 'graphics'), ('data', 'data')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
@@ -39,8 +36,9 @@ pyz = PYZ(a.pure)
 exe = EXE(
     pyz,
     a.scripts,
+    a.binaries,
+    a.datas,
     [],
-    exclude_binaries=True,
     name='MathWizard',
     debug=False,
     bootloader_ignore_signals=False,
@@ -54,23 +52,14 @@ exe = EXE(
     entitlements_file=None,
 )
 
-coll = COLLECT(
-    exe,
-    a.binaries,
-    a.datas,
-    strip=False,
-    upx=False,
-    name='MathWizard',
-)
-
 app = BUNDLE(
-    coll,
+    exe,
     name='MathWizard.app',
     icon='MathWizard.icns',
     bundle_identifier='com.thefactor82.mathwizard',
     info_plist={
-        'CFBundleShortVersionString': '1.0.20',
-        'CFBundleVersion': '1.0.20',
+        'CFBundleShortVersionString': '1.0.21',
+        'CFBundleVersion': '1.0.21',
         'NSHighResolutionCapable': True,
     },
 )
