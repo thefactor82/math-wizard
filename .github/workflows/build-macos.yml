@@ -95,7 +95,7 @@ jobs:
       - name: Crea lo zip (app + data)
         run: |
           cd dist
-          ditto -c -k --keepParent MathWizard.app data "${{ matrix.zip }}"
+          zip -r "${{ matrix.zip }}" MathWizard.app data -x '*/.DS_Store'
           ls -lh "${{ matrix.zip }}"
 
       - name: Verifica contenuto zip
