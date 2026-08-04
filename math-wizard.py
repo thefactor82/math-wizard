@@ -516,7 +516,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.0.22"
+        self .version ="1.0.23"
 
         self .profiles =[]
         self .current_profile =""
@@ -701,6 +701,9 @@ class Game :
 
         self .menu_cursor =0 
         self .options_cursor =0 
+        self .menu_btn_rects =[ ]
+        self .menu_profile_rect =None 
+        self .options_btn_rects =[ ]
         self .repo_link_rect =None 
 
         self .config_cursor_row =0 
@@ -1557,26 +1560,22 @@ class Game :
                         self .state ="menu"
                         return 
             if self .state =="menu":
-            # Opzione 1: Storia (midleft 340, 280)
-                if 340 -10 <=mx <=340 +580 and 280 -10 <=my <=280 +74 :
-                    self .mode ="auto"
-                    self .start_game ()
-                    # Opzione 2: Allenamento (midleft 340, 380)
-                elif 340 -10 <=mx <=340 +580 and 380 -10 <=my <=380 +74 :
-                    self .mode ="fixed"
-                    self .start_game ()
-                    # Gear icon (centro 1235, 45, raggio 22)
-                elif (mx -1235 )**2 +(my -45 )**2 <=(22 +10 )**2 :
+                for i ,hit in enumerate (getattr (self ,'menu_btn_rects',[ ])):
+                    if hit .collidepoint (mx ,my ):
+                        self .mode ="auto"if i ==0 else "fixed"
+                        self .start_game ()
+                        return 
+                if (mx -1235 )**2 +(my -45 )**2 <=(22 +10 )**2 :
                     self .state ="options"
-                    # Profilo (midleft 340, 550)
-                elif 340 -10 <=mx <=340 +400 and 550 -10 <=my <=550 +34 :
+                    return 
+                if getattr (self ,'menu_profile_rect',None )and self .menu_profile_rect .collidepoint (mx ,my ):
                     if self .current_profile in self .profiles :
                         self .profile_cursor =self .profiles .index (self .current_profile )
                     else :
                         self .profile_cursor =0 
                     self .state ="profile_select"
-                    # Offrimi un caffè (basso a sinistra)
-                elif getattr (self ,'coffee_menu_rect',None )and self .coffee_menu_rect .collidepoint (mx ,my ):
+                    return 
+                if getattr (self ,'coffee_menu_rect',None )and self .coffee_menu_rect .collidepoint (mx ,my ):
                     try :
                         webbrowser .open ("https://ko-fi.com/thefactor82")
                     except Exception as e :
@@ -1625,12 +1624,14 @@ class Game :
                             self .state ="menu"
                             break 
             elif self .state =="options":
-                if SCREEN_WIDTH //2 -320 <=mx <=SCREEN_WIDTH //2 +320 :
-                    if 209 <=my <=273 :
-                        self .state ="options_auto"
-                    elif 289 <=my <=353 :
-                        self .show_config ()
-                elif self .repo_link_rect and self .repo_link_rect .collidepoint (mx ,my ):
+                for i ,hit in enumerate (getattr (self ,'options_btn_rects',[ ])):
+                    if hit .collidepoint (mx ,my ):
+                        if i ==0 :
+                            self .state ="options_auto"
+                        else :
+                            self .show_config ()
+                        return 
+                if self .repo_link_rect and self .repo_link_rect .collidepoint (mx ,my ):
                     webbrowser .open ("https://github.com/thefactor82/math-wizard")
                 elif getattr (self ,'coffee_options_rect',None )and self .coffee_options_rect .collidepoint (mx ,my ):
                     webbrowser .open ("https://ko-fi.com/thefactor82")
@@ -2474,11 +2475,14 @@ class Game :
         ("Storia","Affronta un'avventura nel regno di Math, con incremento automatico della difficoltà."),
         ("Allenamento","Scegli le varie impostazioni per una sfida breve a difficoltà costante"),
         ]
+        self .menu_btn_rects =[ ]
         for i ,(tit ,desc )in enumerate (opzioni ):
             y =280 +i *100 
             opt =self .font_large .render (tit ,True ,WHITE )
             rect =opt .get_rect (midleft =(SCREEN_WIDTH //2 -300 ,y ))
-            if rect .collidepoint (mx ,my ):
+            hit =rect .inflate (20 ,10 )
+            self .menu_btn_rects .append (hit )
+            if hit .collidepoint (mx ,my ):
                 self .menu_cursor =i 
                 opt =self .font_large .render (tit ,True ,GOLD )
             self .screen .blit (opt ,rect )
@@ -2497,7 +2501,8 @@ class Game :
 
         profile_label =self .font_small .render (f"Profilo: {self .current_profile }",True ,GRAY )
         rect =profile_label .get_rect (midleft =(SCREEN_WIDTH //2 -300 ,550 ))
-        if rect .collidepoint (mx ,my ):
+        self .menu_profile_rect =rect .inflate (20 ,10 )
+        if self .menu_profile_rect .collidepoint (mx ,my ):
             profile_label =self .font_small .render (f"Profilo: {self .current_profile }",True ,GOLD )
         self .screen .blit (profile_label ,rect )
 
@@ -2529,11 +2534,14 @@ class Game :
         self .screen .blit (title ,rect )
 
         voci =["Storia","Allenamento"]
+        self .options_btn_rects =[ ]
         for i ,voce in enumerate (voci ):
             y =220 +i *80 
             txt =self .font_large .render (voce ,True ,WHITE )
             rect =txt .get_rect (center =(SCREEN_WIDTH //2 ,y +21 ))
-            if rect .collidepoint (mx ,my ):
+            hit =rect .inflate (20 ,10 )
+            self .options_btn_rects .append (hit )
+            if hit .collidepoint (mx ,my ):
                 self .options_cursor =i 
                 txt =self .font_large .render (voce ,True ,GOLD )
             self .screen .blit (txt ,rect )
