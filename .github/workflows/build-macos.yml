@@ -92,11 +92,16 @@ jobs:
           file dist/MathWizard.app/Contents/MacOS/MathWizard
           echo "bundle OK"
 
-      - name: Crea lo zip
+      - name: Crea lo zip (app + data)
         run: |
           cd dist
-          ditto -c -k --keepParent MathWizard.app "${{ matrix.zip }}"
+          ditto -c -k --keepParent MathWizard.app data "${{ matrix.zip }}"
           ls -lh "${{ matrix.zip }}"
+
+      - name: Verifica contenuto zip
+        run: |
+          unzip -Z1 dist/${{ matrix.zip }} | grep -E '^(MathWizard\.app/Contents/MacOS/MathWizard|data/story\.json|data/levels\.json)$'
+          echo "zip OK (contiene app e data alla radice)"
 
       - name: Allega il pacchetto alla release
         uses: softprops/action-gh-release@v3
