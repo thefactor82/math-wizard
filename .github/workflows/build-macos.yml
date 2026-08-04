@@ -75,14 +75,20 @@ jobs:
         env:
           TARGET_ARCH: ${{ matrix.arch }}
 
-      - name: Copia la cartella data dentro il bundle
-        run: cp -R data dist/MathWizard.app/Contents/MacOS/data
+      - name: Copia la cartella data accanto all'app
+        run: |
+          mkdir -p dist/data
+          cp -R data/. dist/data/
+
+      - name: Ri-firma ad-hoc del bundle
+        run: codesign --force --deep --sign - dist/MathWizard.app
 
       - name: Verifica bundle e architettura
         run: |
           test -x dist/MathWizard.app/Contents/MacOS/MathWizard
-          test -f dist/MathWizard.app/Contents/MacOS/data/story.json
-          test -f dist/MathWizard.app/Contents/MacOS/data/levels.json
+          test -f dist/data/story.json
+          test -f dist/data/levels.json
+          codesign --verify --deep --strict dist/MathWizard.app
           file dist/MathWizard.app/Contents/MacOS/MathWizard
           echo "bundle OK"
 

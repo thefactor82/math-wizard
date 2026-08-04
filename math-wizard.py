@@ -13,11 +13,15 @@ from fractions import Fraction
 def resource_path (relative ):
     return os .path .join (getattr (sys ,'_MEIPASS',os .path .dirname (os .path .abspath (__file__ ))),relative )
 
-def data_path (relative ):
-    base =os .path .dirname (sys .executable )if getattr (sys ,'frozen',False )else os .path .dirname (os .path .abspath (__file__ ))
-    return os .path .join (base ,relative )
+def app_base_dir ():
+    if getattr (sys ,'frozen',False )and sys .platform =="darwin"and os .path .basename (os .path .dirname (os .path .dirname (sys .executable )))=="Contents":
+        return os .path .normpath (os .path .join (os .path .dirname (sys .executable ),"..","..",".."))
+    return os .path .dirname (sys .executable )if getattr (sys ,'frozen',False )else os .path .dirname (os .path .abspath (__file__ ))
 
-PROFILES_DIR =os .path .join (os .path .dirname (sys .executable ),"profiles")if getattr (sys ,'frozen',False )else "profiles"
+def data_path (relative ):
+    return os .path .join (app_base_dir (),relative )
+
+PROFILES_DIR =os .path .join (app_base_dir (),"profiles")if getattr (sys ,'frozen',False )else "profiles"
 
 WIZARD_LIVES =3 
 DEFAULT_TIMEOUT =12 
@@ -499,7 +503,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.0.019"
+        self .version ="1.0.020"
 
         self .profiles =[]
         self .current_profile =""

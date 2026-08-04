@@ -5,8 +5,9 @@
 # l'architettura target arriva dalla variabile d'ambiente TARGET_ARCH
 # (arm64 | x86_64), altrimenti si usa quella della macchina di build.
 # - grafica inclusa nel bundle (datas)
-# - data/ copiata nel workflow in dist/MathWizard.app/Contents/MacOS/data
-#   (il gioco la cerca accanto all'eseguibile: data_path())
+# - data/ copiata dal workflow ACCANTO all'app (dist/data), non dentro il
+#   bundle: il gioco (data_path/app_base_dir) cerca data e profili nella
+#   cartella che contiene MathWizard.app
 # - icona MathWizard.icns generata nel workflow da graphics/misc/icon.png
 
 import os
@@ -54,8 +55,8 @@ app = BUNDLE(
     icon='MathWizard.icns',
     bundle_identifier='com.thefactor82.mathwizard',
     info_plist={
-        'CFBundleShortVersionString': '1.0.19',
-        'CFBundleVersion': '1.0.19',
+        'CFBundleShortVersionString': '1.0.20',
+        'CFBundleVersion': '1.0.20',
         'NSHighResolutionCapable': True,
     },
 )
