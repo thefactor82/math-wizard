@@ -516,7 +516,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.0.23"
+        self .version ="1.0.24"
 
         self .profiles =[]
         self .current_profile =""
@@ -704,6 +704,7 @@ class Game :
         self .menu_btn_rects =[ ]
         self .menu_profile_rect =None 
         self .options_btn_rects =[ ]
+        self .options_back_rect =None 
         self .repo_link_rect =None 
 
         self .config_cursor_row =0 
@@ -1631,6 +1632,9 @@ class Game :
                         else :
                             self .show_config ()
                         return 
+                if getattr (self ,'options_back_rect',None )and self .options_back_rect .collidepoint (mx ,my ):
+                    self .state ="menu"
+                    return 
                 if self .repo_link_rect and self .repo_link_rect .collidepoint (mx ,my ):
                     webbrowser .open ("https://github.com/thefactor82/math-wizard")
                 elif getattr (self ,'coffee_options_rect',None )and self .coffee_options_rect .collidepoint (mx ,my ):
@@ -2579,6 +2583,13 @@ class Game :
         self .blit_link_icon (self .git_icon ,link_icon_rect )
         self .screen .blit (link_txt ,link_rect )
         self .repo_link_rect =link_rect .union (link_icon_rect )
+
+        back_txt =self .font_small .render ("Indietro",True ,WHITE )
+        back_rect =back_txt .get_rect (center =(SCREEN_WIDTH //2 ,SCREEN_HEIGHT -20 ))
+        self .options_back_rect =back_rect .inflate (20 ,10 )
+        if self .options_back_rect .collidepoint (mx ,my ):
+            back_txt =self .font_small .render ("Indietro",True ,GOLD )
+        self .screen .blit (back_txt ,back_rect )
 
     def draw_auto_options (self ):
         mx ,my =pygame .mouse .get_pos ()
