@@ -516,7 +516,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.0.24"
+        self .version ="1.0.25"
 
         self .profiles =[]
         self .current_profile =""
@@ -3363,6 +3363,9 @@ class Game :
         base_y =SCREEN_HEIGHT //2 -ch //2 
         wy =base_y +130 
         self .screen .blit (char_img ,(self .player_exit_x ,wy ))
+
+        status =self .font_small .render ("Salvataggio in corso...",True ,WHITE )
+        self .screen .blit (status ,status .get_rect (center =(SCREEN_WIDTH //2 ,SCREEN_HEIGHT -30 )))
 
     def draw_gameover (self ):
         self .screen .blit (self .game_bg ,(0 ,0 ))
