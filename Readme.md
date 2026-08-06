@@ -326,8 +326,9 @@ Se hai scaricato il repository da GitHub, puoi eseguire Math Wizard sul tuo comp
 
 ### Note comuni
 
-- La prima esecuzione creerà automaticamente la cartella `profiles/` con un profilo predefinito.
+- La prima esecuzione creerà automaticamente la cartella `profiles/` con un profilo predefinito. 
 - Tutte le impostazioni, i progressi e le statistiche sono salvate in file JSON all'interno di `profiles/`.
+- Su MacOS, se eseguito da cartella non scrivibile, il sistema operativo effettua una translocation su cartella temporanea e i profili e le sessioni vengono salvate su ~/Library/Application Support/MathWizard/profiles
 - Per personalizzare i pool di operandi della modalità Storia, modifica il file `data/levels.json`.
 - Per personalizzare i dialoghi della storia, modifica il file `data/story.json`.
 
