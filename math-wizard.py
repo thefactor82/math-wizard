@@ -6,6 +6,7 @@ import json
 import re 
 import math 
 import webbrowser 
+import shutil 
 from datetime import datetime 
 from collections import deque 
 from fractions import Fraction 
@@ -633,7 +634,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.1.5"
+        self .version ="1.1.6"
 
         self .profiles =[]
         self .current_profile =""
@@ -676,6 +677,20 @@ class Game :
     def save_profiles (self ):
         path =os .path .join (PROFILES_DIR ,"profiles.json")
         save_json_file (path ,{"profiles":self .profiles ,"current":self .current_profile })
+
+    def delete_current_profile (self ):
+        nome =sanitize_profile_name (self .current_profile )
+        if not nome or nome not in self .profiles :
+            self .state ="options"
+            return 
+        prof_dir =os .path .join (PROFILES_DIR ,nome )
+        if os .path .isdir (prof_dir ):
+            shutil .rmtree (prof_dir )
+        self .profiles .remove (nome )
+        self .current_profile =""
+        self .profile_cursor =0 
+        self .save_profiles ()
+        self .state ="profile_select"
 
     def save_profile_config (self ,nome =None ):
         nome =nome or self .current_profile 
@@ -824,6 +839,8 @@ class Game :
         self .options_btn_rects =[ ]
         self .options_back_rect =None 
         self .repo_link_rect =None 
+        self .confirm_yes_rect =None 
+        self .confirm_no_rect =None 
 
         self .config_cursor_row =0 
         self .config_cursor_col =0 
@@ -1578,6 +1595,11 @@ class Game :
                         self .show_config ()
                 elif event .key ==pygame .K_ESCAPE :
                     self .state ="menu"
+            elif self .state =="confirm_delete":
+                if event .key ==pygame .K_s :
+                    self .delete_current_profile ()
+                elif event .key in (pygame .K_n ,pygame .K_ESCAPE ):
+                    self .state ="options"
             elif self .state =="options_auto":
                 if event .key in (pygame .K_UP ,pygame .K_w ):
                     self .options_cursor =(self .options_cursor -1 )%3 
@@ -1789,8 +1811,10 @@ class Game :
                     if hit .collidepoint (mx ,my ):
                         if i ==0 :
                             self .state ="options_auto"
-                        else :
+                        elif i ==1 :
                             self .show_config ()
+                        else :
+                            self .state ="confirm_delete"
                         return 
                 if getattr (self ,'options_back_rect',None )and self .options_back_rect .collidepoint (mx ,my ):
                     self .state ="menu"
@@ -1799,6 +1823,13 @@ class Game :
                     webbrowser .open ("https://github.com/thefactor82/math-wizard")
                 elif getattr (self ,'coffee_options_rect',None )and self .coffee_options_rect .collidepoint (mx ,my ):
                     webbrowser .open ("https://ko-fi.com/thefactor82")
+            elif self .state =="confirm_delete":
+                if getattr (self ,'confirm_yes_rect',None )and self .confirm_yes_rect .collidepoint (mx ,my ):
+                    self .delete_current_profile ()
+                    return 
+                if getattr (self ,'confirm_no_rect',None )and self .confirm_no_rect .collidepoint (mx ,my ):
+                    self .state ="options"
+                    return 
             elif self .state =="options_auto":
                 sx =1080 
                 lw ,vw ,rw =90 ,120 ,90 
@@ -2486,7 +2517,7 @@ class Game :
         elif self .state =="story":
             self .draw_story ()
         else :
-            if self .state in ("options","options_auto","config_fixed"):
+            if self .state in ("options","options_auto","config_fixed","confirm_delete"):
                 self .screen .blit (self .bg_options ,(0 ,0 ))
             else :
                 self .screen .blit (self .bg_menu ,(0 ,0 ))
@@ -2494,6 +2525,8 @@ class Game :
                 self .draw_menu ()
             elif self .state =="options":
                 self .draw_options ()
+            elif self .state =="confirm_delete":
+                self .draw_confirm_delete ()
             elif self .state =="options_auto":
                 self .draw_auto_options ()
             elif self .state =="config_fixed":
@@ -2731,11 +2764,12 @@ class Game :
         rect =title .get_rect (center =(SCREEN_WIDTH //2 ,240 ))
         self .screen .blit (title ,rect )
 
-        voci =["Storia","Allenamento"]
+        voci =["Storia","Allenamento","Elimina profilo attuale"]
         self .options_btn_rects =[ ]
         for i ,voce in enumerate (voci ):
             y =660 +i *240 
-            txt =self ._render_cached (self .font_large ,voce ,WHITE )
+            color =RED if i ==2 else WHITE 
+            txt =self ._render_cached (self .font_large ,voce ,color )
             rect =txt .get_rect (center =(SCREEN_WIDTH //2 ,y +63 ))
             hit =rect .inflate (60 ,30 )
             self .options_btn_rects .append (hit )
@@ -2784,6 +2818,39 @@ class Game :
         if self .options_back_rect .collidepoint (mx ,my ):
             back_txt =self ._render_cached (self .font_small ,"Indietro",GOLD )
         self .screen .blit (back_txt ,back_rect )
+
+    def draw_confirm_delete (self ):
+        mx ,my =self ._mouse_pos ()
+        overlay =self ._overlay
+        overlay .set_alpha (200 )
+        overlay .fill (BG_DARK )
+        self .screen .blit (overlay ,(0 ,0 ))
+
+        title =self ._render_cached (self .font_title ,"ELIMINA PROFILO",GOLD )
+        rect =title .get_rect (center =(SCREEN_WIDTH //2 ,400 ))
+        self .screen .blit (title ,rect )
+
+        msg =self ._render_cached (self .font_medium ,f"Vuoi eliminare il profilo \"{self .current_profile }\"?",WHITE )
+        rect =msg .get_rect (center =(SCREEN_WIDTH //2 ,800 ))
+        self .screen .blit (msg ,rect )
+
+        warn =self ._render_cached (self .font_small ,"Sessioni, progressi e configurazioni verranno cancellati definitivamente.",RED )
+        rect =warn .get_rect (center =(SCREEN_WIDTH //2 ,1000 ))
+        self .screen .blit (warn ,rect )
+
+        yes_txt =self ._render_cached (self .font_large ,"Sì",WHITE )
+        yes_rect =yes_txt .get_rect (center =(SCREEN_WIDTH //2 -500 ,1300 ))
+        self .confirm_yes_rect =yes_rect .inflate (80 ,40 )
+        if self .confirm_yes_rect .collidepoint (mx ,my ):
+            yes_txt =self ._render_cached (self .font_large ,"Sì",GOLD )
+        self .screen .blit (yes_txt ,yes_rect )
+
+        no_txt =self ._render_cached (self .font_large ,"No",WHITE )
+        no_rect =no_txt .get_rect (center =(SCREEN_WIDTH //2 +500 ,1300 ))
+        self .confirm_no_rect =no_rect .inflate (80 ,40 )
+        if self .confirm_no_rect .collidepoint (mx ,my ):
+            no_txt =self ._render_cached (self .font_large ,"No",GOLD )
+        self .screen .blit (no_txt ,no_rect )
 
     def draw_auto_options (self ):
         mx ,my =self ._mouse_pos ()
