@@ -204,6 +204,14 @@ Perché, senza saperlo, mi hanno aiutato a realizzare un sogno che avevo fin da 
 
 ---
 
+## ☕ Offrimi un caffè
+
+Se Math Wizard ti è piaciuto (o ha aiutato qualcuno dei tuoi piccoli maghi!), puoi offrirmi un caffè su Ko-fi: ogni supporto è davvero apprezzato e mi aiuta a continuare a sviluppare il progetto.
+
+👉 [**Offrimi un caffè**](https://ko-fi.com/thefactor82)
+
+---
+
 ---
 
 # ✨ Feature e funzionalità (e cose tecniche per chi ne capisce qualcosa in più...)
