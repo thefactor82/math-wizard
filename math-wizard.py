@@ -172,6 +172,13 @@ def get_operation_symbol (operation ):
     return "x"
 
 
+def format_wrong_entry (a ,b ,operation ,answer ):
+    segno =get_operation_symbol (operation )
+    if answer is None :
+        return f"{a }{segno }{b }=(nessuna risposta)"
+    return f"{a }{segno }{b }={answer }"
+
+
 def calculate_result (a ,b ,operation ,integer_result =True ):
     if operation =="addizione":
         return a +b 
@@ -605,6 +612,7 @@ class Game :
         self .config_cursor_col =0 
         self .config_cursor_subrow =0 
         self .reset_profile_config ()
+        self .wrong_questions =[]
 
         self .story_entries =[]
         for src in (data_path ,resource_path ):
@@ -618,7 +626,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.1.2"
+        self .version ="1.1.3"
 
         self .profiles =[]
         self .current_profile =""
@@ -925,6 +933,7 @@ class Game :
         self .answer_times =[]
         self .monster_times =[]
         self .boss_times =[]
+        self .wrong_questions =[]
         self .current_block =[]
         self .timeout_handled =False 
         self .scene_data =None 
@@ -2126,6 +2135,7 @@ class Game :
         else :
             self .is_correct =False 
             self .stats [level ]["sbagliate"]+=1 
+            self .wrong_questions .append ((self .a ,self .b ,self .operation ,text_value ,self .expected_result ))
             self .lives -=1 
             if self .boss_active and self .boss_phase =="fight":
                 self .boss_total_questions +=1 
@@ -2179,6 +2189,7 @@ class Game :
         self .stats .setdefault (level ,{"corrette":0 ,"sbagliate":0 ,"tempi":[]})
         self .stats [level ]["sbagliate"]+=1 
         self .stats [level ]["tempi"].append (elapsed_time )
+        self .wrong_questions .append ((self .a ,self .b ,self .operation ,None ,self .expected_result ))
         self .lives -=1 
         self .current_block .clear ()
         for _ in range (3 ):
@@ -3642,8 +3653,15 @@ class Game :
             y +=42 
             self .draw_text_shadow (self .font_medium ,"Ultime sessioni:",GOLD ,center =(SCREEN_WIDTH //2 ,y ))
             y +=102 
+            max_w =SCREEN_WIDTH -200 
             for s in sessioni :
-                self .draw_text_shadow (self .font_tiny ,s ,(180 ,180 ,180 ),center =(SCREEN_WIDTH //2 ,y ))
+                disp =s 
+                if self .font_tiny .size (disp )[0 ]>max_w and len (disp )>24 :
+                    disp =disp [:24 ]
+                    while self .font_tiny .size (disp )[0 ]>max_w and len (disp )>4 :
+                        disp =disp [:-1 ]
+                    disp =disp .rstrip ()+"..."
+                self .draw_text_shadow (self .font_tiny ,disp ,(180 ,180 ,180 ),center =(SCREEN_WIDTH //2 ,y ))
                 y +=72 
 
         mx ,my =self ._mouse_pos ()
@@ -3665,8 +3683,15 @@ class Game :
         total_wrong =sum (v ["sbagliate"]for v in self .stats .values ())
         average_time =sum (self .answer_times )/len (self .answer_times )if self .answer_times else 0 
         now =datetime .now ().strftime ("%Y-%m-%d %H:%M")
+        errori_txt =""
+        for w in getattr (self ,"wrong_questions",[]):
+            if errori_txt :
+                errori_txt +=", "
+            errori_txt +=format_wrong_entry (*w [:4 ])
+        if errori_txt :
+            errori_txt =" | Errori: "+errori_txt 
         if self .mode =="auto":
-            line_text =f"{now } | Storia | {self .config_story_operation .capitalize ()} | Corrette: {total_correct } | Sbagliate: {total_wrong } | Livello: {self .effective_level ()+1 }/{len (self .levels )} | Tempo medio: {average_time :.1f}s"
+            line_text =f"{now } | Storia | {self .config_story_operation .capitalize ()} | Corrette: {total_correct } | Sbagliate: {total_wrong } | Livello: {self .effective_level ()+1 }/{len (self .levels )} | Tempo medio: {average_time :.1f}s{errori_txt }"
         else :
             op_txt =self .operation .capitalize ()if hasattr (self ,'operation')else "Moltiplicazione"
             pool_a_txt =format_pool_compact (self .pool_a )
@@ -3676,7 +3701,7 @@ class Game :
                 extra =" | Diff. positiva: ON"
             if self .operation =="divisione"and getattr (self ,'risultato_intero',True ):
                 extra =" | Ris. intero: ON"
-            line_text =f"{now } | Allenamento | {op_txt } | Corrette: {total_correct } | Sbagliate: {total_wrong } | Pool A: [{pool_a_txt }] | Pool B: [{pool_b_txt }] | Domande: {self .questions_asked }/{self .total_questions } | Tempo medio: {average_time :.1f}s{extra }"
+            line_text =f"{now } | Allenamento | {op_txt } | Corrette: {total_correct } | Sbagliate: {total_wrong } | Pool A: [{pool_a_txt }] | Pool B: [{pool_b_txt }] | Domande: {self .questions_asked }/{self .total_questions } | Tempo medio: {average_time :.1f}s{extra }{errori_txt }"
         path =self .sessions_path ()
         try :
             with open (path ,"a",encoding ="utf-8")as f :
