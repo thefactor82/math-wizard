@@ -633,7 +633,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.1.4"
+        self .version ="1.1.5"
 
         self .profiles =[]
         self .current_profile =""
@@ -820,6 +820,7 @@ class Game :
         self .options_cursor =0 
         self .menu_btn_rects =[ ]
         self .menu_profile_rect =None 
+        self .menu_exit_rect =None 
         self .options_btn_rects =[ ]
         self .options_back_rect =None 
         self .repo_link_rect =None 
@@ -1738,6 +1739,8 @@ class Game :
                         webbrowser .open ("https://ko-fi.com/thefactor82")
                     except Exception as e :
                         print (f"Warning: unable to open coffee link: {e }")
+                if getattr (self ,'menu_exit_rect',None )and self .menu_exit_rect .collidepoint (mx ,my ):
+                    self .running =False 
             elif self .state =="profile_select":
                 if not self .profile_input_mode :
                     voci =self .profiles +["Nuovo profilo"]
@@ -2693,6 +2696,13 @@ class Game :
         if self .menu_profile_rect .collidepoint (mx ,my ):
             profile_label =self ._render_cached (self .font_small ,f"Profilo: {self .current_profile }",GOLD )
         self .screen .blit (profile_label ,rect )
+
+        exit_txt =self ._render_cached (self .font_large ,"ESCI",WHITE )
+        exit_rect =exit_txt .get_rect (center =(SCREEN_WIDTH //2 ,SCREEN_HEIGHT -150 ))
+        self .menu_exit_rect =exit_rect .inflate (60 ,30 )
+        if self .menu_exit_rect .collidepoint (mx ,my ):
+            exit_txt =self ._render_cached (self .font_large ,"ESCI",GOLD )
+        self .screen .blit (exit_txt ,exit_rect )
 
         version_surf =self ._render_cached (self .font_tiny ,f"v{self .version }",GRAY )
         rect =version_surf .get_rect (bottomright =(SCREEN_WIDTH -24 ,SCREEN_HEIGHT -24 ))
