@@ -318,7 +318,6 @@ class Game :
     def __init__ (self ):
         pygame .init ()
         self .fullscreen =True 
-        self .flags =pygame .RESIZABLE 
         try :
             icon =pygame .image .load (resource_path ("graphics/misc/icon.png"))
             if not (icon .get_flags ()&pygame .SRCALPHA ):
@@ -326,17 +325,11 @@ class Game :
             pygame .display .set_icon (icon )
         except (pygame .error ,OSError ):
             pass 
-        self .display =pygame .display .set_mode (self .compute_windowed_size (),self .flags )
-        self ._last_windowed =self .display .get_size ()
+        self ._last_windowed =self .compute_windowed_size ()
         if self .fullscreen :
-            try :
-                pygame .display .toggle_fullscreen ()
-            except pygame .error :
-                try :
-                    self .display =pygame .display .set_mode ((SCREEN_WIDTH ,SCREEN_HEIGHT ),pygame .FULLSCREEN )
-                except pygame .error :
-                    pass 
-        self .display =pygame .display .get_surface ()
+            self ._enter_fullscreen ()
+        else :
+            self .display =pygame .display .set_mode (self ._last_windowed ,pygame .RESIZABLE )
         self .screen =pygame .Surface ((SCREEN_WIDTH ,SCREEN_HEIGHT ))
         self ._scaled_cache =None 
         self ._overlay =pygame .Surface ((SCREEN_WIDTH ,SCREEN_HEIGHT ))
@@ -560,18 +553,32 @@ class Game :
             w =int (h *SCREEN_WIDTH /SCREEN_HEIGHT )
         return (w ,h )
 
+    def _enter_fullscreen (self ):
+        try :
+            modes =pygame .display .list_modes ()
+        except pygame .error :
+            modes =[]
+        candidates =[]
+        if modes :
+            candidates .append (tuple (modes [0 ]))
+        candidates .append (self .compute_windowed_size ())
+        candidates .append ((SCREEN_WIDTH ,SCREEN_HEIGHT ))
+        for size in candidates :
+            try :
+                self .display =pygame .display .set_mode (size ,pygame .FULLSCREEN |pygame .RESIZABLE )
+                return
+            except pygame .error :
+                continue
+        try :
+            self .display =pygame .display .set_mode ((SCREEN_WIDTH ,SCREEN_HEIGHT ),pygame .FULLSCREEN )
+        except pygame .error :
+            pass
+
     def _apply_display_mode (self ):
         if self .fullscreen :
-            self ._last_windowed =self .display .get_size ()
-            self .display =pygame .display .set_mode (self .compute_windowed_size (),pygame .RESIZABLE )
-            try :
-                pygame .display .toggle_fullscreen ()
-            except pygame .error :
-                try :
-                    self .display =pygame .display .set_mode ((SCREEN_WIDTH ,SCREEN_HEIGHT ),pygame .FULLSCREEN )
-                except pygame .error :
-                    pass 
-            self .display =pygame .display .get_surface ()
+            if not self .display .get_flags ()&pygame .FULLSCREEN :
+                self ._last_windowed =self .display .get_size ()
+            self ._enter_fullscreen ()
         else :
             size =getattr (self ,'_last_windowed',None )or self .compute_windowed_size ()
             self .display =pygame .display .set_mode (size ,pygame .RESIZABLE )
@@ -626,7 +633,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.1.3"
+        self .version ="1.1.4"
 
         self .profiles =[]
         self .current_profile =""
