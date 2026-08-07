@@ -311,7 +311,7 @@ class Game :
     def __init__ (self ):
         pygame .init ()
         self .fullscreen =True 
-        self .flags =pygame .SCALED |pygame .FULLSCREEN 
+        self .flags =pygame .RESIZABLE 
         try :
             icon =pygame .image .load (resource_path ("graphics/misc/icon.png"))
             if not (icon .get_flags ()&pygame .SRCALPHA ):
@@ -319,7 +319,19 @@ class Game :
             pygame .display .set_icon (icon )
         except (pygame .error ,OSError ):
             pass 
-        self .screen =pygame .display .set_mode ((SCREEN_WIDTH ,SCREEN_HEIGHT ),self .flags )
+        self .display =pygame .display .set_mode (self .compute_windowed_size (),self .flags )
+        self ._last_windowed =self .display .get_size ()
+        if self .fullscreen :
+            try :
+                pygame .display .toggle_fullscreen ()
+            except pygame .error :
+                try :
+                    self .display =pygame .display .set_mode ((SCREEN_WIDTH ,SCREEN_HEIGHT ),pygame .FULLSCREEN )
+                except pygame .error :
+                    pass 
+        self .display =pygame .display .get_surface ()
+        self .screen =pygame .Surface ((SCREEN_WIDTH ,SCREEN_HEIGHT ))
+        self ._scaled_cache =None 
         self ._overlay =pygame .Surface ((SCREEN_WIDTH ,SCREEN_HEIGHT ))
         pygame .display .set_caption ("Math Wizard")
         self .setup_cursor ()
@@ -525,6 +537,62 @@ class Game :
             if id (self .backgrounds [name ])not in keep :
                 del self .backgrounds [name ]
 
+    def compute_windowed_size (self ):
+        try :
+            sizes =pygame .display .get_desktop_sizes ()
+        except (pygame .error ,AttributeError ):
+            sizes =[]
+        if not sizes :
+            return (SCREEN_WIDTH ,SCREEN_HEIGHT )
+        dw ,dh =sizes [0 ]
+        mw ,mh =int (dw *0.95 ),int (dh *0.95 )
+        w =max (640 ,mw )
+        h =int (w *SCREEN_HEIGHT /SCREEN_WIDTH )
+        if h >mh :
+            h =max (480 ,mh )
+            w =int (h *SCREEN_WIDTH /SCREEN_HEIGHT )
+        return (w ,h )
+
+    def _apply_display_mode (self ):
+        if self .fullscreen :
+            self ._last_windowed =self .display .get_size ()
+            self .display =pygame .display .set_mode (self .compute_windowed_size (),pygame .RESIZABLE )
+            try :
+                pygame .display .toggle_fullscreen ()
+            except pygame .error :
+                try :
+                    self .display =pygame .display .set_mode ((SCREEN_WIDTH ,SCREEN_HEIGHT ),pygame .FULLSCREEN )
+                except pygame .error :
+                    pass 
+            self .display =pygame .display .get_surface ()
+        else :
+            size =getattr (self ,'_last_windowed',None )or self .compute_windowed_size ()
+            self .display =pygame .display .set_mode (size ,pygame .RESIZABLE )
+
+    def _resize_display (self ,size ):
+        self ._last_windowed =size 
+        self .display =pygame .display .set_mode (size ,pygame .RESIZABLE )
+
+    def _fit_rect (self ):
+        dw ,dh =self .display .get_size ()
+        f =min (dw /SCREEN_WIDTH ,dh /SCREEN_HEIGHT )
+        tw =max (1 ,int (round (SCREEN_WIDTH *f )))
+        th =max (1 ,int (round (SCREEN_HEIGHT *f )))
+        return dw ,dh ,tw ,th ,(dw -tw )//2 ,(dh -th )//2 
+
+    def _scale_to_canvas (self ,x ,y ):
+        disp =getattr (self ,'display',None )
+        if disp is not None and disp is not self .screen :
+            dw ,dh ,tw ,th ,ox ,oy =self ._fit_rect ()
+            if tw >0 and th >0 :
+                x =max (0 ,x -ox )*SCREEN_WIDTH //tw 
+                y =max (0 ,y -oy )*SCREEN_HEIGHT //th 
+        return x ,y 
+
+    def _mouse_pos (self ):
+        mx ,my =pygame .mouse .get_pos ()
+        return self ._scale_to_canvas (mx ,my )
+
     def setup_profiles (self ):
         os .makedirs (PROFILES_DIR ,exist_ok =True )
         idx_file =os .path .join (PROFILES_DIR ,"profiles.json")
@@ -550,7 +618,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.1.0"
+        self .version ="1.1.1"
 
         self .profiles =[]
         self .current_profile =""
@@ -1359,9 +1427,11 @@ class Game :
     def handle_input (self ,event ):
         if event .type ==pygame .KEYDOWN and event .key ==pygame .K_F11 :
             self .fullscreen =not self .fullscreen 
-            flags =pygame .SCALED |(pygame .FULLSCREEN if self .fullscreen else 0 )
-            self .screen =pygame .display .set_mode ((SCREEN_WIDTH ,SCREEN_HEIGHT ),flags )
+            self ._apply_display_mode ()
             self .setup_cursor ()
+            return 
+        if event .type ==pygame .VIDEORESIZE and not self .fullscreen :
+            self ._resize_display ((event .w ,event .h ))
             return 
         if self .state =="splash":
             if event .type in (pygame .KEYDOWN ,pygame .MOUSEBUTTONDOWN )and not self .splash_skip :
@@ -1585,7 +1655,7 @@ class Game :
                             self .story_phase ="exit"
 
         if event .type ==pygame .MOUSEBUTTONDOWN :
-            mx ,my =event .pos 
+            mx ,my =self ._scale_to_canvas (*event .pos ) 
             if self .state =="game"and self .scene_phase =="dialogue":
                 self .advance_scene_dialogue ()
                 return 
@@ -1781,7 +1851,7 @@ class Game :
             return r 
 
         if event .type ==pygame .MOUSEBUTTONDOWN :
-            mx ,my =event .pos 
+            mx ,my =self ._scale_to_canvas (*event .pos ) 
 
             # Row 7: CONFERMA
             y7 =row_y (7 )
@@ -2388,6 +2458,18 @@ class Game :
             elif self .state in ("game","gameover"):
                 self .draw_gameover ()
 
+        if self .screen is self .display :
+            pygame .display .flip ()
+            return 
+        dw ,dh ,tw ,th ,ox ,oy =self ._fit_rect ()
+        if tw ==dw and th ==dh :
+            pygame .transform .scale (self .screen ,(tw ,th ),self .display )
+        else :
+            if self ._scaled_cache is None or self ._scaled_cache .get_size ()!=(tw ,th ):
+                self ._scaled_cache =pygame .Surface ((tw ,th ))
+            pygame .transform .scale (self .screen ,(tw ,th ),self ._scaled_cache )
+            self .display .fill (BLACK )
+            self .display .blit (self ._scaled_cache ,(ox ,oy ))
         pygame .display .flip ()
 
     def _render_cached (self ,font ,text ,color ):
@@ -2436,7 +2518,7 @@ class Game :
         self .screen .blit (overlay ,(0 ,0 ))
 
     def draw_profile (self ):
-        mx ,my =pygame .mouse .get_pos ()
+        mx ,my =self ._mouse_pos ()
         overlay =self ._overlay
         overlay .set_alpha (200 )
         overlay .fill (BG_DARK )
@@ -2524,7 +2606,7 @@ class Game :
         self .screen .blit (img ,(rect .x +(rect .w -w )//2 ,rect .y +(rect .h -h )//2 ))
 
     def draw_menu (self ):
-        mx ,my =pygame .mouse .get_pos ()
+        mx ,my =self ._mouse_pos ()
         overlay =self ._overlay
         overlay .set_alpha (180 )
         overlay .fill (BG_DARK )
@@ -2589,7 +2671,7 @@ class Game :
         self .coffee_menu_rect =coffee_rect .union (coffee_icon_rect )
 
     def draw_options (self ):
-        mx ,my =pygame .mouse .get_pos ()
+        mx ,my =self ._mouse_pos ()
         overlay =self ._overlay
         overlay .set_alpha (200 )
         overlay .fill (BG_DARK )
@@ -2654,7 +2736,7 @@ class Game :
         self .screen .blit (back_txt ,back_rect )
 
     def draw_auto_options (self ):
-        mx ,my =pygame .mouse .get_pos ()
+        mx ,my =self ._mouse_pos ()
         overlay =self ._overlay
         overlay .set_alpha (200 )
         overlay .fill (BG_DARK )
@@ -2767,7 +2849,7 @@ class Game :
         self .screen .blit (conf_txt ,rect_c )
 
     def draw_config (self ):
-        mx ,my =pygame .mouse .get_pos ()
+        mx ,my =self ._mouse_pos ()
         overlay =self ._overlay
         overlay .set_alpha (200 )
         overlay .fill (BG_DARK )
@@ -3493,7 +3575,7 @@ class Game :
             self .draw_text_shadow (self .font_small ,line ,WHITE ,center =(SCREEN_WIDTH //2 ,y_text ))
             y_text +=105 
 
-        mx ,my =pygame .mouse .get_pos ()
+        mx ,my =self ._mouse_pos ()
         y_btn =y_text +60 
         self .gameover_buttons ={}
         completato =not (self .lives <=0 or (self .boss_active and self .boss_phase =="fight"))
@@ -3542,7 +3624,7 @@ class Game :
                 self .draw_text_shadow (self .font_tiny ,s ,(180 ,180 ,180 ),center =(SCREEN_WIDTH //2 ,y ))
                 y +=72 
 
-        mx ,my =pygame .mouse .get_pos ()
+        mx ,my =self ._mouse_pos ()
         y =max (y +60 ,SCREEN_HEIGHT -300 )
         self .gameover_buttons ={}
         for i ,(label ,action )in enumerate ([("Ricomincia","restart"),("Menu principale","menu")]):
