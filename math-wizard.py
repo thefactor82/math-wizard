@@ -7,6 +7,8 @@ import re
 import math 
 import webbrowser 
 import shutil 
+import threading 
+import urllib .request 
 from datetime import datetime 
 from collections import deque 
 from fractions import Fraction 
@@ -78,6 +80,10 @@ def sanitize_profile_name (name ):
     if "/"in name or "\\"in name :
         return None 
     return name if re .match (r"^[A-Za-z0-9_-]+$",name )else None 
+
+def parse_version (text ):
+    nums =re .findall (r"\d+",str (text ))
+    return tuple (int (n )for n in nums )
 
 def make_placeholder_surface (size ,color =(80 ,80 ,90 )):
     surf =pygame .Surface (size ,pygame .SRCALPHA )
@@ -381,6 +387,9 @@ class Game :
         self .load_resources ()
         self .setup_profiles ()
         self .reset_game_state ()
+        self .update_available =False 
+        self .update_link_rect =None 
+        threading .Thread (target =self .check_for_update ,daemon =True ).start ()
 
     def setup_cursor (self ):
         try :
@@ -634,7 +643,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.1.6"
+        self .version ="1.1.7"
 
         self .profiles =[]
         self .current_profile =""
@@ -691,6 +700,18 @@ class Game :
         self .profile_cursor =0 
         self .save_profiles ()
         self .state ="profile_select"
+
+    def check_for_update (self ):
+        try :
+            req =urllib .request .Request ("https://api.github.com/repos/thefactor82/math-wizard/releases/latest",headers ={"User-Agent":"MathWizard"})
+            with urllib .request .urlopen (req ,timeout =10 )as resp :
+                data =json .loads (resp .read ().decode ("utf-8"))
+            latest =parse_version (data .get ("tag_name","")or data .get ("name",""))
+            current =parse_version (self .version )
+            if latest and current and latest >current :
+                self .update_available =True 
+        except Exception :
+            pass 
 
     def save_profile_config (self ,nome =None ):
         nome =nome or self .current_profile 
@@ -1763,6 +1784,8 @@ class Game :
                         print (f"Warning: unable to open coffee link: {e }")
                 if getattr (self ,'menu_exit_rect',None )and self .menu_exit_rect .collidepoint (mx ,my ):
                     self .running =False 
+                if getattr (self ,'update_link_rect',None )and self .update_link_rect .collidepoint (mx ,my ):
+                    webbrowser .open ("https://github.com/thefactor82/math-wizard/releases")
             elif self .state =="profile_select":
                 if not self .profile_input_mode :
                     voci =self .profiles +["Nuovo profilo"]
@@ -2729,6 +2752,15 @@ class Game :
         if self .menu_profile_rect .collidepoint (mx ,my ):
             profile_label =self ._render_cached (self .font_small ,f"Profilo: {self .current_profile }",GOLD )
         self .screen .blit (profile_label ,rect )
+
+        self .update_link_rect =None 
+        if self .update_available :
+            upd_txt =self ._render_cached (self .font_small ,"E' disponibile una nuova versione di Math Wizard!",GOLD )
+            upd_rect =upd_txt .get_rect (center =(SCREEN_WIDTH //2 ,SCREEN_HEIGHT -170 ))
+            self .update_link_rect =upd_rect .inflate (60 ,30 )
+            if self .update_link_rect .collidepoint (mx ,my ):
+                upd_txt =self ._render_cached (self .font_small ,"E' disponibile una nuova versione di Math Wizard!",WHITE )
+            self .screen .blit (upd_txt ,upd_rect )
 
         exit_txt =self ._render_cached (self .font_small ,"ESCI",WHITE )
         exit_rect =exit_txt .get_rect (center =(SCREEN_WIDTH //2 ,SCREEN_HEIGHT -48 ))
