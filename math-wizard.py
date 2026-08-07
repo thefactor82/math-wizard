@@ -618,7 +618,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.1.1"
+        self .version ="1.1.2"
 
         self .profiles =[]
         self .current_profile =""
@@ -1270,6 +1270,23 @@ class Game :
         if self .scene_chars_shown ()>=len (text_value ):
             self .draw_text_shadow (self .font_small ,"Premi INVIO per continuare",WHITE ,center =(SCREEN_WIDTH //2 ,SCREEN_HEIGHT -120 ),offset =1 )
 
+    def _new_distinct_pair (self ):
+        prev =(self .prev_a ,self .prev_b )
+        a ,b =None ,None 
+        if self .mode =="auto":
+            lv =self .effective_level ()
+            lv_data =self .levels [lv ]
+            for _ in range (20 ):
+                a ,b =select_operands (lv_data ["pool_a"],lv_data ["pool_b"],deque (),self .operation ,self .integer_result )
+                if (a ,b )!=prev :
+                    return a ,b 
+        else :
+            for _ in range (20 ):
+                a ,b =select_operands (self .pool_a ,self .pool_b ,deque (),self .operation ,self .integer_result ,self .max_sum )
+                if (a ,b )!=prev :
+                    return a ,b 
+        return a ,b 
+
     def new_question (self ):
         if self .lives <=0 :
             return 
@@ -1288,7 +1305,10 @@ class Game :
             if self .operation =="sottrazione"and self .a <self .b :
                 self .a ,self .b =self .b ,self .a 
             if (self .a ,self .b )==(self .prev_a ,self .prev_b ):
-                self .a ,self .b =self .b ,self .a 
+                if self .operation =="divisione":
+                    self .a ,self .b =self ._new_distinct_pair ()
+                else :
+                    self .a ,self .b =self .b ,self .a 
             self .expected_result =calculate_result (self .a ,self .b ,self .operation ,self .integer_result )
             self .boss_questions_asked +=1 
             self .question_active =True 
@@ -1363,7 +1383,9 @@ class Game :
             self .questions_asked +=1 
 
         if (self .a ,self .b )==(self .prev_a ,self .prev_b ):
-            if self .a ==self .b :
+            if self .operation =="divisione":
+                self .a ,self .b =self ._new_distinct_pair ()
+            elif self .a ==self .b :
                 if self .mode =="auto":
                     lv =self .effective_level ()
                     pool_a =self .levels [lv ]["pool_a"]
