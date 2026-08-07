@@ -2697,11 +2697,11 @@ class Game :
             profile_label =self ._render_cached (self .font_small ,f"Profilo: {self .current_profile }",GOLD )
         self .screen .blit (profile_label ,rect )
 
-        exit_txt =self ._render_cached (self .font_large ,"ESCI",WHITE )
-        exit_rect =exit_txt .get_rect (center =(SCREEN_WIDTH //2 ,SCREEN_HEIGHT -150 ))
+        exit_txt =self ._render_cached (self .font_small ,"ESCI",WHITE )
+        exit_rect =exit_txt .get_rect (center =(SCREEN_WIDTH //2 ,SCREEN_HEIGHT -48 ))
         self .menu_exit_rect =exit_rect .inflate (60 ,30 )
         if self .menu_exit_rect .collidepoint (mx ,my ):
-            exit_txt =self ._render_cached (self .font_large ,"ESCI",GOLD )
+            exit_txt =self ._render_cached (self .font_small ,"ESCI",GOLD )
         self .screen .blit (exit_txt ,exit_rect )
 
         version_surf =self ._render_cached (self .font_tiny ,f"v{self .version }",GRAY )
