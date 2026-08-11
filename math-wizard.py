@@ -412,9 +412,9 @@ class Game :
         self .char_w ,self .char_h =self .char_img .get_size ()
 
     def load_resources (self ):
-        self .bg =safe_load_image (resource_path ("graphics/backgrounds/village.png"),(SCREEN_WIDTH ,SCREEN_HEIGHT ))
-        self .bg_menu =safe_load_image (resource_path ("graphics/MISC/background_menu.png"),(SCREEN_WIDTH ,SCREEN_HEIGHT ))
-        self .bg_options =safe_load_image (resource_path ("graphics/MISC/background_options.png"),(SCREEN_WIDTH ,SCREEN_HEIGHT ))
+        self .bg =safe_load_image (resource_path ("graphics/backgrounds/village.png"),(SCREEN_WIDTH ,SCREEN_HEIGHT ),convert_alpha =False )
+        self .bg_menu =safe_load_image (resource_path ("graphics/misc/background_menu.png"),(SCREEN_WIDTH ,SCREEN_HEIGHT ),convert_alpha =False )
+        self .bg_options =safe_load_image (resource_path ("graphics/misc/background_options.png"),(SCREEN_WIDTH ,SCREEN_HEIGHT ),convert_alpha =False )
 
         self .backgrounds ={"village":self .bg }
         self ._bg_files ={}
@@ -503,7 +503,7 @@ class Game :
         if surf is None :
             path =self ._bg_files .get (name )
             if path :
-                surf =safe_load_image (path ,(SCREEN_WIDTH ,SCREEN_HEIGHT ))
+                surf =safe_load_image (path ,(SCREEN_WIDTH ,SCREEN_HEIGHT ),convert_alpha =False )
                 self .backgrounds [name ]=surf 
         return surf 
 
@@ -583,6 +583,8 @@ class Game :
             self .display =pygame .display .set_mode ((SCREEN_WIDTH ,SCREEN_HEIGHT ),pygame .FULLSCREEN )
         except pygame .error :
             pass
+        if hasattr (self ,"char_data"):
+            self ._reconvert_alpha_surfaces ()
 
     def _apply_display_mode (self ):
         if self .fullscreen :
@@ -592,10 +594,53 @@ class Game :
         else :
             size =getattr (self ,'_last_windowed',None )or self .compute_windowed_size ()
             self .display =pygame .display .set_mode (size ,pygame .RESIZABLE )
+        self ._reconvert_alpha_surfaces ()
 
     def _resize_display (self ,size ):
         self ._last_windowed =size 
         self .display =pygame .display .set_mode (size ,pygame .RESIZABLE )
+        self ._reconvert_alpha_surfaces ()
+
+    def _reconvert_alpha_surfaces (self ):
+        try :
+            for key ,data in self .char_data .items ():
+                for name ,val in data .items ():
+                    if isinstance (val ,list ):
+                        for i ,surf in enumerate (val ):
+                            val [i ]=surf .convert_alpha ()
+                    else :
+                        data [name ]=val .convert_alpha ()
+            for idx ,monster in self .monsters .items ():
+                frames =monster ["frames"]
+                for i ,surf in enumerate (frames ):
+                    frames [i ]=surf .convert_alpha ()
+                monster ["hit"]=monster ["hit"].convert_alpha ()
+                if frames is self .monster_frames :
+                    self .monster_img =frames [0 ]
+                    self .monster_hit_img =monster ["hit"]
+            if self .boss_data :
+                for key in ("walk","hit","defeated"):
+                    val =self .boss_data [key ]
+                    if isinstance (val ,list ):
+                        for i ,surf in enumerate (val ):
+                            val [i ]=surf .convert_alpha ()
+                    else :
+                        self .boss_data [key ]=val .convert_alpha ()
+            self .char_img =self .char_data .get (self .config_gender ,self .char_data ["F"])["idle"][0 ]
+            if self .heart_red :
+                self .heart_red =self .heart_red .convert_alpha ()
+            if self .heart_grey :
+                self .heart_grey =self .heart_grey .convert_alpha ()
+            if self .gear_img :
+                self .gear_img =self .gear_img .convert_alpha ()
+            if self .git_icon :
+                self .git_icon =self .git_icon .convert_alpha ()
+            if self .kofi_icon :
+                self .kofi_icon =self .kofi_icon .convert_alpha ()
+            if self .logo :
+                self .logo =self .logo .convert_alpha ()
+        except (pygame .error ,AttributeError )as e :
+            print (f"Warning: surface reconvert failed: {e }")
 
     def _fit_rect (self ):
         dw ,dh =self .display .get_size ()
@@ -643,7 +688,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.1.7"
+        self .version ="1.1.8"
 
         self .profiles =[]
         self .current_profile =""
@@ -1084,7 +1129,7 @@ class Game :
             self .story_object_img =None 
             self .story_object_alpha =0 
             if obj_file :
-                obj_img =safe_load_image (resource_path (os .path .join ("graphics","MISC",obj_file )))
+                obj_img =safe_load_image (resource_path (os .path .join ("graphics","misc",obj_file )))
                 ow ,oh =obj_img .get_size ()
                 if oh >900 :
                     s =900 /oh 
@@ -2561,14 +2606,11 @@ class Game :
             pygame .display .flip ()
             return 
         dw ,dh ,tw ,th ,ox ,oy =self ._fit_rect ()
-        if tw ==dw and th ==dh :
-            pygame .transform .scale (self .screen ,(tw ,th ),self .display )
-        else :
-            if self ._scaled_cache is None or self ._scaled_cache .get_size ()!=(tw ,th ):
-                self ._scaled_cache =pygame .Surface ((tw ,th ))
-            pygame .transform .scale (self .screen ,(tw ,th ),self ._scaled_cache )
-            self .display .fill (BLACK )
-            self .display .blit (self ._scaled_cache ,(ox ,oy ))
+        if self ._scaled_cache is None or self ._scaled_cache .get_size ()!=(tw ,th ):
+            self ._scaled_cache =pygame .Surface ((tw ,th ))
+        pygame .transform .scale (self .screen ,(tw ,th ),self ._scaled_cache )
+        self .display .fill (BLACK )
+        self .display .blit (self ._scaled_cache ,(ox ,oy ))
         pygame .display .flip ()
 
     def _render_cached (self ,font ,text ,color ):
