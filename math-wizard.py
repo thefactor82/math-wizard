@@ -611,7 +611,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.2.2"
+        self .version ="1.2.3"
 
         self .profiles =[]
         self .current_profile =""
@@ -1560,14 +1560,16 @@ class Game :
                         self .running =False 
             elif self .state =="menu":
                 if event .key ==pygame .K_RETURN :
-                    self .mode ="auto"if self .menu_cursor ==0 else "fixed"
-                    self .start_game ()
+                    if self .menu_cursor ==0 :
+                        self .mode ="auto"
+                        self .start_game ()
+                    else :
+                        self .show_config ()
                 elif event .key ==pygame .K_1 :
                     self .mode ="auto"
                     self .start_game ()
                 elif event .key ==pygame .K_2 :
-                    self .mode ="fixed"
-                    self .start_game ()
+                    self .show_config ()
                 elif event .key ==pygame .K_o :
                     self .state ="options"
                 elif event .key ==pygame .K_p :
@@ -1582,12 +1584,12 @@ class Game :
                 if event .key ==pygame .K_1 :
                     self .state ="options_auto"
                 elif event .key ==pygame .K_2 :
-                    self .show_config ()
+                    self .state ="confirm_delete"
                 elif event .key ==pygame .K_RETURN :
                     if self .options_cursor ==0 :
                         self .state ="options_auto"
                     else :
-                        self .show_config ()
+                        self .state ="confirm_delete"
                 elif event .key ==pygame .K_ESCAPE :
                     self .state ="menu"
             elif self .state =="confirm_delete":
@@ -1738,8 +1740,11 @@ class Game :
             if self .state =="menu":
                 for i ,hit in enumerate (getattr (self ,'menu_btn_rects',[ ])):
                     if hit .collidepoint (mx ,my ):
-                        self .mode ="auto"if i ==0 else "fixed"
-                        self .start_game ()
+                        if i ==0 :
+                            self .mode ="auto"
+                            self .start_game ()
+                        else :
+                            self .show_config ()
                         return 
                 if (mx -1852 )**2 +(my -67 )**2 <=(33 +15 )**2 :
                     self .state ="options"
@@ -1808,8 +1813,6 @@ class Game :
                     if hit .collidepoint (mx ,my ):
                         if i ==0 :
                             self .state ="options_auto"
-                        elif i ==1 :
-                            self .show_config ()
                         else :
                             self .state ="confirm_delete"
                         return 
@@ -1926,7 +1929,8 @@ class Game :
             y7 =row_y (7 )
             if SCREEN_WIDTH //2 -165 <=mx <=SCREEN_WIDTH //2 +165 and y7 <=my <=y7 +69 :
                 self .save_profile_config ()
-                self .state ="menu"
+                self .mode ="fixed"
+                self .start_game ()
                 return 
 
                 # Row 0: operation selector
@@ -2037,11 +2041,12 @@ class Game :
             return 
 
         if event .key ==pygame .K_ESCAPE :
-            self .state ="options"
+            self .state ="menu"
             return 
         if event .key ==pygame .K_RETURN :
             self .save_profile_config ()
-            self .state ="menu"
+            self .mode ="fixed"
+            self .start_game ()
             return 
 
         row =self .config_cursor_row 
@@ -2758,11 +2763,11 @@ class Game :
         rect =title .get_rect (center =(SCREEN_WIDTH //2 ,120 ))
         self .screen .blit (title ,rect )
 
-        voci =["Storia","Allenamento","Elimina profilo attuale"]
+        voci =["Storia","Elimina profilo attuale"]
         self .options_btn_rects =[ ]
         for i ,voce in enumerate (voci ):
             y =330 +i *120 
-            color =RED if i ==2 else WHITE 
+            color =RED if i ==1 else WHITE 
             txt =self ._render_cached (self .font_large ,voce ,color )
             rect =txt .get_rect (center =(SCREEN_WIDTH //2 ,y +31 ))
             hit =rect .inflate (30 ,15 )
