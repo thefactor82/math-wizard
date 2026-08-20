@@ -611,7 +611,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.2.1"
+        self .version ="1.2.2"
 
         self .profiles =[]
         self .current_profile =""
@@ -3068,10 +3068,10 @@ class Game :
             pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_minus else (70 ,70 ,80 ),minus_rect ,border_radius =6 )
             pygame .draw .rect (self .screen ,(40 ,40 ,50 ),(sx +lw ,y ,vw ,51 ))
             pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_plus else (70 ,70 ,80 ),plus_rect ,border_radius =6 )
-        if hover_minus :
-            pygame .draw .rect (self .screen ,GOLD ,minus_rect ,2 ,border_radius =6 )
-        if hover_plus :
-            pygame .draw .rect (self .screen ,GOLD ,plus_rect ,2 ,border_radius =6 )
+            if hover_minus :
+                pygame .draw .rect (self .screen ,GOLD ,minus_rect ,2 ,border_radius =6 )
+            if hover_plus :
+                pygame .draw .rect (self .screen ,GOLD ,plus_rect ,2 ,border_radius =6 )
             minus =self ._render_cached (self .font_tiny ,"-",WHITE )
             plus =self ._render_cached (self .font_tiny ,"+",WHITE )
             self .screen .blit (minus ,minus .get_rect (center =(sx +lw //2 ,y +25 )))
