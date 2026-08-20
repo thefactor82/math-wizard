@@ -41,8 +41,9 @@ PROFILES_DIR =resolve_profiles_dir ()
 
 WIZARD_LIVES =3 
 DEFAULT_TIMEOUT =12 
-SCREEN_WIDTH =3840 
-SCREEN_HEIGHT =2160 
+SCREEN_WIDTH =1920 
+SCREEN_HEIGHT =1080 
+SCALE =SCREEN_WIDTH /3840.0 
 FPS =60 
 
 WHITE =(255 ,255 ,255 )
@@ -332,12 +333,7 @@ class Game :
             pygame .display .set_icon (icon )
         except (pygame .error ,OSError ):
             pass 
-        self ._last_windowed =self .compute_windowed_size ()
-        if self .fullscreen :
-            self ._enter_fullscreen ()
-        else :
-            self .display =pygame .display .set_mode (self ._last_windowed ,pygame .RESIZABLE )
-        self .screen =pygame .Surface ((SCREEN_WIDTH ,SCREEN_HEIGHT ))
+        self .screen =pygame .display .set_mode ((SCREEN_WIDTH ,SCREEN_HEIGHT ),pygame .SCALED | (pygame .FULLSCREEN if self .fullscreen else 0 ))
         self ._scaled_cache =None 
         self ._overlay =pygame .Surface ((SCREEN_WIDTH ,SCREEN_HEIGHT ))
         pygame .display .set_caption ("Math Wizard")
@@ -358,7 +354,7 @@ class Game :
         self .player_entrance =True 
         self .monster_in_dir ="dx"
         self .player_flip =False 
-        self .player_stand_x =225 
+        self .player_stand_x =112 
         self .monster_type ="walk"
         self .monster_y_offset =0 
         self .debug =False 
@@ -374,15 +370,15 @@ class Game :
         self .level_scene_before =None 
         self .level_scene_after =None 
 
-        self .font_title =pygame .font .Font (None ,240 )
-        self .font_large =pygame .font .Font (None ,192 )
-        self .font_medium =pygame .font .Font (None ,126 )
-        self .story_font =pygame .font .Font (None ,144 )
-        self .font_small =pygame .font .Font (None ,90 )
-        self .font_input =pygame .font .Font (None ,168 )
-        self .font_stats =pygame .font .Font (None ,84 )
-        self .font_num =pygame .font .Font (None ,108 )
-        self .font_tiny =pygame .font .Font (None ,66 )
+        self .font_title =pygame .font .Font (None ,120 )
+        self .font_large =pygame .font .Font (None ,96 )
+        self .font_medium =pygame .font .Font (None ,63 )
+        self .story_font =pygame .font .Font (None ,72 )
+        self .font_small =pygame .font .Font (None ,45 )
+        self .font_input =pygame .font .Font (None ,84 )
+        self .font_stats =pygame .font .Font (None ,42 )
+        self .font_num =pygame .font .Font (None ,54 )
+        self .font_tiny =pygame .font .Font (None ,33 )
 
         self .load_resources ()
         self .setup_profiles ()
@@ -400,7 +396,7 @@ class Game :
             surf =pygame .image .load (path )
             if not (surf .get_flags ()&pygame .SRCALPHA ):
                 surf =surf .convert_alpha ()
-            surf =pygame .transform .scale_by (surf ,2 )
+            surf =pygame .transform .scale_by (surf ,1 )
             cursor =pygame .cursors .Cursor ((0 ,0 ),surf )
             pygame .mouse .set_cursor (cursor )
         except (pygame .error ,OSError )as e :
@@ -433,17 +429,17 @@ class Game :
         target_w =160 
         self .char_data ={}
         for key ,path in [("F",resource_path ("graphics/players/playerf.png")),("M",resource_path ("graphics/players/playerm.png"))]:
-            idle_frames =self .load_spritesheet (path ,160 ,1 ,row =1 ,rows =2 ,cols =4 ,frame_offset =0 ,flip_x =False ,scale =False ,out_size =(819 ,879 ))
+            idle_frames =self .load_spritesheet (path ,160 ,1 ,row =1 ,rows =2 ,cols =4 ,frame_offset =0 ,flip_x =False ,scale =False ,out_size =(410 ,440 ))
             frame0 =idle_frames [0 ].copy ()
             frame1 =pygame .transform .scale (frame0 ,(frame0 .get_width (),frame0 .get_height ()-2 ))
             self .idle_h =frame0 .get_height ()
             idle_frames =[frame0 ,frame1 ]
-            shake_frame =self .load_spritesheet (path ,160 ,1 ,row =1 ,rows =2 ,cols =4 ,frame_offset =1 ,flip_x =False ,scale =False ,out_size =(819 ,879 ))[0 ]
-            profile_img =self .load_spritesheet (path ,160 ,1 ,row =1 ,rows =2 ,cols =4 ,frame_offset =0 ,flip_x =False ,scale =False ,out_size =(819 ,879 ))[0 ]
-            hit_frame =self .load_spritesheet (path ,160 ,1 ,row =1 ,rows =2 ,cols =4 ,frame_offset =3 ,flip_x =False ,scale =False ,out_size =(819 ,879 ))[0 ]
-            charge_frame =self .load_spritesheet (path ,160 ,1 ,row =1 ,rows =2 ,cols =4 ,frame_offset =2 ,flip_x =False ,scale =False ,out_size =(819 ,879 ))[0 ]
+            shake_frame =self .load_spritesheet (path ,160 ,1 ,row =1 ,rows =2 ,cols =4 ,frame_offset =1 ,flip_x =False ,scale =False ,out_size =(410 ,440 ))[0 ]
+            profile_img =self .load_spritesheet (path ,160 ,1 ,row =1 ,rows =2 ,cols =4 ,frame_offset =0 ,flip_x =False ,scale =False ,out_size =(410 ,440 ))[0 ]
+            hit_frame =self .load_spritesheet (path ,160 ,1 ,row =1 ,rows =2 ,cols =4 ,frame_offset =3 ,flip_x =False ,scale =False ,out_size =(410 ,440 ))[0 ]
+            charge_frame =self .load_spritesheet (path ,160 ,1 ,row =1 ,rows =2 ,cols =4 ,frame_offset =2 ,flip_x =False ,scale =False ,out_size =(410 ,440 ))[0 ]
             self .char_data [key ]={"idle":idle_frames ,"profile":profile_img ,"hit":hit_frame ,"charge":charge_frame ,"shake":shake_frame }
-            run_frames =self .load_spritesheet (path ,160 ,4 ,row =0 ,rows =2 ,cols =4 ,frame_offset =0 ,flip_x =False ,scale =False ,out_size =(819 ,879 ))
+            run_frames =self .load_spritesheet (path ,160 ,4 ,row =0 ,rows =2 ,cols =4 ,frame_offset =0 ,flip_x =False ,scale =False ,out_size =(410 ,440 ))
             self .char_data [key ]["run"]=run_frames 
         self .char_img =self .char_data ["F"]["idle"][0 ]
         self .char_h =self .char_img .get_height ()
@@ -451,7 +447,7 @@ class Game :
         self .char_anim_frame =0 
 
         self .monsters ={}
-        placeholder_frame =make_placeholder_surface ((200 ,200 ))
+        placeholder_frame =make_placeholder_surface ((100 ,100 ))
         self .monster_frames =[placeholder_frame ]
         self .monster_hit_img =placeholder_frame 
         self .monster_img =placeholder_frame 
@@ -461,14 +457,14 @@ class Game :
 
         self .boss_data =None 
 
-        self .heart_red =safe_load_image (resource_path ("graphics/misc/lives.png"),(105 ,105 ))
-        self .heart_grey =safe_load_image (resource_path ("graphics/misc/lives_lost.png"),(105 ,105 ))
+        self .heart_red =safe_load_image (resource_path ("graphics/misc/lives.png"),(53 ,53 ))
+        self .heart_grey =safe_load_image (resource_path ("graphics/misc/lives_lost.png"),(53 ,53 ))
 
         self .logo =safe_load_image (resource_path ("graphics/misc/logo.png"),(SCREEN_WIDTH ,SCREEN_HEIGHT ))
-        self .gear_img =safe_load_image (resource_path ("graphics/misc/gear.png"),(132 ,132 ))
+        self .gear_img =safe_load_image (resource_path ("graphics/misc/gear.png"),(66 ,66 ))
 
-        self .git_icon =scale_to_fit (safe_load_image (resource_path ("graphics/misc/git.png"),None ),(90 ,90 ))
-        self .kofi_icon =scale_to_fit (safe_load_image (resource_path ("graphics/misc/kofi.png"),None ),(90 ,90 ))
+        self .git_icon =scale_to_fit (safe_load_image (resource_path ("graphics/misc/git.png"),None ),(45 ,45 ))
+        self .kofi_icon =scale_to_fit (safe_load_image (resource_path ("graphics/misc/kofi.png"),None ),(45 ,45 ))
 
     def load_spritesheet (self ,path ,target_w ,frame_count ,row =0 ,rows =1 ,cols =None ,frame_offset =0 ,flip_x =True ,scale =True ,out_size =None ):
         try :
@@ -512,9 +508,9 @@ class Game :
             return self .boss_data 
         boss_path =resource_path ("graphics/monsters/monster99.png")
         if os .path .exists (boss_path ):
-            boss_walk =self .load_spritesheet (boss_path ,1170 ,2 ,row =0 ,rows =2 ,cols =2 ,frame_offset =0 ,flip_x =False )
-            boss_hit =self .load_spritesheet (boss_path ,1170 ,1 ,row =1 ,rows =2 ,cols =2 ,frame_offset =0 ,flip_x =False )[0 ]
-            boss_defeated =self .load_spritesheet (boss_path ,1170 ,1 ,row =1 ,rows =2 ,cols =2 ,frame_offset =1 ,flip_x =False )[0 ]
+            boss_walk =self .load_spritesheet (boss_path ,585 ,2 ,row =0 ,rows =2 ,cols =2 ,frame_offset =0 ,flip_x =False )
+            boss_hit =self .load_spritesheet (boss_path ,585 ,1 ,row =1 ,rows =2 ,cols =2 ,frame_offset =0 ,flip_x =False )[0 ]
+            boss_defeated =self .load_spritesheet (boss_path ,585 ,1 ,row =1 ,rows =2 ,cols =2 ,frame_offset =1 ,flip_x =False )[0 ]
             self .boss_data ={"walk":boss_walk ,"hit":boss_hit ,"defeated":boss_defeated }
         return self .boss_data 
 
@@ -524,11 +520,11 @@ class Game :
             return monster 
         path =resource_path ("graphics/monsters/monster%d.png"%idx )
         if os .path .exists (path ):
-            frames =self .load_spritesheet (path ,600 ,4 ,row =0 ,rows =2 ,cols =4 )
-            hit =self .load_spritesheet (path ,600 ,1 ,row =1 ,rows =2 ,cols =4 ,frame_offset =3 )[0 ]
+            frames =self .load_spritesheet (path ,300 ,4 ,row =0 ,rows =2 ,cols =4 )
+            hit =self .load_spritesheet (path ,300 ,1 ,row =1 ,rows =2 ,cols =4 ,frame_offset =3 )[0 ]
             monster ={"frames":frames ,"hit":hit ,"idx":idx }
         else :
-            placeholder =make_placeholder_surface ((200 ,200 ))
+            placeholder =make_placeholder_surface ((100 ,100 ))
             monster ={"frames":[placeholder ],"hit":placeholder ,"idx":idx }
         self .monsters [idx ]=monster 
         return monster 
@@ -564,98 +560,25 @@ class Game :
         return (w ,h )
 
     def _enter_fullscreen (self ):
-        try :
-            modes =pygame .display .list_modes ()
-        except pygame .error :
-            modes =[]
-        candidates =[]
-        if modes :
-            candidates .append (tuple (modes [0 ]))
-        candidates .append (self .compute_windowed_size ())
-        candidates .append ((SCREEN_WIDTH ,SCREEN_HEIGHT ))
-        for size in candidates :
-            try :
-                self .display =pygame .display .set_mode (size ,pygame .FULLSCREEN |pygame .RESIZABLE )
-                return
-            except pygame .error :
-                continue
-        try :
-            self .display =pygame .display .set_mode ((SCREEN_WIDTH ,SCREEN_HEIGHT ),pygame .FULLSCREEN )
-        except pygame .error :
-            pass
-        if hasattr (self ,"char_data"):
-            self ._reconvert_alpha_surfaces ()
+        pass
 
     def _apply_display_mode (self ):
-        if self .fullscreen :
-            if not self .display .get_flags ()&pygame .FULLSCREEN :
-                self ._last_windowed =self .display .get_size ()
-            self ._enter_fullscreen ()
-        else :
-            size =getattr (self ,'_last_windowed',None )or self .compute_windowed_size ()
-            self .display =pygame .display .set_mode (size ,pygame .RESIZABLE )
-        self ._reconvert_alpha_surfaces ()
+        pygame .display .toggle_fullscreen ()
 
     def _resize_display (self ,size ):
-        self ._last_windowed =size 
-        self .display =pygame .display .set_mode (size ,pygame .RESIZABLE )
-        self ._reconvert_alpha_surfaces ()
+        pass
 
     def _reconvert_alpha_surfaces (self ):
-        try :
-            for key ,data in self .char_data .items ():
-                for name ,val in data .items ():
-                    if isinstance (val ,list ):
-                        for i ,surf in enumerate (val ):
-                            val [i ]=surf .convert_alpha ()
-                    else :
-                        data [name ]=val .convert_alpha ()
-            for idx ,monster in self .monsters .items ():
-                frames =monster ["frames"]
-                for i ,surf in enumerate (frames ):
-                    frames [i ]=surf .convert_alpha ()
-                monster ["hit"]=monster ["hit"].convert_alpha ()
-                if frames is self .monster_frames :
-                    self .monster_img =frames [0 ]
-                    self .monster_hit_img =monster ["hit"]
-            if self .boss_data :
-                for key in ("walk","hit","defeated"):
-                    val =self .boss_data [key ]
-                    if isinstance (val ,list ):
-                        for i ,surf in enumerate (val ):
-                            val [i ]=surf .convert_alpha ()
-                    else :
-                        self .boss_data [key ]=val .convert_alpha ()
-            self .char_img =self .char_data .get (self .config_gender ,self .char_data ["F"])["idle"][0 ]
-            if self .heart_red :
-                self .heart_red =self .heart_red .convert_alpha ()
-            if self .heart_grey :
-                self .heart_grey =self .heart_grey .convert_alpha ()
-            if self .gear_img :
-                self .gear_img =self .gear_img .convert_alpha ()
-            if self .git_icon :
-                self .git_icon =self .git_icon .convert_alpha ()
-            if self .kofi_icon :
-                self .kofi_icon =self .kofi_icon .convert_alpha ()
-            if self .logo :
-                self .logo =self .logo .convert_alpha ()
-        except (pygame .error ,AttributeError )as e :
-            print (f"Warning: surface reconvert failed: {e }")
+        pass
 
     def _fit_rect (self ):
-        dw ,dh =self .display .get_size ()
-        f =min (dw /SCREEN_WIDTH ,dh /SCREEN_HEIGHT )
-        tw =max (1 ,int (round (SCREEN_WIDTH *f )))
-        th =max (1 ,int (round (SCREEN_HEIGHT *f )))
-        return dw ,dh ,tw ,th ,(dw -tw )//2 ,(dh -th )//2 
+        return 0 ,0 ,SCREEN_WIDTH ,SCREEN_HEIGHT ,0 ,0 
 
     def _scale_to_canvas (self ,x ,y ):
-        disp =getattr (self ,'display',None )
-        if disp is not None and disp is not self .screen :
-            dw ,dh ,tw ,th ,ox ,oy =self ._fit_rect ()
-            if tw >0 and th >0 :
-                x =max (0 ,x -ox )*SCREEN_WIDTH //tw 
-                y =max (0 ,y -oy )*SCREEN_HEIGHT //th 
+        win_w ,win_h =pygame .display .get_surface ().get_size ()
+        if win_w != SCREEN_WIDTH or win_h != SCREEN_HEIGHT :
+            x =x *SCREEN_WIDTH //win_w 
+            y =y *SCREEN_HEIGHT //win_h 
         return x ,y 
 
     def _mouse_pos (self ):
@@ -688,7 +611,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.1.8"
+        self .version ="1.2.0"
 
         self .profiles =[]
         self .current_profile =""
@@ -982,7 +905,7 @@ class Game :
             self .player_entrance =True 
             self .monster_in_dir ="dx"
             self .player_flip =False 
-            self .player_stand_x =225 
+            self .player_stand_x =112 
             self .operation =self .config_operation 
             self .max_sum =self .config .get ("somma_massima",10 )
             self .positive_difference =self .config .get ("differenza_positiva",True )
@@ -1033,7 +956,7 @@ class Game :
         if self .player_entrance :
             self .character_entry =True 
             self .character_entry_start =pygame .time .get_ticks ()
-            start_x =-300 if self .player_in_dir =="sx"else SCREEN_WIDTH +80 
+            start_x =-150 if self .player_in_dir =="sx"else SCREEN_WIDTH +40 
             self .character_entry_x =start_x 
         else :
             if self .level_is_scene :
@@ -1068,7 +991,7 @@ class Game :
             if not self .level_is_scene :
                 self .monster_in_dir =entry .get ("monster_in","dx")
             self .player_flip =(self .player_in_dir =="dx")
-            self .player_stand_x =(SCREEN_WIDTH -225 -self .char_w )if self .player_flip else 225 
+            self .player_stand_x =(SCREEN_WIDTH -112 -self .char_w )if self .player_flip else 112 
             scenes =entry .get ("scenes",[])
             self .level_scene_before =next ((s for s in scenes if s .get ("when")=="before"),None )
             self .level_scene_after =next ((s for s in scenes if s .get ("when")=="after"),None )
@@ -1089,11 +1012,11 @@ class Game :
                 self .boss_anim_frame =0 
                 boss_w =self .boss_hit_img .get_width ()
                 if self .boss_in_dir =="dx":
-                    self .boss_end_x =float (SCREEN_WIDTH -225 -boss_w )
-                    self .boss_start_x =float (SCREEN_WIDTH +30 )
+                    self .boss_end_x =float (SCREEN_WIDTH -112 -boss_w )
+                    self .boss_start_x =float (SCREEN_WIDTH +15 )
                 else :
-                    self .boss_end_x =225.0 
-                    self .boss_start_x =float (-boss_w -90 )
+                    self .boss_end_x =112.0 
+                    self .boss_start_x =float (-boss_w -45 )
                 self .boss_x =self .boss_start_x 
             else :
                 self .boss_active =False 
@@ -1131,9 +1054,9 @@ class Game :
             if obj_file :
                 obj_img =safe_load_image (resource_path (os .path .join ("graphics","misc",obj_file )))
                 ow ,oh =obj_img .get_size ()
-                if oh >900 :
-                    s =900 /oh 
-                    obj_img =pygame .transform .scale (obj_img ,(max (1 ,int (ow *s )),900 ))
+                if oh >450 :
+                    s =450 /oh 
+                    obj_img =pygame .transform .scale (obj_img ,(max (1 ,int (ow *s )),450 ))
                 self .story_object_img =obj_img 
             if self .story_first_step :
                 self .story_fade_alpha =255 
@@ -1156,7 +1079,7 @@ class Game :
         self .scene_data =scene 
         self .scene_npcs =[]
         npc_dir =resource_path ("graphics/npcs")
-        ref_h =self .char_h if hasattr (self ,"char_h")and self .char_h else 293 
+        ref_h =self .char_h if hasattr (self ,"char_h")and self .char_h else 146 
         def fit (frames ):
             out =[]
             for f in frames :
@@ -1170,8 +1093,8 @@ class Game :
             sheet_name =n .get ("sheet")
             if sheet_name :
                 sheet_path =os .path .join (npc_dir ,sheet_name if sheet_name .lower ().endswith (".png")else sheet_name +".png")
-                walk =fit (self .load_spritesheet (sheet_path ,200 ,4 ,row =0 ,rows =2 ,cols =4 ,frame_offset =0 ,flip_x =False ,scale =False ))
-                poses =fit (self .load_spritesheet (sheet_path ,200 ,4 ,row =1 ,rows =2 ,cols =4 ,frame_offset =0 ,flip_x =False ,scale =False ))
+                walk =fit (self .load_spritesheet (sheet_path ,100 ,4 ,row =0 ,rows =2 ,cols =4 ,frame_offset =0 ,flip_x =False ,scale =False ))
+                poses =fit (self .load_spritesheet (sheet_path ,100 ,4 ,row =1 ,rows =2 ,cols =4 ,frame_offset =0 ,flip_x =False ,scale =False ))
             else :
                 poses =fit ([safe_load_image (os .path .join (npc_dir ,fname ))for fname in n .get ("frames",[])])
                 walk =poses [:4 ]if len (poses )>=4 else poses 
@@ -1183,16 +1106,16 @@ class Game :
                 if pos =="center":
                     end_x =float (SCREEN_WIDTH //2 -frame0 .get_width ()//2 )
                 elif pos =="right":
-                    end_x =float (SCREEN_WIDTH -225 -frame0 .get_width ())
+                    end_x =float (SCREEN_WIDTH -112 -frame0 .get_width ())
                 else :
-                    end_x =225.0 
+                    end_x =112.0 
             else :
                 end_x =float (pos )
             direzione =n .get ("in","sx")
             if direzione =="dx":
-                start_x =float (SCREEN_WIDTH +80 )
+                start_x =float (SCREEN_WIDTH +40 )
             else :
-                start_x =float (-frame0 .get_width ()-240 )
+                start_x =float (-frame0 .get_width ()-120 )
             out_side =n .get ("out")
             has_out =out_side is not None 
             if out_side is None :
@@ -1202,9 +1125,9 @@ class Game :
             if direzione ==out_side :
                 flip_out =not flip_in 
             if out_side =="sx":
-                exit_x =float (-frame0 .get_width ()-240 )
+                exit_x =float (-frame0 .get_width ()-120 )
             else :
-                exit_x =float (SCREEN_WIDTH +80 )
+                exit_x =float (SCREEN_WIDTH +40 )
             self .scene_npcs .append ({
             "id":n .get ("id",f"npc{i }"),
             "walk":walk ,
@@ -1220,7 +1143,7 @@ class Game :
             "flip_in":flip_in ,
             "flip_out":flip_out ,
             "y_off":n .get ("y_off",0 ),
-            "offset":i *1200 ,
+            "offset":i *600 ,
             })
 
     def npc_idle_frame (self ,npc ,now =None ):
@@ -1254,7 +1177,7 @@ class Game :
         if self .player_out_dir in ("sx","dx"):
             self .return_to_game =True 
             self .player_exit_start =pygame .time .get_ticks ()
-            self .player_exit_x =225 
+            self .player_exit_x =112 
             self .state ="player_exit"
         else :
             self .story_idx +=1 
@@ -1323,18 +1246,18 @@ class Game :
             img =self .char_data .get (self .config_gender ,self .char_data ["F"])["idle"][0 ]
             img_w ,img_h =img .get_size ()
             nx =self .player_stand_x
-            ny =SCREEN_HEIGHT //2 -img_h //2 +390
+            ny =SCREEN_HEIGHT //2 -img_h //2 +195 
         elif kind =="npc"and speaker :
             frame =speaker ["poses"][speaker ["pose_idx"]]
             img_w ,img_h =frame .get_size ()
             nx =speaker ["x"]
-            ny =SCREEN_HEIGHT //2 -img_h //2 +390 +speaker ["y_off"]
+            ny =SCREEN_HEIGHT //2 -img_h //2 +195 +speaker ["y_off"]
         else :
             return 
         text_value =self .scene_dialogue_text (line )
         shown =text_value [:self .scene_chars_shown ()]
         font =self .font_small 
-        max_w =1560 
+        max_w =780 
         lines =[]
         for para in shown .split ("\n"):
             words =para .split ()
@@ -1350,25 +1273,25 @@ class Game :
                 else :
                     cur =t 
             lines .append (cur )
-        bubble_w =max_w +120 
-        line_h =font .get_height ()+18 
-        bubble_h =max (132 ,len (lines )*line_h +66 )
+        bubble_w =max_w +60 
+        line_h =font .get_height ()+9 
+        bubble_h =max (66 ,len (lines )*line_h +33 )
         bubble_x =int (nx +img_w //2 -bubble_w //2 )
-        bubble_x =max (30 ,min (SCREEN_WIDTH -bubble_w -30 ,bubble_x ))
-        bubble_y =int (ny -bubble_h -42 )
+        bubble_x =max (15 ,min (SCREEN_WIDTH -bubble_w -15 ,bubble_x ))
+        bubble_y =int (ny -bubble_h -21 )
         tail_x =int (nx +img_w //2 -bubble_x )
-        surf_h =bubble_h +54 
+        surf_h =bubble_h +27 
         bubble_surf =pygame .Surface ((bubble_w ,surf_h ),pygame .SRCALPHA )
-        pygame .draw .rect (bubble_surf ,(255 ,255 ,255 ,240 ),(0 ,0 ,bubble_w ,bubble_h ),border_radius =42 )
-        pygame .draw .polygon (bubble_surf ,(255 ,255 ,255 ,240 ),[(tail_x -42 ,bubble_h ),(tail_x +42 ,bubble_h ),(tail_x ,bubble_h +54 )])
+        pygame .draw .rect (bubble_surf ,(255 ,255 ,255 ,240 ),(0 ,0 ,bubble_w ,bubble_h ),border_radius =21 )
+        pygame .draw .polygon (bubble_surf ,(255 ,255 ,255 ,240 ),[(tail_x -21 ,bubble_h ),(tail_x +21 ,bubble_h ),(tail_x ,bubble_h +27 )])
         self .screen .blit (bubble_surf ,(bubble_x ,bubble_y ))
-        y =bubble_y +42 
+        y =bubble_y +21 
         for ln in lines :
             surf =font .render (ln ,True ,(20 ,20 ,35 ))
             self .screen .blit (surf ,(bubble_x +60 ,y ))
             y +=line_h 
         if self .scene_chars_shown ()>=len (text_value ):
-            self .draw_text_shadow (self .font_small ,"Premi INVIO per continuare",WHITE ,center =(SCREEN_WIDTH //2 ,SCREEN_HEIGHT -120 ),offset =1 )
+            self .draw_text_shadow (self .font_small ,"Premi INVIO per continuare",WHITE ,center =(SCREEN_WIDTH //2 ,SCREEN_HEIGHT -60 ),offset =1 )
 
     def _new_distinct_pair (self ):
         prev =(self .prev_a ,self .prev_b )
@@ -1464,7 +1387,7 @@ class Game :
             if self .questions_asked >=self .total_questions :
                 self .save_session ()
                 self .player_exit_start =pygame .time .get_ticks ()
-                self .player_exit_x =225 
+                self .player_exit_x =112 
                 self .state ="player_exit"
                 return 
             self .a ,self .b =select_operands (
@@ -1524,10 +1447,10 @@ class Game :
         self .input_utente =""
         self .monster_progress =0.0 
         if self .monster_in_dir =="dx":
-            self .monster_start_x =SCREEN_WIDTH +30 
+            self .monster_start_x =SCREEN_WIDTH +15 
         else :
-            self .monster_start_x =-390 
-        self .monster_end_x =(self .player_stand_x -375 )if self .monster_in_dir =="sx"else 675 
+            self .monster_start_x =-195 
+        self .monster_end_x =(self .player_stand_x -187 )if self .monster_in_dir =="sx"else 337 
         self .monster_x =self .monster_start_x 
         self .monster_hit =False 
         self .player_hit =False 
@@ -1768,7 +1691,7 @@ class Game :
                             self .timeout_limit =max (3 ,self .timeout_limit -1 )
                     self .return_to_game =True 
                     self .player_exit_start =pygame .time .get_ticks ()
-                    self .player_exit_x =225 
+                    self .player_exit_x =112 
                     self .state ="player_exit"
             elif self .state =="story":
                 if event .key in (pygame .K_RETURN ,pygame .K_KP_ENTER ,pygame .K_SPACE ):
@@ -1800,7 +1723,7 @@ class Game :
                     if self .gameover_buttons .get ("restart")and self .gameover_buttons ["restart"].collidepoint (mx ,my ):
                         self .player_exit_retry =True 
                         self .player_exit_start =pygame .time .get_ticks ()
-                        self .player_exit_x =225 
+                        self .player_exit_x =112 
                         self .state ="player_exit"
                         return 
                     if self .gameover_buttons .get ("menu")and self .gameover_buttons ["menu"].collidepoint (mx ,my ):
@@ -1812,7 +1735,7 @@ class Game :
                         self .mode ="auto"if i ==0 else "fixed"
                         self .start_game ()
                         return 
-                if (mx -3705 )**2 +(my -135 )**2 <=(66 +30 )**2 :
+                if (mx -1852 )**2 +(my -67 )**2 <=(33 +15 )**2 :
                     self .state ="options"
                     return 
                 if getattr (self ,'menu_profile_rect',None )and self .menu_profile_rect .collidepoint (mx ,my ):
@@ -1835,9 +1758,9 @@ class Game :
                 if not self .profile_input_mode :
                     voci =self .profiles +["Nuovo profilo"]
                     for i ,voce in enumerate (voci ):
-                        y =510 +i *180 
+                        y =255 +i *90 
                         txt =self ._render_cached (self .font_large ,voce ,WHITE )
-                        rect =txt .get_rect (midleft =(SCREEN_WIDTH //2 -600 ,y ))
+                        rect =txt .get_rect (midleft =(SCREEN_WIDTH //2 -300 ,y ))
                         if rect .collidepoint (mx ,my ):
                             if i <len (self .profiles ):
                                 self .current_profile =self .profiles [i ]
@@ -1851,12 +1774,12 @@ class Game :
                             break 
                 elif self .profile_gender_mode :
                     for i ,key in enumerate (("F","M")):
-                        sx =SCREEN_WIDTH //2 -930 +i *1020 
-                        y =1110 
+                        sx =SCREEN_WIDTH //2 -465 +i *510 
+                        y =555 
                         prof_img =self .char_data [key ]["profile"]
                         img_w ,img_h =prof_img .get_size ()
-                        box_h =max (270 ,img_h +60 )
-                        box_rect =pygame .Rect (sx ,y ,840 ,box_h )
+                        box_h =max (135 ,img_h +30 )
+                        box_rect =pygame .Rect (sx ,y ,420 ,box_h )
                         if box_rect .collidepoint (mx ,my ):
                             self .reset_profile_config ()
                             self .config_gender =key 
@@ -1899,10 +1822,10 @@ class Game :
                     self .state ="options"
                     return 
             elif self .state =="options_auto":
-                sx =1080 
-                lw ,vw ,rw =90 ,120 ,90 
+                sx =540 
+                lw ,vw ,rw =45 ,60 ,45 
                 # Timeout
-                if sx -6 <=mx <=sx +lw +vw +rw +6 and 594 <=my <=708 :
+                if sx -3 <=mx <=sx +lw +vw +rw +3 and 297 <=my <=354 :
                     self .options_cursor =0 
                     if mx <sx +lw :
                         self .auto_timeout =max (3 ,self .auto_timeout -1 )
@@ -1910,7 +1833,7 @@ class Game :
                         self .auto_timeout =min (99 ,self .auto_timeout +1 )
                     self .save_profile_config ()
                     # Livello iniziale
-                elif sx -6 <=mx <=sx +lw +vw +rw +6 and 804 <=my <=918 :
+                elif sx -3 <=mx <=sx +lw +vw +rw +3 and 402 <=my <=459 :
                     self .options_cursor =1 
                     if mx <sx +lw :
                         self .initial_level =max (0 ,self .initial_level -1 )
@@ -1930,7 +1853,7 @@ class Game :
                             self .save_profile_config ()
                             break 
                             # CONFERMA
-                if SCREEN_WIDTH //2 -330 <=mx <=SCREEN_WIDTH //2 +330 and 1254 <=my <=1404 :
+                if SCREEN_WIDTH //2 -165 <=mx <=SCREEN_WIDTH //2 +165 and 627 <=my <=696 :
                     self .save_profile_config ()
                     self .state ="menu"
             elif self .state =="config_fixed":
@@ -1952,8 +1875,8 @@ class Game :
         pool_items =10 if pools_mode else 13 
 
         def row_y (r ):
-            base =[450 ,630 ,870 ,1110 ,1260 ,1410 ,1560 ,1650 ]
-            cell_h ,gap =90 ,18 
+            base =[225 ,315 ,435 ,555 ,630 ,705 ,780 ,825 ]
+            cell_h ,gap =45 ,9 
             subrows_pool =(pool_items +4 )//5 
             pool_extra =max (0 ,(subrows_pool -2 ))*(cell_h +gap )
             offset =0 
@@ -1995,17 +1918,17 @@ class Game :
 
             # Row 7: CONFERMA
             y7 =row_y (7 )
-            if SCREEN_WIDTH //2 -330 <=mx <=SCREEN_WIDTH //2 +330 and y7 <=my <=y7 +138 :
+            if SCREEN_WIDTH //2 -165 <=mx <=SCREEN_WIDTH //2 +165 and y7 <=my <=y7 +69 :
                 self .save_profile_config ()
                 self .state ="menu"
                 return 
 
                 # Row 0: operation selector
             y0 =row_y (0 )
-            if y0 -6 <=my <=y0 +108 :
+            if y0 -3 <=my <=y0 +54 :
                 for i in range (4 ):
-                    sx =1080 +i *510 
-                    if sx <=mx <=sx +474 :
+                    sx =540 +i *255 
+                    if sx <=mx <=sx +237 :
                         self .config_operation =ops [i ]
                         self .config =self .config_by_operation [self .config_operation ]
                         self .config_cursor_row =0 
@@ -2018,9 +1941,9 @@ class Game :
                 r =1 +ri 
                 y_base =row_y (r )
                 subrows =(pool_items +cols_u -1 )//cols_u 
-                cell_w ,cell_h =300 ,90 
-                gap =18 
-                grid_x =1080 
+                cell_w ,cell_h =150 ,45 
+                gap =9 
+                grid_x =540 
                 for sr in range (subrows ):
                     sy =y_base +sr *(cell_h +gap )
                     for c in range (cols_u ):
@@ -2028,7 +1951,7 @@ class Game :
                         if idx >=pool_items :
                             break 
                         sx =grid_x +c *(cell_w +gap )
-                        if sx -6 <=mx <=sx +cell_w +6 and sy -6 <=my <=sy +cell_h +6 :
+                        if sx -3 <=mx <=sx +cell_w +3 and sy -3 <=my <=sy +cell_h +3 :
                             self .config_cursor_row =r 
                             self .config_cursor_col =c 
                             self .config_cursor_subrow =sr 
@@ -2046,25 +1969,25 @@ class Game :
 
                             # Row 3: somma massima (addizione) / differenza positiva (sottrazione)
             y3 =row_y (3 )
-            if y3 -6 <=my <=y3 +108 :
+            if y3 -3 <=my <=y3 +54 :
                 if addition :
-                    lw =90 
-                    if 1080 -6 <=mx <=1080 +300 +6 :
+                    lw =45 
+                    if 540 -3 <=mx <=540 +150 +3 :
                         self .config_cursor_row =3 
                         self .config_cursor_col =0 
-                        if mx <1080 +lw :
+                        if mx <540 +lw :
                             self .config ["somma_massima"]=max (1 ,self .config ["somma_massima"]-1 )
-                        elif mx >=1080 +lw +120 :
+                        elif mx >=540 +lw +60 :
                             self .config ["somma_massima"]=min (199 ,self .config ["somma_massima"]+1 )
                         return 
                 elif subtraction :
-                    if 1050 <=mx <=1620 and y3 -12 <=my <=y3 +120 :
+                    if 525 <=mx <=810 and y3 -6 <=my <=y3 +60 :
                         self .config_cursor_row =3 
                         self .config_cursor_col =0 
                         self .config ["differenza_positiva"]=not self .config ["differenza_positiva"]
                         return 
                 elif division :
-                    if 1050 <=mx <=1620 and y3 -12 <=my <=y3 +120 :
+                    if 525 <=mx <=810 and y3 -6 <=my <=y3 +60 :
                         self .config_cursor_row =3 
                         self .config_cursor_col =0 
                         self .config ["risultato_intero"]=not self .config ["risultato_intero"]
@@ -2072,21 +1995,21 @@ class Game :
 
                         # Row 4: domande
             y4 =row_y (4 )
-            if y4 -6 <=my <=y4 +108 :
-                lw =90 
-                if 1080 -6 <=mx <=1080 +300 +6 :
+            if y4 -3 <=my <=y4 +54 :
+                lw =45 
+                if 540 -3 <=mx <=540 +150 +3 :
                     self .config_cursor_row =4 
                     self .config_cursor_col =0 
-                    if mx <1080 +lw :
+                    if mx <540 +lw :
                         self .config ["domande"]=max (1 ,self .config ["domande"]-1 )
-                    elif mx >=1080 +lw +120 :
+                    elif mx >=540 +lw +60 :
                         self .config ["domande"]=min (99 ,self .config ["domande"]+1 )
                     return 
 
                     # Row 5: swap
             y5 =row_y (5 )
-            if y5 -12 <=my <=y5 +120 :
-                if 1050 <=mx <=1620 and not subtraction :
+            if y5 -6 <=my <=y5 +60 :
+                if 525 <=mx <=810 and not subtraction :
                     self .config_cursor_row =5 
                     self .config_cursor_col =0 
                     self .config ["swap"]=not self .config ["swap"]
@@ -2094,14 +2017,14 @@ class Game :
 
                     # Row 6: timeout
             y6 =row_y (6 )
-            if y6 -6 <=my <=y6 +108 :
-                lw =90 
-                if 1080 -6 <=mx <=1080 +300 +6 :
+            if y6 -3 <=my <=y6 +54 :
+                lw =45 
+                if 540 -3 <=mx <=540 +150 +3 :
                     self .config_cursor_row =6 
                     self .config_cursor_col =0 
-                    if mx <1080 +lw :
+                    if mx <540 +lw :
                         self .config ["timeout"]=max (3 ,self .config ["timeout"]-1 )
-                    elif mx >=1080 +lw +120 :
+                    elif mx >=540 +lw +60 :
                         self .config ["timeout"]=min (99 ,self .config ["timeout"]+1 )
                     return 
 
@@ -2465,7 +2388,7 @@ class Game :
             duration =1200 
             progress =min (elapsed /duration ,1.0 )
             end_x =self .player_stand_x 
-            start_x =-300 if self .player_in_dir =="sx"else SCREEN_WIDTH +80 
+            start_x =-150 if self .player_in_dir =="sx"else SCREEN_WIDTH +40 
             self .character_entry_x =start_x +(end_x -start_x )*progress 
             if progress >=1.0 :
                 self .character_entry =False 
@@ -2516,7 +2439,7 @@ class Game :
                 elapsed =(pygame .time .get_ticks ()-self .question_start -self .boss_paused_ms )/1000.0 
                 self .boss_progress =min (elapsed /self .boss_timeout ,1.0 )
                 boss_w =self .boss_hit_img .get_width ()
-                fight_end =float (self .player_stand_x -boss_w +300 )if self .boss_end_x <self .player_stand_x else float (self .player_stand_x +self .char_w -300 )
+                fight_end =float (self .player_stand_x -boss_w +150 )if self .boss_end_x <self .player_stand_x else float (self .player_stand_x +self .char_w -150 )
                 self .boss_x =self .boss_end_x +(fight_end -self .boss_end_x )*self .boss_progress 
                 if not self .boss_hit :
                     self .boss_anim_frame =(pygame .time .get_ticks ()//self .boss_anim_speed )%len (self .boss_frames )
@@ -2554,7 +2477,7 @@ class Game :
             self .monster_progress =min (elapsed /self .timeout_limit ,1.0 )
             self .monster_x =self .monster_start_x +(self .monster_end_x -self .monster_start_x )*self .monster_progress 
             if self .monster_type =="fly":
-                self .monster_y_offset =90 *math .sin (self .monster_progress *6 *math .pi )
+                self .monster_y_offset =45 *math .sin (self .monster_progress *6 *math .pi )
             else :
                 self .monster_y_offset =0 
 
@@ -2602,15 +2525,6 @@ class Game :
             elif self .state in ("game","gameover"):
                 self .draw_gameover ()
 
-        if self .screen is self .display :
-            pygame .display .flip ()
-            return 
-        dw ,dh ,tw ,th ,ox ,oy =self ._fit_rect ()
-        if self ._scaled_cache is None or self ._scaled_cache .get_size ()!=(tw ,th ):
-            self ._scaled_cache =pygame .Surface ((tw ,th ))
-        pygame .transform .scale (self .screen ,(tw ,th ),self ._scaled_cache )
-        self .display .fill (BLACK )
-        self .display .blit (self ._scaled_cache ,(ox ,oy ))
         pygame .display .flip ()
 
     def _render_cached (self ,font ,text ,color ):
@@ -2668,71 +2582,71 @@ class Game :
         if self .profile_input_mode :
             if self .profile_gender_mode :
                 title =self ._render_cached (self .font_title ,"NUOVO PROFILO",GOLD )
-                rect =title .get_rect (center =(SCREEN_WIDTH //2 ,300 ))
+                rect =title .get_rect (center =(SCREEN_WIDTH //2 ,150 ))
                 self .screen .blit (title ,rect )
 
                 nome_label =self ._render_cached (self .font_medium ,f"Profilo: {self .profile_input }",WHITE )
-                rect =nome_label .get_rect (center =(SCREEN_WIDTH //2 ,600 ))
+                rect =nome_label .get_rect (center =(SCREEN_WIDTH //2 ,300 ))
                 self .screen .blit (nome_label ,rect )
 
                 prompt =self ._render_cached (self .font_large ,"Seleziona il personaggio:",WHITE )
-                rect =prompt .get_rect (center =(SCREEN_WIDTH //2 ,900 ))
+                rect =prompt .get_rect (center =(SCREEN_WIDTH //2 ,450 ))
                 self .screen .blit (prompt ,rect )
 
                 for i ,key in enumerate (("F","M")):
-                    sx =SCREEN_WIDTH //2 -930 +i *1020 
-                    y =1110 
+                    sx =SCREEN_WIDTH //2 -465 +i *510 
+                    y =555 
                     prof_img =self .char_data [key ]["profile"]
                     img_w ,img_h =prof_img .get_size ()
-                    box_h =max (270 ,img_h +60 )
-                    box_rect =pygame .Rect (sx ,y ,840 ,box_h )
+                    box_h =max (135 ,img_h +30 )
+                    box_rect =pygame .Rect (sx ,y ,420 ,box_h )
                     hovered =box_rect .collidepoint (mx ,my )
                     bg_col =(80 ,80 ,100 )if hovered else (60 ,60 ,70 )
-                    pygame .draw .rect (self .screen ,bg_col ,box_rect ,border_radius =24 )
+                    pygame .draw .rect (self .screen ,bg_col ,box_rect ,border_radius =12 )
                     if hovered :
-                        pygame .draw .rect (self .screen ,GOLD ,box_rect ,2 ,border_radius =24 )
+                        pygame .draw .rect (self .screen ,GOLD ,box_rect ,2 ,border_radius =12 )
                     if prof_img :
-                        cx =sx +(840 -img_w )//2 
+                        cx =sx +(420 -img_w )//2 
                         cy =y +(box_h -img_h )//2 
                         self .screen .blit (prof_img ,(cx ,cy ))
 
             else :
                 title =self ._render_cached (self .font_title ,"NUOVO PROFILO",GOLD )
-                rect =title .get_rect (center =(SCREEN_WIDTH //2 ,360 ))
+                rect =title .get_rect (center =(SCREEN_WIDTH //2 ,180 ))
                 self .screen .blit (title ,rect )
 
                 lbl =self ._render_cached (self .font_medium ,"Inserisci il nome:",WHITE )
-                rect =lbl .get_rect (center =(SCREEN_WIDTH //2 ,780 ))
+                rect =lbl .get_rect (center =(SCREEN_WIDTH //2 ,390 ))
                 self .screen .blit (lbl ,rect )
 
                 txt =self .profile_input +("|"if pygame .time .get_ticks ()%1000 <500 else " ")
                 surf =self ._render_cached (self .font_input ,txt ,WHITE )
-                box =surf .get_rect (center =(SCREEN_WIDTH //2 ,990 ))
-                bg =box .inflate (120 ,48 )
-                bg .width =max (bg .width ,600 )
-                pygame .draw .rect (self .screen ,(40 ,40 ,60 ),bg ,border_radius =24 )
-                pygame .draw .rect (self .screen ,(100 ,100 ,180 ),bg ,2 ,border_radius =24 )
+                box =surf .get_rect (center =(SCREEN_WIDTH //2 ,495 ))
+                bg =box .inflate (60 ,24 )
+                bg .width =max (bg .width ,300 )
+                pygame .draw .rect (self .screen ,(40 ,40 ,60 ),bg ,border_radius =12 )
+                pygame .draw .rect (self .screen ,(100 ,100 ,180 ),bg ,2 ,border_radius =12 )
                 self .screen .blit (surf ,box )
 
                 if self .profile_input :
                     hint =self ._render_cached (self .font_small ,"",GRAY )
-                    rect =hint .get_rect (center =(SCREEN_WIDTH //2 ,1140 ))
+                    rect =hint .get_rect (center =(SCREEN_WIDTH //2 ,570 ))
                     self .screen .blit (hint ,rect )
                 back =self ._render_cached (self .font_small ,"",GRAY )
-                rect =back .get_rect (center =(SCREEN_WIDTH //2 ,SCREEN_HEIGHT -180 ))
+                rect =back .get_rect (center =(SCREEN_WIDTH //2 ,SCREEN_HEIGHT -90 ))
                 self .screen .blit (back ,rect )
             return 
 
         title =self ._render_cached (self .font_title ,"SELEZIONA PROFILO",GOLD )
-        rect =title .get_rect (center =(SCREEN_WIDTH //2 ,240 ))
+        rect =title .get_rect (center =(SCREEN_WIDTH //2 ,120 ))
         self .screen .blit (title ,rect )
 
         voci =self .profiles +["Nuovo profilo"]
         nuovo_idx =len (self .profiles )
         for i ,voce in enumerate (voci ):
-            y =510 +i *180 
+            y =255 +i *90 
             txt =self ._render_cached (self .font_large ,voce ,WHITE )
-            rect =txt .get_rect (midleft =(SCREEN_WIDTH //2 -600 ,y ))
+            rect =txt .get_rect (midleft =(SCREEN_WIDTH //2 -300 ,y ))
             if rect .collidepoint (mx ,my ):
                 self .profile_cursor =i 
                 txt =self ._render_cached (self .font_large ,voce ,GOLD )
@@ -2754,11 +2668,11 @@ class Game :
         self .screen .blit (overlay ,(0 ,0 ))
 
         title =self ._render_cached (self .font_title ,"MATH WIZARD",GOLD )
-        rect =title .get_rect (center =(SCREEN_WIDTH //2 ,300 ))
+        rect =title .get_rect (center =(SCREEN_WIDTH //2 ,150 ))
         self .screen .blit (title ,rect )
 
         subtitle =self ._render_cached (self .font_medium ,"Impara divertendoti!",WHITE )
-        rect =subtitle .get_rect (center =(SCREEN_WIDTH //2 ,480 ))
+        rect =subtitle .get_rect (center =(SCREEN_WIDTH //2 ,240 ))
         self .screen .blit (subtitle ,rect )
 
         opzioni =[
@@ -2767,30 +2681,30 @@ class Game :
         ]
         self .menu_btn_rects =[ ]
         for i ,(tit ,desc )in enumerate (opzioni ):
-            y =840 +i *300 
+            y =420 +i *150 
             opt =self ._render_cached (self .font_large ,tit ,WHITE )
-            rect =opt .get_rect (midleft =(SCREEN_WIDTH //2 -900 ,y ))
-            hit =rect .inflate (60 ,30 )
+            rect =opt .get_rect (midleft =(SCREEN_WIDTH //2 -450 ,y ))
+            hit =rect .inflate (30 ,15 )
             self .menu_btn_rects .append (hit )
             if hit .collidepoint (mx ,my ):
                 self .menu_cursor =i 
                 opt =self ._render_cached (self .font_large ,tit ,GOLD )
             self .screen .blit (opt ,rect )
             desc_surf =self ._render_cached (self .font_small ,desc ,GRAY )
-            rect =desc_surf .get_rect (midleft =(SCREEN_WIDTH //2 -900 ,y +120 ))
+            rect =desc_surf .get_rect (midleft =(SCREEN_WIDTH //2 -450 ,y +60 ))
             self .screen .blit (desc_surf ,rect )
 
             # gear icon
-        cx ,cy =SCREEN_WIDTH -135 ,135 
+        cx ,cy =SCREEN_WIDTH -67 ,67 
         gear_scaled =self .gear_img 
         rect =gear_scaled .get_rect (center =(cx ,cy ))
         if rect .collidepoint (mx ,my ):
-            pygame .draw .rect (self .screen ,GOLD ,rect .inflate (24 ,24 ),2 ,border_radius =18 )
+            pygame .draw .rect (self .screen ,GOLD ,rect .inflate (12 ,12 ),2 ,border_radius =9 )
         self .screen .blit (gear_scaled ,rect )
 
         profile_label =self ._render_cached (self .font_small ,f"Profilo: {self .current_profile }",GRAY )
-        rect =profile_label .get_rect (midleft =(SCREEN_WIDTH //2 -900 ,1650 ))
-        self .menu_profile_rect =rect .inflate (60 ,30 )
+        rect =profile_label .get_rect (midleft =(SCREEN_WIDTH //2 -450 ,825 ))
+        self .menu_profile_rect =rect .inflate (30 ,15 )
         if self .menu_profile_rect .collidepoint (mx ,my ):
             profile_label =self ._render_cached (self .font_small ,f"Profilo: {self .current_profile }",GOLD )
         self .screen .blit (profile_label ,rect )
@@ -2798,30 +2712,30 @@ class Game :
         self .update_link_rect =None 
         if self .update_available :
             upd_txt =self ._render_cached (self .font_small ,"E' disponibile una nuova versione di Math Wizard!",GOLD )
-            upd_rect =upd_txt .get_rect (center =(SCREEN_WIDTH //2 ,SCREEN_HEIGHT -170 ))
-            self .update_link_rect =upd_rect .inflate (60 ,30 )
+            upd_rect =upd_txt .get_rect (center =(SCREEN_WIDTH //2 ,SCREEN_HEIGHT -85 ))
+            self .update_link_rect =upd_rect .inflate (30 ,15 )
             if self .update_link_rect .collidepoint (mx ,my ):
                 upd_txt =self ._render_cached (self .font_small ,"E' disponibile una nuova versione di Math Wizard!",WHITE )
             self .screen .blit (upd_txt ,upd_rect )
 
         exit_txt =self ._render_cached (self .font_small ,"ESCI",WHITE )
-        exit_rect =exit_txt .get_rect (center =(SCREEN_WIDTH //2 ,SCREEN_HEIGHT -48 ))
-        self .menu_exit_rect =exit_rect .inflate (60 ,30 )
+        exit_rect =exit_txt .get_rect (center =(SCREEN_WIDTH //2 ,SCREEN_HEIGHT -24 ))
+        self .menu_exit_rect =exit_rect .inflate (30 ,15 )
         if self .menu_exit_rect .collidepoint (mx ,my ):
             exit_txt =self ._render_cached (self .font_small ,"ESCI",GOLD )
         self .screen .blit (exit_txt ,exit_rect )
 
         version_surf =self ._render_cached (self .font_tiny ,f"v{self .version }",GRAY )
-        rect =version_surf .get_rect (bottomright =(SCREEN_WIDTH -24 ,SCREEN_HEIGHT -24 ))
+        rect =version_surf .get_rect (bottomright =(SCREEN_WIDTH -12 ,SCREEN_HEIGHT -12 ))
         self .screen .blit (version_surf ,rect )
 
-        icon_size =90 
-        icon_x =48 
+        icon_size =45 
+        icon_x =24 
         coffee_txt =self ._render_cached (self .font_small ,"Offrimi un caffè",WHITE )
-        coffee_rect =coffee_txt .get_rect (bottomleft =(icon_x +icon_size +30 ,SCREEN_HEIGHT -48 ))
+        coffee_rect =coffee_txt .get_rect (bottomleft =(icon_x +icon_size +15 ,SCREEN_HEIGHT -24 ))
         if coffee_rect .collidepoint (mx ,my ):
             coffee_txt =self ._render_cached (self .font_small ,"Offrimi un caffè",GOLD )
-            coffee_rect =coffee_txt .get_rect (bottomleft =(icon_x +icon_size +30 ,SCREEN_HEIGHT -48 ))
+            coffee_rect =coffee_txt .get_rect (bottomleft =(icon_x +icon_size +15 ,SCREEN_HEIGHT -24 ))
         coffee_icon_rect =pygame .Rect (icon_x ,coffee_rect .centery -icon_size //2 ,icon_size ,icon_size )
         self .blit_link_icon (self .kofi_icon ,coffee_icon_rect )
         self .screen .blit (coffee_txt ,coffee_rect )
@@ -2835,17 +2749,17 @@ class Game :
         self .screen .blit (overlay ,(0 ,0 ))
 
         title =self ._render_cached (self .font_title ,"OPZIONI",GOLD )
-        rect =title .get_rect (center =(SCREEN_WIDTH //2 ,240 ))
+        rect =title .get_rect (center =(SCREEN_WIDTH //2 ,120 ))
         self .screen .blit (title ,rect )
 
         voci =["Storia","Allenamento","Elimina profilo attuale"]
         self .options_btn_rects =[ ]
         for i ,voce in enumerate (voci ):
-            y =660 +i *240 
+            y =330 +i *120 
             color =RED if i ==2 else WHITE 
             txt =self ._render_cached (self .font_large ,voce ,color )
-            rect =txt .get_rect (center =(SCREEN_WIDTH //2 ,y +63 ))
-            hit =rect .inflate (60 ,30 )
+            rect =txt .get_rect (center =(SCREEN_WIDTH //2 ,y +31 ))
+            hit =rect .inflate (30 ,15 )
             self .options_btn_rects .append (hit )
             if hit .collidepoint (mx ,my ):
                 self .options_cursor =i 
@@ -2858,37 +2772,37 @@ class Game :
         "Development, Beta testing: SL, GA, WF",
         "Graphics: Elena",
         ]
-        y =SCREEN_HEIGHT -234 -len (credits )*66 
+        y =SCREEN_HEIGHT -117 -len (credits )*33 
         for line in credits :
             surf =self ._render_cached (self .font_tiny ,line ,GRAY )
-            rect =surf .get_rect (bottomright =(SCREEN_WIDTH -60 ,y ))
+            rect =surf .get_rect (bottomright =(SCREEN_WIDTH -30 ,y ))
             self .screen .blit (surf ,rect )
-            y +=66 
+            y +=33 
 
-        icon_size =90 
+        icon_size =45 
         coffee_txt =self ._render_cached (self .font_small ,"Offrimi un caffè",WHITE )
-        coffee_rect =coffee_txt .get_rect (bottomright =(SCREEN_WIDTH -60 ,SCREEN_HEIGHT -144 ))
+        coffee_rect =coffee_txt .get_rect (bottomright =(SCREEN_WIDTH -30 ,SCREEN_HEIGHT -72 ))
         if coffee_rect .collidepoint (mx ,my ):
             coffee_txt =self ._render_cached (self .font_small ,"Offrimi un caffè",GOLD )
-            coffee_rect =coffee_txt .get_rect (bottomright =(SCREEN_WIDTH -60 ,SCREEN_HEIGHT -144 ))
-        coffee_icon_rect =pygame .Rect (coffee_rect .left -24 -icon_size ,coffee_rect .centery -icon_size //2 ,icon_size ,icon_size )
+            coffee_rect =coffee_txt .get_rect (bottomright =(SCREEN_WIDTH -30 ,SCREEN_HEIGHT -72 ))
+        coffee_icon_rect =pygame .Rect (coffee_rect .left -12 -icon_size ,coffee_rect .centery -icon_size //2 ,icon_size ,icon_size )
         self .blit_link_icon (self .kofi_icon ,coffee_icon_rect )
         self .screen .blit (coffee_txt ,coffee_rect )
         self .coffee_options_rect =coffee_rect .union (coffee_icon_rect )
 
         link_txt =self ._render_cached (self .font_small ,"Progetto Github",WHITE )
-        link_rect =link_txt .get_rect (bottomright =(SCREEN_WIDTH -60 ,SCREEN_HEIGHT -30 ))
+        link_rect =link_txt .get_rect (bottomright =(SCREEN_WIDTH -30 ,SCREEN_HEIGHT -15 ))
         if link_rect .collidepoint (mx ,my ):
             link_txt =self ._render_cached (self .font_small ,"Progetto Github",GOLD )
-            link_rect =link_txt .get_rect (bottomright =(SCREEN_WIDTH -60 ,SCREEN_HEIGHT -30 ))
-        link_icon_rect =pygame .Rect (link_rect .left -24 -icon_size ,link_rect .centery -icon_size //2 ,icon_size ,icon_size )
+            link_rect =link_txt .get_rect (bottomright =(SCREEN_WIDTH -30 ,SCREEN_HEIGHT -15 ))
+        link_icon_rect =pygame .Rect (link_rect .left -12 -icon_size ,link_rect .centery -icon_size //2 ,icon_size ,icon_size )
         self .blit_link_icon (self .git_icon ,link_icon_rect )
         self .screen .blit (link_txt ,link_rect )
         self .repo_link_rect =link_rect .union (link_icon_rect )
 
         back_txt =self ._render_cached (self .font_small ,"Indietro",WHITE )
-        back_rect =back_txt .get_rect (center =(SCREEN_WIDTH //2 ,SCREEN_HEIGHT -60 ))
-        self .options_back_rect =back_rect .inflate (60 ,30 )
+        back_rect =back_txt .get_rect (center =(SCREEN_WIDTH //2 ,SCREEN_HEIGHT -30 ))
+        self .options_back_rect =back_rect .inflate (30 ,15 )
         if self .options_back_rect .collidepoint (mx ,my ):
             back_txt =self ._render_cached (self .font_small ,"Indietro",GOLD )
         self .screen .blit (back_txt ,back_rect )
@@ -2901,27 +2815,27 @@ class Game :
         self .screen .blit (overlay ,(0 ,0 ))
 
         title =self ._render_cached (self .font_title ,"ELIMINA PROFILO",GOLD )
-        rect =title .get_rect (center =(SCREEN_WIDTH //2 ,400 ))
+        rect =title .get_rect (center =(SCREEN_WIDTH //2 ,200 ))
         self .screen .blit (title ,rect )
 
         msg =self ._render_cached (self .font_medium ,f"Vuoi eliminare il profilo \"{self .current_profile }\"?",WHITE )
-        rect =msg .get_rect (center =(SCREEN_WIDTH //2 ,800 ))
+        rect =msg .get_rect (center =(SCREEN_WIDTH //2 ,400 ))
         self .screen .blit (msg ,rect )
 
         warn =self ._render_cached (self .font_small ,"Sessioni, progressi e configurazioni verranno cancellati definitivamente.",RED )
-        rect =warn .get_rect (center =(SCREEN_WIDTH //2 ,1000 ))
+        rect =warn .get_rect (center =(SCREEN_WIDTH //2 ,500 ))
         self .screen .blit (warn ,rect )
 
         yes_txt =self ._render_cached (self .font_large ,"Sì",WHITE )
-        yes_rect =yes_txt .get_rect (center =(SCREEN_WIDTH //2 -500 ,1300 ))
-        self .confirm_yes_rect =yes_rect .inflate (80 ,40 )
+        yes_rect =yes_txt .get_rect (center =(SCREEN_WIDTH //2 -250 ,650 ))
+        self .confirm_yes_rect =yes_rect .inflate (40 ,20 )
         if self .confirm_yes_rect .collidepoint (mx ,my ):
             yes_txt =self ._render_cached (self .font_large ,"Sì",GOLD )
         self .screen .blit (yes_txt ,yes_rect )
 
         no_txt =self ._render_cached (self .font_large ,"No",WHITE )
-        no_rect =no_txt .get_rect (center =(SCREEN_WIDTH //2 +500 ,1300 ))
-        self .confirm_no_rect =no_rect .inflate (80 ,40 )
+        no_rect =no_txt .get_rect (center =(SCREEN_WIDTH //2 +250 ,650 ))
+        self .confirm_no_rect =no_rect .inflate (40 ,20 )
         if self .confirm_no_rect .collidepoint (mx ,my ):
             no_txt =self ._render_cached (self .font_large ,"No",GOLD )
         self .screen .blit (no_txt ,no_rect )
@@ -2934,77 +2848,77 @@ class Game :
         self .screen .blit (overlay ,(0 ,0 ))
 
         title =self ._render_cached (self .font_title ,"OPZIONI - STORIA",GOLD )
-        rect =title .get_rect (center =(SCREEN_WIDTH //2 ,240 ))
+        rect =title .get_rect (center =(SCREEN_WIDTH //2 ,120 ))
         self .screen .blit (title ,rect )
 
         # Timeout
-        y =600 
+        y =300 
         label_t =self ._render_cached (self .font_tiny ,"Timeout (secondi)",WHITE )
-        rect =label_t .get_rect (midleft =(240 ,y +51 ))
+        rect =label_t .get_rect (midleft =(120 ,y +25 ))
         self .screen .blit (label_t ,rect )
         focused =self .options_cursor ==0 
-        sx =1080 
-        lw ,vw ,rw =90 ,120 ,90 
-        minus_rect =pygame .Rect (sx ,y ,lw ,102 )
-        plus_rect =pygame .Rect (sx +lw +vw ,y ,rw ,102 )
+        sx =540 
+        lw ,vw ,rw =45 ,60 ,45 
+        minus_rect =pygame .Rect (sx ,y ,lw ,51 )
+        plus_rect =pygame .Rect (sx +lw +vw ,y ,rw ,51 )
         hover_minus =minus_rect .collidepoint (mx ,my )
         hover_plus =plus_rect .collidepoint (mx ,my )
         if focused :
-            pygame .draw .rect (self .screen ,SEL_BLUE ,(sx -6 ,y -6 ,lw +vw +rw +12 ,114 ),0 ,border_radius =12 )
-        pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_minus else (70 ,70 ,80 ),minus_rect ,border_radius =12 )
-        pygame .draw .rect (self .screen ,(40 ,40 ,50 ),(sx +lw ,y ,vw ,102 ))
-        pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_plus else (70 ,70 ,80 ),plus_rect ,border_radius =12 )
+            pygame .draw .rect (self .screen ,SEL_BLUE ,(sx -3 ,y -3 ,lw +vw +rw +6 ,57 ),0 ,border_radius =6 )
+        pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_minus else (70 ,70 ,80 ),minus_rect ,border_radius =6 )
+        pygame .draw .rect (self .screen ,(40 ,40 ,50 ),(sx +lw ,y ,vw ,51 ))
+        pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_plus else (70 ,70 ,80 ),plus_rect ,border_radius =6 )
         if hover_minus :
             pygame .draw .rect (self .screen ,GOLD ,minus_rect ,2 ,border_radius =12 )
         if hover_plus :
             pygame .draw .rect (self .screen ,GOLD ,plus_rect ,2 ,border_radius =12 )
         minus =self ._render_cached (self .font_tiny ,"-",WHITE )
         plus =self ._render_cached (self .font_tiny ,"+",WHITE )
-        self .screen .blit (minus ,minus .get_rect (center =(sx +lw //2 ,y +51 )))
-        self .screen .blit (plus ,plus .get_rect (center =(sx +lw +vw +rw //2 ,y +51 )))
+        self .screen .blit (minus ,minus .get_rect (center =(sx +lw //2 ,y +25 )))
+        self .screen .blit (plus ,plus .get_rect (center =(sx +lw +vw +rw //2 ,y +25 )))
         t_surf =self ._render_cached (self .font_tiny ,str (self .auto_timeout ),WHITE )
-        self .screen .blit (t_surf ,t_surf .get_rect (center =(sx +lw +vw //2 ,y +51 )))
+        self .screen .blit (t_surf ,t_surf .get_rect (center =(sx +lw +vw //2 ,y +25 )))
 
         # Livello iniziale
-        y =810 
+        y =405 
         label_l =self ._render_cached (self .font_tiny ,"Livello iniziale",WHITE )
-        rect =label_l .get_rect (midleft =(240 ,y +51 ))
+        rect =label_l .get_rect (midleft =(120 ,y +25 ))
         self .screen .blit (label_l ,rect )
         focused =self .options_cursor ==1 
-        minus_rect2 =pygame .Rect (sx ,y ,lw ,102 )
-        plus_rect2 =pygame .Rect (sx +lw +vw ,y ,rw ,102 )
+        minus_rect2 =pygame .Rect (sx ,y ,lw ,51 )
+        plus_rect2 =pygame .Rect (sx +lw +vw ,y ,rw ,51 )
         hover_minus2 =minus_rect2 .collidepoint (mx ,my )
         hover_plus2 =plus_rect2 .collidepoint (mx ,my )
         if focused :
-            pygame .draw .rect (self .screen ,SEL_BLUE ,(sx -6 ,y -6 ,lw +vw +rw +12 ,114 ),0 ,border_radius =12 )
-        pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_minus2 else (70 ,70 ,80 ),minus_rect2 ,border_radius =12 )
-        pygame .draw .rect (self .screen ,(40 ,40 ,50 ),(sx +lw ,y ,vw ,102 ))
-        pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_plus2 else (70 ,70 ,80 ),plus_rect2 ,border_radius =12 )
+            pygame .draw .rect (self .screen ,SEL_BLUE ,(sx -3 ,y -3 ,lw +vw +rw +6 ,57 ),0 ,border_radius =6 )
+        pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_minus2 else (70 ,70 ,80 ),minus_rect2 ,border_radius =6 )
+        pygame .draw .rect (self .screen ,(40 ,40 ,50 ),(sx +lw ,y ,vw ,51 ))
+        pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_plus2 else (70 ,70 ,80 ),plus_rect2 ,border_radius =6 )
         if hover_minus2 :
-            pygame .draw .rect (self .screen ,GOLD ,minus_rect2 ,2 ,border_radius =12 )
+            pygame .draw .rect (self .screen ,GOLD ,minus_rect2 ,2 ,border_radius =6 )
         if hover_plus2 :
-            pygame .draw .rect (self .screen ,GOLD ,plus_rect2 ,2 ,border_radius =12 )
+            pygame .draw .rect (self .screen ,GOLD ,plus_rect2 ,2 ,border_radius =6 )
         minus =self ._render_cached (self .font_tiny ,"-",WHITE )
         plus =self ._render_cached (self .font_tiny ,"+",WHITE )
-        self .screen .blit (minus ,minus .get_rect (center =(sx +lw //2 ,y +51 )))
-        self .screen .blit (plus ,plus .get_rect (center =(sx +lw +vw +rw //2 ,y +51 )))
+        self .screen .blit (minus ,minus .get_rect (center =(sx +lw //2 ,y +25 )))
+        self .screen .blit (plus ,plus .get_rect (center =(sx +lw +vw +rw //2 ,y +25 )))
         l_surf =self ._render_cached (self .font_tiny ,str (self .initial_level +1 ),WHITE )
-        self .screen .blit (l_surf ,l_surf .get_rect (center =(sx +lw +vw //2 ,y +51 )))
+        self .screen .blit (l_surf ,l_surf .get_rect (center =(sx +lw +vw //2 ,y +25 )))
         prog =self .story_progress .get (self .config_story_operation ,0 )
         prog_surf =self ._render_cached (self .font_tiny ,f"(max {max (1 ,prog +1 )})",GRAY )
-        self .screen .blit (prog_surf ,prog_surf .get_rect (midleft =(sx +lw +vw +rw +30 ,y +51 )))
+        self .screen .blit (prog_surf ,prog_surf .get_rect (midleft =(sx +lw +vw +rw +15 ,y +25 )))
 
         # Operazione
-        y =1020 
+        y =510 
         label_o =self ._render_cached (self .font_tiny ,"Operazione",WHITE )
-        rect =label_o .get_rect (midleft =(240 ,y +51 ))
+        rect =label_o .get_rect (midleft =(120 ,y +25 ))
         self .screen .blit (label_o ,rect )
         ops_list =[("moltiplicazione","Moltiplicazione"),("addizione","Addizione"),("sottrazione","Sottrazione"),("divisione","Divisione")]
-        bx =1080 
+        bx =540 
         self .opzioni_auto_op_buttons =[]
         for op_key ,op_label in ops_list :
-            bw =435 
-            bh =102 
+            bw =217 
+            bh =51 
             btn_rect =pygame .Rect (bx ,y ,bw ,bh )
             selected =self .config_story_operation ==op_key 
             hovered =btn_rect .collidepoint (mx ,my )
@@ -3015,28 +2929,28 @@ class Game :
             else :
                 bg_col =(70 ,70 ,80 )
             if selected or hovered :
-                pygame .draw .rect (self .screen ,GOLD if hovered else (100 ,180 ,255 ),btn_rect ,2 if hovered else 1 ,border_radius =12 )
-            pygame .draw .rect (self .screen ,bg_col ,btn_rect ,border_radius =12 )
+                pygame .draw .rect (self .screen ,GOLD if hovered else (100 ,180 ,255 ),btn_rect ,2 if hovered else 1 ,border_radius =6 )
+            pygame .draw .rect (self .screen ,bg_col ,btn_rect ,border_radius =6 )
             surf =self ._render_cached (self .font_tiny ,op_label ,WHITE )
             self .screen .blit (surf ,surf .get_rect (center =btn_rect .center ))
             self .opzioni_auto_op_buttons .append (btn_rect )
-            bx +=bw +36 
+            bx +=bw +18 
         if self .options_cursor ==2 :
             ops_keys =["moltiplicazione","addizione","sottrazione","divisione"]
             sel_idx =ops_keys .index (self .config_story_operation )
             focus_rect =self .opzioni_auto_op_buttons [sel_idx ].inflate (12 ,12 )
-            pygame .draw .rect (self .screen ,(255 ,255 ,100 ),focus_rect ,3 ,border_radius =18 )
+            pygame .draw .rect (self .screen ,(255 ,255 ,100 ),focus_rect ,3 ,border_radius =9 )
 
             # CONFERMA
-        y_conf =1260 
-        conf_rect =pygame .Rect (SCREEN_WIDTH //2 -330 ,y_conf ,660 ,138 )
+        y_conf =630 
+        conf_rect =pygame .Rect (SCREEN_WIDTH //2 -165 ,y_conf ,330 ,69 )
         hover_conf =conf_rect .collidepoint (mx ,my )
         bg_conf =(50 ,140 ,50 )if hover_conf else (40 ,120 ,40 )
         if hover_conf :
-            pygame .draw .rect (self .screen ,GOLD ,(SCREEN_WIDTH //2 -336 ,y_conf -6 ,672 ,150 ),3 ,border_radius =24 )
-        pygame .draw .rect (self .screen ,bg_conf ,conf_rect ,border_radius =24 )
+            pygame .draw .rect (self .screen ,GOLD ,(SCREEN_WIDTH //2 -168 ,y_conf -3 ,336 ,75 ),3 ,border_radius =12 )
+        pygame .draw .rect (self .screen ,bg_conf ,conf_rect ,border_radius =12 )
         conf_txt =self ._render_cached (self .font_tiny ,"CONFERMA",WHITE )
-        rect_c =conf_txt .get_rect (center =(SCREEN_WIDTH //2 ,y_conf +69 ))
+        rect_c =conf_txt .get_rect (center =(SCREEN_WIDTH //2 ,y_conf +34 ))
         self .screen .blit (conf_txt ,rect_c )
 
     def draw_config (self ):
@@ -3047,7 +2961,7 @@ class Game :
         self .screen .blit (overlay ,(0 ,0 ))
 
         title =self ._render_cached (self .font_title ,"OPZIONI - ALLENAMENTO",GOLD )
-        rect =title .get_rect (center =(SCREEN_WIDTH //2 ,240 ))
+        rect =title .get_rect (center =(SCREEN_WIDTH //2 ,120 ))
         self .screen .blit (title ,rect )
 
         ops =["moltiplicazione","addizione","sottrazione","divisione"]
@@ -3057,9 +2971,9 @@ class Game :
         division =self .config_operation =="divisione"
 
         def row_y (r ):
-            base =[450 ,630 ,870 ,1110 ,1260 ,1410 ,1560 ,1650 ]
+            base =[225 ,315 ,435 ,555 ,630 ,705 ,780 ,825 ]
             pools_mode =addition or subtraction or division 
-            cell_h ,gap =90 ,18 
+            cell_h ,gap =45 ,9 
             pool_items =10 if pools_mode else 13 
             subrows_pool =(pool_items +4 )//5 
             pool_extra =max (0 ,(subrows_pool -2 ))*(cell_h +gap )
@@ -3074,20 +2988,20 @@ class Game :
         row =0 
         y =row_y (row )
         label_op =self ._render_cached (self .font_tiny ,"Operazione",WHITE )
-        rect =label_op .get_rect (midleft =(240 ,y +51 ))
+        rect =label_op .get_rect (midleft =(120 ,y +25 ))
         self .screen .blit (label_op ,rect )
         opzioni_op =["Moltiplicazione","Addizione","Sottrazione","Divisione"]
         for i ,nome in enumerate (opzioni_op ):
-            sx =1080 +i *510 
+            sx =540 +i *255 
             sel =i ==op_idx 
-            btn_rect =pygame .Rect (sx ,y ,474 ,102 )
+            btn_rect =pygame .Rect (sx ,y ,237 ,51 )
             hovered =btn_rect .collidepoint (mx ,my )
             bg_col =(100 ,150 ,220 )if sel and hovered else SEL_BLUE if sel else (80 ,80 ,90 )if hovered else (60 ,60 ,70 )
-            pygame .draw .rect (self .screen ,bg_col ,btn_rect ,border_radius =12 )
+            pygame .draw .rect (self .screen ,bg_col ,btn_rect ,border_radius =6 )
             if hovered :
-                pygame .draw .rect (self .screen ,GOLD ,btn_rect ,2 ,border_radius =12 )
+                pygame .draw .rect (self .screen ,GOLD ,btn_rect ,2 ,border_radius =6 )
             txt =self ._render_cached (self .font_tiny ,nome ,WHITE )
-            rect_t =txt .get_rect (center =(sx +237 ,y +51 ))
+            rect_t =txt .get_rect (center =(sx +118 ,y +25 ))
             self .screen .blit (txt ,rect_t )
 
             # Row 1-2: Pool A / Pool B (unified 5-col grid)
@@ -3099,14 +3013,14 @@ class Game :
             row =1 +ri 
             y_base =row_y (row )
             label =self ._render_cached (self .font_tiny ,labels [ri ],WHITE )
-            rect =label .get_rect (midleft =(240 ,y_base +51 ))
+            rect =label .get_rect (midleft =(120 ,y_base +25 ))
             self .screen .blit (label ,rect )
 
             items =10 if pools_mode else 13 
             subrows =(items +cols_u -1 )//cols_u 
-            cell_w ,cell_h =300 ,90 
-            gap =18 
-            grid_x =1080 
+            cell_w ,cell_h =150 ,45 
+            gap =9 
+            grid_x =540 
             for sr in range (subrows ):
                 sy =y_base +sr *(cell_h +gap )
                 for c in range (cols_u ):
@@ -3125,9 +3039,9 @@ class Game :
                     cell_rect =pygame .Rect (sx ,sy ,cell_w ,cell_h )
                     hovered_cell =cell_rect .collidepoint (mx ,my )
                     bg_col =(100 ,150 ,220 )if selected and hovered_cell else SEL_BLUE if selected else (80 ,80 ,90 )if hovered_cell else (60 ,60 ,70 )
-                    pygame .draw .rect (self .screen ,bg_col ,cell_rect ,border_radius =12 )
+                    pygame .draw .rect (self .screen ,bg_col ,cell_rect ,border_radius =6 )
                     if hovered_cell :
-                        pygame .draw .rect (self .screen ,GOLD ,cell_rect ,2 ,border_radius =12 )
+                        pygame .draw .rect (self .screen ,GOLD ,cell_rect ,2 ,border_radius =6 )
                     t =self ._render_cached (self .font_tiny ,txt ,WHITE )
                     rt =t .get_rect (center =(sx +cell_w //2 ,sy +cell_h //2 ))
                     self .screen .blit (t ,rt )
@@ -3137,146 +3051,146 @@ class Game :
         y =row_y (row )
         if addition :
             label_s =self ._render_cached (self .font_tiny ,"Somma massima",WHITE )
-            rect =label_s .get_rect (midleft =(240 ,y +51 ))
+            rect =label_s .get_rect (midleft =(120 ,y +25 ))
             self .screen .blit (label_s ,rect )
-            sx =1080 
-            lw ,vw ,rw =90 ,120 ,90 
-            minus_rect =pygame .Rect (sx ,y ,lw ,102 )
-            plus_rect =pygame .Rect (sx +lw +vw ,y ,rw ,102 )
+            sx =540 
+            lw ,vw ,rw =45 ,60 ,45 
+            minus_rect =pygame .Rect (sx ,y ,lw ,51 )
+            plus_rect =pygame .Rect (sx +lw +vw ,y ,rw ,51 )
             hover_minus =minus_rect .collidepoint (mx ,my )
             hover_plus =plus_rect .collidepoint (mx ,my )
-            pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_minus else (70 ,70 ,80 ),minus_rect ,border_radius =12 )
-            pygame .draw .rect (self .screen ,(40 ,40 ,50 ),(sx +lw ,y ,vw ,102 ))
-            pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_plus else (70 ,70 ,80 ),plus_rect ,border_radius =12 )
-            if hover_minus :
-                pygame .draw .rect (self .screen ,GOLD ,minus_rect ,2 ,border_radius =12 )
-            if hover_plus :
-                pygame .draw .rect (self .screen ,GOLD ,plus_rect ,2 ,border_radius =12 )
+            pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_minus else (70 ,70 ,80 ),minus_rect ,border_radius =6 )
+            pygame .draw .rect (self .screen ,(40 ,40 ,50 ),(sx +lw ,y ,vw ,51 ))
+            pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_plus else (70 ,70 ,80 ),plus_rect ,border_radius =6 )
+        if hover_minus :
+            pygame .draw .rect (self .screen ,GOLD ,minus_rect ,2 ,border_radius =6 )
+        if hover_plus :
+            pygame .draw .rect (self .screen ,GOLD ,plus_rect ,2 ,border_radius =6 )
             minus =self ._render_cached (self .font_tiny ,"-",WHITE )
             plus =self ._render_cached (self .font_tiny ,"+",WHITE )
-            self .screen .blit (minus ,minus .get_rect (center =(sx +lw //2 ,y +51 )))
-            self .screen .blit (plus ,plus .get_rect (center =(sx +lw +vw +rw //2 ,y +51 )))
+            self .screen .blit (minus ,minus .get_rect (center =(sx +lw //2 ,y +25 )))
+            self .screen .blit (plus ,plus .get_rect (center =(sx +lw +vw +rw //2 ,y +25 )))
             s_surf =self ._render_cached (self .font_tiny ,str (self .config ["somma_massima"]),WHITE )
-            self .screen .blit (s_surf ,s_surf .get_rect (center =(sx +lw +vw //2 ,y +51 )))
+            self .screen .blit (s_surf ,s_surf .get_rect (center =(sx +lw +vw //2 ,y +25 )))
         elif subtraction :
             label_d =self ._render_cached (self .font_tiny ,"Differenza positiva",WHITE )
-            rect =label_d .get_rect (midleft =(240 ,y +51 ))
+            rect =label_d .get_rect (midleft =(120 ,y +25 ))
             self .screen .blit (label_d ,rect )
-            toggle_rect =pygame .Rect (1056 ,y ,558 ,108 )
+            toggle_rect =pygame .Rect (528 ,y ,279 ,54 )
             hover_toggle =toggle_rect .collidepoint (mx ,my )
             bg_d =(100 ,150 ,220 )if self .config ["differenza_positiva"]and hover_toggle else SEL_BLUE if self .config ["differenza_positiva"]else (80 ,80 ,90 )if hover_toggle else (60 ,60 ,70 )
-            pygame .draw .rect (self .screen ,bg_d ,toggle_rect ,border_radius =18 )
+            pygame .draw .rect (self .screen ,bg_d ,toggle_rect ,border_radius =9 )
             if hover_toggle :
-                pygame .draw .rect (self .screen ,GOLD ,toggle_rect ,2 ,border_radius =18 )
+                pygame .draw .rect (self .screen ,GOLD ,toggle_rect ,2 ,border_radius =9 )
             dp_txt ="ON"if self .config ["differenza_positiva"]else "OFF"
             dp_val =self ._render_cached (self .font_tiny ,dp_txt ,WHITE )
-            rect_dv =dp_val .get_rect (center =(1335 ,y +54 ))
+            rect_dv =dp_val .get_rect (center =(667 ,y +27 ))
             self .screen .blit (dp_val ,rect_dv )
         elif division :
             label_r =self ._render_cached (self .font_tiny ,"Risultato intero",WHITE )
-            rect =label_r .get_rect (midleft =(240 ,y +51 ))
+            rect =label_r .get_rect (midleft =(120 ,y +25 ))
             self .screen .blit (label_r ,rect )
-            toggle_rect =pygame .Rect (1056 ,y ,558 ,108 )
+            toggle_rect =pygame .Rect (528 ,y ,279 ,54 )
             hover_toggle =toggle_rect .collidepoint (mx ,my )
             bg_r =(100 ,150 ,220 )if self .config ["risultato_intero"]and hover_toggle else SEL_BLUE if self .config ["risultato_intero"]else (80 ,80 ,90 )if hover_toggle else (60 ,60 ,70 )
-            pygame .draw .rect (self .screen ,bg_r ,toggle_rect ,border_radius =18 )
+            pygame .draw .rect (self .screen ,bg_r ,toggle_rect ,border_radius =9 )
             if hover_toggle :
-                pygame .draw .rect (self .screen ,GOLD ,toggle_rect ,2 ,border_radius =18 )
+                pygame .draw .rect (self .screen ,GOLD ,toggle_rect ,2 ,border_radius =9 )
             ri_txt ="ON"if self .config ["risultato_intero"]else "OFF"
             ri_val =self ._render_cached (self .font_tiny ,ri_txt ,WHITE )
-            rect_rv =ri_val .get_rect (center =(1335 ,y +54 ))
+            rect_rv =ri_val .get_rect (center =(667 ,y +27 ))
             self .screen .blit (ri_val ,rect_rv )
 
             # Row 4: Domande
         row =4 
         y =row_y (row )
         label_q =self ._render_cached (self .font_tiny ,"Domande",WHITE )
-        rect =label_q .get_rect (midleft =(240 ,y +51 ))
+        rect =label_q .get_rect (midleft =(120 ,y +25 ))
         self .screen .blit (label_q ,rect )
-        qx =1080 
-        lw ,vw ,rw =90 ,120 ,90 
-        minus_rect =pygame .Rect (qx ,y ,lw ,102 )
-        plus_rect =pygame .Rect (qx +lw +vw ,y ,rw ,102 )
+        qx =540 
+        lw ,vw ,rw =45 ,60 ,45 
+        minus_rect =pygame .Rect (qx ,y ,lw ,51 )
+        plus_rect =pygame .Rect (qx +lw +vw ,y ,rw ,51 )
         hover_minus =minus_rect .collidepoint (mx ,my )
         hover_plus =plus_rect .collidepoint (mx ,my )
-        pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_minus else (70 ,70 ,80 ),minus_rect ,border_radius =12 )
-        pygame .draw .rect (self .screen ,(40 ,40 ,50 ),(qx +lw ,y ,vw ,102 ))
-        pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_plus else (70 ,70 ,80 ),plus_rect ,border_radius =12 )
+        pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_minus else (70 ,70 ,80 ),minus_rect ,border_radius =6 )
+        pygame .draw .rect (self .screen ,(40 ,40 ,50 ),(qx +lw ,y ,vw ,51 ))
+        pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_plus else (70 ,70 ,80 ),plus_rect ,border_radius =6 )
         if hover_minus :
-            pygame .draw .rect (self .screen ,GOLD ,minus_rect ,2 ,border_radius =12 )
+            pygame .draw .rect (self .screen ,GOLD ,minus_rect ,2 ,border_radius =6 )
         if hover_plus :
-            pygame .draw .rect (self .screen ,GOLD ,plus_rect ,2 ,border_radius =12 )
+            pygame .draw .rect (self .screen ,GOLD ,plus_rect ,2 ,border_radius =6 )
         minus =self ._render_cached (self .font_tiny ,"-",WHITE )
         plus =self ._render_cached (self .font_tiny ,"+",WHITE )
-        self .screen .blit (minus ,minus .get_rect (center =(qx +lw //2 ,y +51 )))
-        self .screen .blit (plus ,plus .get_rect (center =(qx +lw +vw +rw //2 ,y +51 )))
+        self .screen .blit (minus ,minus .get_rect (center =(qx +lw //2 ,y +25 )))
+        self .screen .blit (plus ,plus .get_rect (center =(qx +lw +vw +rw //2 ,y +25 )))
         q_surf =self ._render_cached (self .font_tiny ,str (self .config ["domande"]),WHITE )
-        self .screen .blit (q_surf ,q_surf .get_rect (center =(qx +lw +vw //2 ,y +51 )))
+        self .screen .blit (q_surf ,q_surf .get_rect (center =(qx +lw +vw //2 ,y +25 )))
 
         # Row 5: Commutazione
         row =5 
         y =row_y (row )
         swap_locked =subtraction 
-        toggle_rect =pygame .Rect (1056 ,y ,558 ,108 )
+        toggle_rect =pygame .Rect (528 ,y ,279 ,54 )
         hover_toggle =toggle_rect .collidepoint (mx ,my )and not swap_locked 
         bg_swap =(100 ,150 ,220 )if (self .config ["swap"]and hover_toggle )else SEL_BLUE if self .config ["swap"]else (80 ,80 ,90 )if hover_toggle else (60 ,60 ,70 )if not swap_locked else (60 ,60 ,70 )
         if swap_locked :
             bg_swap =(60 ,60 ,70 )
-        pygame .draw .rect (self .screen ,bg_swap ,toggle_rect ,border_radius =18 )
+        pygame .draw .rect (self .screen ,bg_swap ,toggle_rect ,border_radius =9 )
         if hover_toggle :
-            pygame .draw .rect (self .screen ,GOLD ,toggle_rect ,2 ,border_radius =18 )
+            pygame .draw .rect (self .screen ,GOLD ,toggle_rect ,2 ,border_radius =9 )
         sw_txt ="ON"if (self .config ["swap"]or swap_locked )else "OFF"
         swap_label =self ._render_cached (self .font_tiny ,"Commuta A/B",WHITE )
-        rect_sl =swap_label .get_rect (midleft =(240 ,y +54 ))
+        rect_sl =swap_label .get_rect (midleft =(120 ,y +27 ))
         self .screen .blit (swap_label ,rect_sl )
         swap_val =self ._render_cached (self .font_tiny ,sw_txt ,WHITE )
-        rect_sv =swap_val .get_rect (center =(1335 ,y +54 ))
+        rect_sv =swap_val .get_rect (center =(667 ,y +27 ))
         self .screen .blit (swap_val ,rect_sv )
 
         # Row 6: Timeout
         row =6 
         y =row_y (row )
         label_t =self ._render_cached (self .font_tiny ,"Timeout (secondi)",WHITE )
-        rect =label_t .get_rect (midleft =(240 ,y +51 ))
+        rect =label_t .get_rect (midleft =(120 ,y +25 ))
         self .screen .blit (label_t ,rect )
-        tx =1080 
-        lw ,vw ,rw =90 ,120 ,90 
-        minus_rect =pygame .Rect (tx ,y ,lw ,102 )
-        plus_rect =pygame .Rect (tx +lw +vw ,y ,rw ,102 )
+        tx =540 
+        lw ,vw ,rw =45 ,60 ,45 
+        minus_rect =pygame .Rect (tx ,y ,lw ,51 )
+        plus_rect =pygame .Rect (tx +lw +vw ,y ,rw ,51 )
         hover_minus =minus_rect .collidepoint (mx ,my )
         hover_plus =plus_rect .collidepoint (mx ,my )
-        pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_minus else (70 ,70 ,80 ),minus_rect ,border_radius =12 )
-        pygame .draw .rect (self .screen ,(40 ,40 ,50 ),(tx +lw ,y ,vw ,102 ))
-        pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_plus else (70 ,70 ,80 ),plus_rect ,border_radius =12 )
+        pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_minus else (70 ,70 ,80 ),minus_rect ,border_radius =6 )
+        pygame .draw .rect (self .screen ,(40 ,40 ,50 ),(tx +lw ,y ,vw ,51 ))
+        pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_plus else (70 ,70 ,80 ),plus_rect ,border_radius =6 )
         if hover_minus :
-            pygame .draw .rect (self .screen ,GOLD ,minus_rect ,2 ,border_radius =12 )
+            pygame .draw .rect (self .screen ,GOLD ,minus_rect ,2 ,border_radius =6 )
         if hover_plus :
-            pygame .draw .rect (self .screen ,GOLD ,plus_rect ,2 ,border_radius =12 )
+            pygame .draw .rect (self .screen ,GOLD ,plus_rect ,2 ,border_radius =6 )
         minus =self ._render_cached (self .font_tiny ,"-",WHITE )
         plus =self ._render_cached (self .font_tiny ,"+",WHITE )
-        self .screen .blit (minus ,minus .get_rect (center =(tx +lw //2 ,y +51 )))
-        self .screen .blit (plus ,plus .get_rect (center =(tx +lw +vw +rw //2 ,y +51 )))
+        self .screen .blit (minus ,minus .get_rect (center =(tx +lw //2 ,y +25 )))
+        self .screen .blit (plus ,plus .get_rect (center =(tx +lw +vw +rw //2 ,y +25 )))
         t_surf =self ._render_cached (self .font_tiny ,str (self .config ["timeout"]),WHITE )
-        self .screen .blit (t_surf ,t_surf .get_rect (center =(tx +lw +vw //2 ,y +51 )))
+        self .screen .blit (t_surf ,t_surf .get_rect (center =(tx +lw +vw //2 ,y +25 )))
 
         # Row 7: CONFERMA
         row =7 
         y =row_y (row )
-        conf_rect =pygame .Rect (SCREEN_WIDTH //2 -330 ,y ,660 ,138 )
+        conf_rect =pygame .Rect (SCREEN_WIDTH //2 -165 ,y ,330 ,69 )
         hover_conf =conf_rect .collidepoint (mx ,my )
         bg_conf =(50 ,140 ,50 )if hover_conf else (40 ,120 ,40 )
         if hover_conf :
-            pygame .draw .rect (self .screen ,GOLD ,(SCREEN_WIDTH //2 -336 ,y -6 ,672 ,150 ),3 ,border_radius =24 )
-        pygame .draw .rect (self .screen ,bg_conf ,conf_rect ,border_radius =24 )
+            pygame .draw .rect (self .screen ,GOLD ,(SCREEN_WIDTH //2 -168 ,y -3 ,336 ,75 ),3 ,border_radius =12 )
+        pygame .draw .rect (self .screen ,bg_conf ,conf_rect ,border_radius =12 )
         start_txt =self ._render_cached (self .font_tiny ,"CONFERMA",WHITE )
-        rect_s =start_txt .get_rect (center =(SCREEN_WIDTH //2 ,y +69 ))
+        rect_s =start_txt .get_rect (center =(SCREEN_WIDTH //2 ,y +34 ))
         self .screen .blit (start_txt ,rect_s )
 
     def draw_game (self ):
         shake =(0 ,0 )
         boss_shaking =self .boss_active and self .boss_phase =="shake"
         if self .hit_timer >0 or boss_shaking :
-            shake =(random .randint (-18 ,18 ),random .randint (-15 ,15 ))
+            shake =(random .randint (-9 ,9 ),random .randint (-7 ,7 ))
             self .screen .blit (self .game_bg ,shake )
         else :
             self .screen .blit (self .game_bg ,(0 ,0 ))
@@ -3296,7 +3210,7 @@ class Game :
                     frame =self .npc_idle_frame (npc ,now_npc )
                     img =pygame .transform .flip (frame ,True ,False )if npc ["flip_in"]else frame 
                 nx =npc ["x"]
-                ny =SCREEN_HEIGHT //2 -img .get_height ()//2 +390 +npc ["y_off"]
+                ny =SCREEN_HEIGHT //2 -img .get_height ()//2 +195 +npc ["y_off"]
                 self .screen .blit (img ,(nx ,ny ))
 
         if self .character_entry :
@@ -3308,7 +3222,7 @@ class Game :
                 char_img =pygame .transform .flip (char_img ,True ,False )
             cw ,ch =char_img .get_size ()
             base_y =SCREEN_HEIGHT //2 -ch //2 
-            wy =base_y +390 
+            wy =base_y +195 
             self .screen .blit (char_img ,(self .character_entry_x ,wy ))
             if self .story_fade_alpha >0 :
                 fade_surf =self ._overlay
@@ -3339,19 +3253,19 @@ class Game :
             char_img =pygame .transform .flip (char_img ,True ,False )
         cw ,ch =char_img .get_size ()
         base_y =SCREEN_HEIGHT //2 -ch //2 
-        wy =base_y +390 +shake [1 ]
+        wy =base_y +195 +shake [1 ]
         if is_idle and hasattr (self ,'idle_h')and ch <self .idle_h :
             wy +=(self .idle_h -ch )-(self .idle_h //2 -ch //2 )
         base_h =self .idle_h if hasattr (self ,'idle_h')else ch 
-        wy_monster =SCREEN_HEIGHT //2 -base_h //2 +510 +105 +self .monster_y_offset 
+        wy_monster =SCREEN_HEIGHT //2 -base_h //2 +255 +52 +self .monster_y_offset 
         self .screen .blit (char_img ,(wx ,wy ))
 
         if self .question_active and self .input_utente :
-            wand_x =wx +cw -90 if self .player_flip else wx +90 
-            glow_x ,glow_y =wand_x ,wy +120 
+            wand_x =wx +cw -45 if self .player_flip else wx +45 
+            glow_x ,glow_y =wand_x ,wy +60 
             base_col =(235 ,220 ,255 )if self .config_gender =="F"else (220 ,255 ,220 )
             t =pygame .time .get_ticks ()
-            radius =36 +int (12 *abs ((t %600 )/300 -1 ))
+            radius =18 +int (6 *abs ((t %600 )/300 -1 ))
             for r in range (radius ,0 ,-3 ):
                 alpha =max (0 ,200 -int (200 *(radius -r )/radius ))
                 ratio =(radius -r )/radius 
@@ -3379,7 +3293,7 @@ class Game :
             if boss_img :
                 bw ,bh =boss_img .get_size ()
                 boss_draw_x =self .boss_x +shake [0 ]
-                boss_draw_y =wy_monster -(bh -645 )+57 
+                boss_draw_y =wy_monster -(bh -322 )+28 
                 self .screen .blit (boss_img ,(boss_draw_x ,boss_draw_y ))
         elif self .scene_phase is None and self .monster_hit :
             elapsed =pygame .time .get_ticks ()-self .monster_fade_start 
@@ -3398,27 +3312,27 @@ class Game :
             self .screen .blit (self .monster_frames [self .monster_anim_frame ],(self .monster_x +shake [0 ],wy_monster ))
 
         if self .zap_timer >0 :
-            start_x ,start_y =(wx +cw -90 )if self .player_flip else (wx +90 ),wy +120 
+            start_x ,start_y =(wx +cw -45 )if self .player_flip else (wx +45 ),wy +60 
             if self .zap_reverse :
                 end_x ,end_y =wx +cw //2 ,wy +ch //2 
             elif self .boss_active and self .boss_phase in ("entrance","fight","defeated"):
-                bw =self .boss_hit_img .get_width ()if self .boss_hit_img else 200 
-                bh =self .boss_hit_img .get_height ()if self .boss_hit_img else 200 
-                boss_draw_y =wy_monster -(bh -645 )+57 
+                bw =self .boss_hit_img .get_width ()if self .boss_hit_img else 100 
+                bh =self .boss_hit_img .get_height ()if self .boss_hit_img else 100 
+                boss_draw_y =wy_monster -(bh -322 )+28 
                 end_x ,end_y =self .boss_x +bw //2 ,boss_draw_y +bh //2 
             else :
-                end_x ,end_y =self .monster_x +300 ,wy_monster +self .char_h //2 
+                end_x ,end_y =self .monster_x +150 ,wy_monster +self .char_h //2 
             mid_x =(start_x +end_x )//2 
             segments =8 
             for offset in range (-4 ,5 ,2 ):
                 points =[(start_x ,start_y )]
                 for i in range (1 ,segments ):
                     t =i /segments 
-                    x =start_x +(end_x -start_x )*t +random .randint (-90 ,90 )
-                    y =start_y +(end_y -start_y )*t +random .randint (-120 ,120 )+offset *9 
+                    x =start_x +(end_x -start_x )*t +random .randint (-45 ,45 )
+                    y =start_y +(end_y -start_y )*t +random .randint (-60 ,60 )+offset *4 
                     points .append ((x ,y ))
                 points .append ((end_x ,end_y ))
-                width =9 if abs (offset )<=2 else 3 
+                width =4 if abs (offset )<=2 else 2 
                 alpha =max (100 ,255 -abs (offset )*40 )
                 col =(255 ,255 ,int (255 *self .zap_timer /12 ))if abs (offset )<=2 else (100 ,100 ,255 )
                 pygame .draw .lines (self .screen ,col ,False ,points ,width )
@@ -3427,21 +3341,21 @@ class Game :
         domanda_text =f"{self .a }  {segno }  {self .b }  =  ?"if self .scene_phase is None else ""
         ombra =self ._render_cached (self .font_large ,domanda_text ,(30 ,30 ,30 ))
         domanda =self ._render_cached (self .font_large ,domanda_text ,WHITE )
-        rect =domanda .get_rect (center =(SCREEN_WIDTH //2 ,240 ))
-        for dx ,dy in [(-6 ,-6 ),(-6 ,0 ),(-6 ,6 ),(0 ,-6 ),(0 ,6 ),(6 ,-6 ),(6 ,0 ),(6 ,6 )]:
+        rect =domanda .get_rect (center =(SCREEN_WIDTH //2 ,120 ))
+        for dx ,dy in [(-3 ,-3 ),(-3 ,0 ),(-3 ,3 ),(0 ,-3 ),(0 ,3 ),(3 ,-3 ),(3 ,0 ),(3 ,3 )]:
             self .screen .blit (ombra ,(rect .x +dx ,rect .y +dy ))
         self .screen .blit (domanda ,rect )
 
         if self .question_active :
             text_input =self .input_utente +("|"if pygame .time .get_ticks ()%1000 <500 else " ")
             input_surf =self ._render_cached (self .font_input ,text_input ,WHITE )
-            input_rect =input_surf .get_rect (center =(SCREEN_WIDTH //2 ,465 ))
-            box_rect =input_rect .inflate (120 ,48 )
-            box_rect .width =max (box_rect .width ,360 )
-            pygame .draw .rect (self .screen ,(40 ,40 ,60 ),box_rect ,border_radius =24 )
-            pygame .draw .rect (self .screen ,(100 ,100 ,180 ),box_rect ,2 ,border_radius =24 )
+            input_rect =input_surf .get_rect (center =(SCREEN_WIDTH //2 ,232 ))
+            box_rect =input_rect .inflate (60 ,24 )
+            box_rect .width =max (box_rect .width ,180 )
+            pygame .draw .rect (self .screen ,(40 ,40 ,60 ),box_rect ,border_radius =12 )
+            pygame .draw .rect (self .screen ,(100 ,100 ,180 ),box_rect ,2 ,border_radius =12 )
             ombra =self ._render_cached (self .font_input ,text_input ,(30 ,30 ,30 ))
-            self .screen .blit (ombra ,(input_rect .x +6 ,input_rect .y +6 ))
+            self .screen .blit (ombra ,(input_rect .x +3 ,input_rect .y +3 ))
             self .screen .blit (input_surf ,input_rect )
 
         if not self .level_is_scene :
@@ -3453,22 +3367,22 @@ class Game :
                 mode_txt ="Allenamento"
             mode_surf =self ._render_cached (self .font_small ,mode_txt ,WHITE )
             stato_surf =self ._render_cached (self .font_small ,stato_txt ,WHITE )
-            y_top =60 
-            self .draw_text_shadow (self .font_small ,mode_txt ,WHITE ,(60 ,y_top ))
-            sx_stato =60 +mode_surf .get_width ()+60 
+            y_top =30 
+            self .draw_text_shadow (self .font_small ,mode_txt ,WHITE ,(30 ,y_top ))
+            sx_stato =30 +mode_surf .get_width ()+30 
             self .draw_text_shadow (self .font_small ,stato_txt ,WHITE ,(sx_stato ,y_top ))
 
             for i in range (WIZARD_LIVES ):
-                cx =SCREEN_WIDTH -210 -i *150 
+                cx =SCREEN_WIDTH -105 -i *75 
                 img =self .heart_red if i <self .lives else self .heart_grey 
-                self .screen .blit (img ,(cx -51 ,90 ))
+                self .screen .blit (img ,(cx -25 ,45 ))
 
         if self .question_active :
-            bar_w =1200 
-            bar_h =48 
+            bar_w =600 
+            bar_h =24 
             bar_x =(SCREEN_WIDTH -bar_w )//2 
-            bar_y =SCREEN_HEIGHT -135 
-            pygame .draw .rect (self .screen ,(60 ,60 ,80 ),(bar_x ,bar_y ,bar_w ,bar_h ),border_radius =24 )
+            bar_y =SCREEN_HEIGHT -67 
+            pygame .draw .rect (self .screen ,(60 ,60 ,80 ),(bar_x ,bar_y ,bar_w ,bar_h ),border_radius =12 )
             timer_progresso =self .boss_progress if (self .boss_active and self .boss_phase =="fight")else self .monster_progress 
             rimanente =1.0 -timer_progresso 
             if rimanente >0.4 :
@@ -3483,7 +3397,7 @@ class Game :
                     pygame .draw .rect (self .screen ,col_bar ,(bar_x ,bar_y ,w ,bar_h ),border_radius =8 )
 
             time_text =self ._render_cached (self .font_small ,f"{self .timeout_limit *(1 -timer_progresso ):.0f}s",WHITE )
-            rect =time_text .get_rect (midleft =(bar_x +bar_w +45 ,bar_y +bar_h //2 ))
+            rect =time_text .get_rect (midleft =(bar_x +bar_w +22 ,bar_y +bar_h //2 ))
             ombra_t =self ._render_cached (self .font_small ,f"{self .timeout_limit *(1 -timer_progresso ):.0f}s",(30 ,30 ,30 ))
             self .screen .blit (ombra_t ,(rect .x +6 ,rect .y +6 ))
             self .screen .blit (time_text ,rect )
@@ -3500,13 +3414,13 @@ class Game :
             else :
                 fb =self ._render_cached (self .font_large ,f"SBAGLIATO! Era {self .expected_result }",RED )
                 prossimo =self ._render_cached (self .font_small ,"Premi INVIO per continuare",WHITE )
-            rect =fb .get_rect (center =(SCREEN_WIDTH //2 ,SCREEN_HEIGHT //2 -90 ))
+            rect =fb .get_rect (center =(SCREEN_WIDTH //2 ,SCREEN_HEIGHT //2 -45 ))
             ombra_fb =self ._render_cached (self .font_large ,"CORRETTO!"if self .feedback else f"SBAGLIATO! Era {self .expected_result }",(30 ,30 ,30 ))
-            self .screen .blit (ombra_fb ,(rect .x +6 ,rect .y +6 ))
+            self .screen .blit (ombra_fb ,(rect .x +3 ,rect .y +3 ))
             self .screen .blit (fb ,rect )
-            rect =prossimo .get_rect (center =(SCREEN_WIDTH //2 ,SCREEN_HEIGHT //2 +90 ))
+            rect =prossimo .get_rect (center =(SCREEN_WIDTH //2 ,SCREEN_HEIGHT //2 +45 ))
             ombra_pro =self ._render_cached (self .font_small ,"Prossima domanda..."if self .feedback else "Premi INVIO per continuare",(30 ,30 ,30 ))
-            self .screen .blit (ombra_pro ,(rect .x +6 ,rect .y +6 ))
+            self .screen .blit (ombra_pro ,(rect .x +3 ,rect .y +3 ))
             self .screen .blit (prossimo ,rect )
 
         if self .monster_hit :
@@ -3531,10 +3445,10 @@ class Game :
             if elapsed <duration :
                 progress =elapsed /duration 
                 alpha =int (255 *min (1.0 ,progress *4 )*max (0 ,1.0 -progress ))
-                rise =int (360 *progress )
+                rise =int (180 *progress )
                 heart_img =self .heart_red .copy ()
                 heart_img .set_alpha (alpha )
-                hx =self .monster_x +195 
+                hx =self .monster_x +97 
                 hy =wy_monster -rise 
                 self .screen .blit (heart_img ,(hx ,hy ))
             else :
@@ -3545,12 +3459,12 @@ class Game :
 
         if self .debug :
             label =self ._render_cached (self .font_stats ,"DEBUG ON",(0 ,255 ,255 ))
-            rect =label .get_rect (bottomright =(SCREEN_WIDTH -45 ,SCREEN_HEIGHT -45 ))
+            rect =label .get_rect (bottomright =(SCREEN_WIDTH -22 ,SCREEN_HEIGHT -22 ))
             bg_l =rect .inflate (24 ,12 )
             pygame .draw .rect (self .screen ,(10 ,10 ,20 ),bg_l )
             pygame .draw .rect (self .screen ,(0 ,255 ,255 ),bg_l ,1 )
             self .screen .blit (label ,rect )
-            dx ,dy =60 ,240 
+            dx ,dy =30 ,120 
             segno_debug =get_operation_symbol (self .operation )
             lines =[
             "DEBUG",
@@ -3573,15 +3487,15 @@ class Game :
             f"Consecutive: {self .consecutive_correct }",
             f"Boss: {'attivo'if self .boss_active else 'no'}"+(f"  fase: {self .boss_phase }  colpi: {self .boss_questions_asked }/{self .boss_total_questions }"if self .boss_active else ""),
             ]
-            bg =pygame .Surface ((1140 ,len (lines )*66 +30 ))
+            bg =pygame .Surface ((570 ,len (lines )*33 +15 ))
             bg .set_alpha (200 )
             bg .fill ((10 ,10 ,20 ))
-            self .screen .blit (bg ,(dx -15 ,dy -15 ))
+            self .screen .blit (bg ,(dx -7 ,dy -7 ))
             for line in lines :
                 surf =self ._render_cached (self .font_stats ,line ,(0 ,255 ,255 ))
                 rect =surf .get_rect (topleft =(dx ,dy ))
                 self .screen .blit (surf ,rect )
-                dy +=66 
+                dy +=33 
 
     def draw_level_complete (self ):
         self .screen .blit (self .game_bg ,(0 ,0 ))
@@ -3590,7 +3504,7 @@ class Game :
         overlay .fill (BG_DARK )
         self .screen .blit (overlay ,(0 ,0 ))
 
-        self .draw_text_shadow (self .font_title ,f"LIVELLO {self .effective_level ()+1 } COMPLETATO",GOLD ,center =(SCREEN_WIDTH //2 ,240 ))
+        self .draw_text_shadow (self .font_title ,f"LIVELLO {self .effective_level ()+1 } COMPLETATO",GOLD ,center =(SCREEN_WIDTH //2 ,120 ))
 
         tot =len (self .monster_times )
         correct_count =self .stats .get (self .level ,{}).get ("corrette",0 )
@@ -3606,12 +3520,12 @@ class Game :
         if recent_average <self .timeout_limit /2 and not self .is_last_story_level ():
             lines .append (("Tempo medio eccellente! Timeout ridotto di 1s",YELLOW ))
 
-        y =540 
+        y =270 
         for text_value ,colore in lines :
             self .draw_text_shadow (self .font_medium ,text_value ,colore ,center =(SCREEN_WIDTH //2 ,y ))
-            y +=138 
+            y +=69 
 
-        self .draw_text_shadow (self .font_small ,"Premi INVIO per continuare",WHITE ,center =(SCREEN_WIDTH //2 ,SCREEN_HEIGHT -240 ),offset =1 )
+        self .draw_text_shadow (self .font_small ,"Premi INVIO per continuare",WHITE ,center =(SCREEN_WIDTH //2 ,SCREEN_HEIGHT -120 ),offset =1 )
 
     def draw_story (self ):
         entry =self .story_entries [self .story_idx ]if self .story_idx <len (self .story_entries )else {}
@@ -3629,28 +3543,28 @@ class Game :
         text_value =self .story_text_full [:self .story_characters_shown ]
 
         lines =text_value .split ("\n")
-        x_margine =180 
-        y =360 
+        x_margine =90 
+        y =180 
         for line_text in lines :
             words =line_text .split ()
             if not words :
-                y +=138 
+                y +=69 
                 continue 
             line =""
             for word in words :
                 test =line +" "+word if line else word 
                 if self .story_font .size (test )[0 ]>SCREEN_WIDTH -x_margine *2 :
                     self .draw_text_shadow (self .story_font ,line ,WHITE ,midleft =(x_margine ,y ))
-                    y +=138 
+                    y +=69 
                     line =word 
                 else :
                     line =test 
             if line :
                 self .draw_text_shadow (self .story_font ,line ,WHITE ,midleft =(x_margine ,y ))
-                y +=138 
+                y +=69 
 
         if self .story_phase =="show"and self .story_characters_shown >=len (self .story_text_full ):
-            self .draw_text_shadow (self .font_small ,"Premi INVIO per continuare",WHITE ,center =(SCREEN_WIDTH //2 ,SCREEN_HEIGHT -180 ),offset =1 )
+            self .draw_text_shadow (self .font_small ,"Premi INVIO per continuare",WHITE ,center =(SCREEN_WIDTH //2 ,SCREEN_HEIGHT -90 ),offset =1 )
 
         if self .story_object_img is not None and self .story_object_alpha >0 :
             obj =self .story_object_img .copy ()
@@ -3676,7 +3590,7 @@ class Game :
             frame =self .npc_idle_frame (npc )
             img =pygame .transform .flip (frame ,True ,False )if npc ["flip_in"]else frame 
             nx =npc ["x"]
-            ny =SCREEN_HEIGHT //2 -img .get_height ()//2 +390 +npc ["y_off"]
+            ny =SCREEN_HEIGHT //2 -img .get_height ()//2 +195 +npc ["y_off"]
             self .screen .blit (img ,(nx ,ny ))
         elapsed =pygame .time .get_ticks ()-self .player_exit_start 
         progress =min (elapsed /4000 ,1.0 )
@@ -3691,16 +3605,16 @@ class Game :
         else :
             start_x =self .player_stand_x 
         if self .player_out_dir =="dx":
-            end_x =SCREEN_WIDTH +600 
+            end_x =SCREEN_WIDTH +300 
         else :
-            end_x =-600 
+            end_x =-300 
         self .player_exit_x =start_x +(end_x -start_x )*progress 
         base_y =SCREEN_HEIGHT //2 -ch //2 
-        wy =base_y +390 
+        wy =base_y +195 
         self .screen .blit (char_img ,(self .player_exit_x ,wy ))
 
         status =self ._render_cached (self .font_small ,"Salvataggio in corso...",WHITE )
-        self .screen .blit (status ,status .get_rect (center =(SCREEN_WIDTH //2 ,SCREEN_HEIGHT -90 )))
+        self .screen .blit (status ,status .get_rect (center =(SCREEN_WIDTH //2 ,SCREEN_HEIGHT -45 )))
 
     def draw_gameover (self ):
         self .screen .blit (self .game_bg ,(0 ,0 ))
@@ -3716,9 +3630,9 @@ class Game :
 
     def draw_gameover_story (self ):
         if self .lives <=0 or (self .boss_active and self .boss_phase =="fight"):
-            self .draw_text_shadow (self .font_title ,"GAME OVER",RED ,center =(SCREEN_WIDTH //2 ,150 ))
+            self .draw_text_shadow (self .font_title ,"GAME OVER",RED ,center =(SCREEN_WIDTH //2 ,75 ))
         else :
-            self .draw_text_shadow (self .font_title ,"PARTITA TERMINATA",GOLD ,center =(SCREEN_WIDTH //2 ,150 ))
+            self .draw_text_shadow (self .font_title ,"PARTITA TERMINATA",GOLD ,center =(SCREEN_WIDTH //2 ,75 ))
 
         total_correct =sum (v ["corrette"]for v in self .stats .values ())
         total_wrong =sum (v ["sbagliate"]for v in self .stats .values ())
@@ -3732,15 +3646,15 @@ class Game :
         if not completato :
             average_monster_time =sum (self .monster_times )/len (self .monster_times )if self .monster_times else 0 
             lines .append ((f"Tempo medio: {average_monster_time :.1f}s",WHITE ))
-        y =330 
+        y =165 
         for text_value ,colore in lines :
             self .draw_text_shadow (self .font_medium ,text_value ,colore ,center =(SCREEN_WIDTH //2 ,y ))
-            y +=138 
+            y +=69 
 
         data =self .char_data .get (self .config_gender ,self .char_data ["F"])
         char_img =data ["hit"]if (self .lives <=0 or (self .boss_active and self .boss_phase =="fight"))else data ["idle"][0 ]
         char_x =SCREEN_WIDTH //2 -char_img .get_width ()//2 
-        char_y =y +60 
+        char_y =y +30 
         self .screen .blit (char_img ,(char_x ,char_y ))
 
         if self .lives <=0 or (self .boss_active and self .boss_phase =="fight"):
@@ -3750,7 +3664,7 @@ class Game :
         else :
             text_value =f"Complimenti {self .current_profile }! Hai completato tutti i livelli!"
         lines =[]
-        max_w =SCREEN_WIDTH -360 
+        max_w =SCREEN_WIDTH -180 
         for word in text_value .split ():
             if not lines :
                 lines .append (word )
@@ -3761,35 +3675,35 @@ class Game :
                 else :
                     lines [-1 ]=test 
 
-        y_text =char_y +char_img .get_height ()+60 
+        y_text =char_y +char_img .get_height ()+30 
         for line in lines :
             self .draw_text_shadow (self .font_small ,line ,WHITE ,center =(SCREEN_WIDTH //2 ,y_text ))
-            y_text +=105 
+            y_text +=52 
 
         mx ,my =self ._mouse_pos ()
-        y_btn =y_text +60 
+        y_btn =y_text +30 
         self .gameover_buttons ={}
         completato =not (self .lives <=0 or (self .boss_active and self .boss_phase =="fight"))
         btns =[("MENU PRINCIPALE","menu")]if completato else [("RIPROVA","restart"),("MENU PRINCIPALE","menu")]
-        btn_w =540 
-        total_w =len (btns )*btn_w +(len (btns )-1 )*90 
+        btn_w =270 
+        total_w =len (btns )*btn_w +(len (btns )-1 )*45 
         start_x =SCREEN_WIDTH //2 -total_w //2 
         for i ,(label ,action )in enumerate (btns ):
-            bx =start_x +i *(btn_w +90 )
-            btn_rect =pygame .Rect (bx ,y_btn ,btn_w ,108 )
+            bx =start_x +i *(btn_w +45 )
+            btn_rect =pygame .Rect (bx ,y_btn ,btn_w ,54 )
             hovered =btn_rect .collidepoint (mx ,my )
             bg_col =(80 ,90 ,100 )if hovered else (60 ,60 ,70 )
-            pygame .draw .rect (self .screen ,bg_col ,btn_rect ,border_radius =18 )
+            pygame .draw .rect (self .screen ,bg_col ,btn_rect ,border_radius =9 )
             if hovered :
-                pygame .draw .rect (self .screen ,GOLD ,btn_rect ,2 ,border_radius =18 )
+                pygame .draw .rect (self .screen ,GOLD ,btn_rect ,2 ,border_radius =9 )
             self .draw_text_shadow (self .font_small ,label ,WHITE ,center =btn_rect .center )
             self .gameover_buttons [action ]=btn_rect 
 
     def draw_gameover_fixed (self ):
         if self .lives <=0 :
-            self .draw_text_shadow (self .font_title ,"GAME OVER",RED ,center =(SCREEN_WIDTH //2 ,150 ))
+            self .draw_text_shadow (self .font_title ,"GAME OVER",RED ,center =(SCREEN_WIDTH //2 ,75 ))
         else :
-            self .draw_text_shadow (self .font_title ,"PARTITA TERMINATA",GOLD ,center =(SCREEN_WIDTH //2 ,150 ))
+            self .draw_text_shadow (self .font_title ,"PARTITA TERMINATA",GOLD ,center =(SCREEN_WIDTH //2 ,75 ))
 
         total_correct =sum (v ["corrette"]for v in self .stats .values ())
         total_wrong =sum (v ["sbagliate"]for v in self .stats .values ())
@@ -3801,17 +3715,17 @@ class Game :
         (f"Vite rimaste: {self .lives }",YELLOW ),
         (f"Tempo medio: {average_time :.1f}s",WHITE ),
         ]
-        y =330 
+        y =165 
         for text_value ,colore in lines :
             self .draw_text_shadow (self .font_medium ,text_value ,colore ,center =(SCREEN_WIDTH //2 ,y ))
-            y +=138 
+            y +=69 
 
         sessioni =self .load_sessions ()
         if sessioni :
-            y +=42 
+            y +=21 
             self .draw_text_shadow (self .font_medium ,"Ultime sessioni:",GOLD ,center =(SCREEN_WIDTH //2 ,y ))
-            y +=102 
-            max_w =SCREEN_WIDTH -200 
+            y +=51 
+            max_w =SCREEN_WIDTH -100 
             for s in sessioni :
                 disp =s 
                 if self .font_tiny .size (disp )[0 ]>max_w and len (disp )>24 :
@@ -3820,19 +3734,19 @@ class Game :
                         disp =disp [:-1 ]
                     disp =disp .rstrip ()+"..."
                 self .draw_text_shadow (self .font_tiny ,disp ,(180 ,180 ,180 ),center =(SCREEN_WIDTH //2 ,y ))
-                y +=72 
+                y +=36 
 
         mx ,my =self ._mouse_pos ()
-        y =max (y +60 ,SCREEN_HEIGHT -300 )
+        y =max (y +30 ,SCREEN_HEIGHT -150 )
         self .gameover_buttons ={}
         for i ,(label ,action )in enumerate ([("Ricomincia","restart"),("Menu principale","menu")]):
-            bx =SCREEN_WIDTH //2 -300 +i *630 
-            btn_rect =pygame .Rect (bx ,y ,540 ,108 )
+            bx =SCREEN_WIDTH //2 -150 +i *315 
+            btn_rect =pygame .Rect (bx ,y ,270 ,54 )
             hovered =btn_rect .collidepoint (mx ,my )
             bg_col =(80 ,90 ,100 )if hovered else (60 ,60 ,70 )
-            pygame .draw .rect (self .screen ,bg_col ,btn_rect ,border_radius =18 )
+            pygame .draw .rect (self .screen ,bg_col ,btn_rect ,border_radius =9 )
             if hovered :
-                pygame .draw .rect (self .screen ,GOLD ,btn_rect ,2 ,border_radius =18 )
+                pygame .draw .rect (self .screen ,GOLD ,btn_rect ,2 ,border_radius =9 )
             self .draw_text_shadow (self .font_small ,label ,WHITE ,center =btn_rect .center )
             self .gameover_buttons [action ]=btn_rect 
 
