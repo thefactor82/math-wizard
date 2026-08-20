@@ -611,7 +611,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.2.0"
+        self .version ="1.2.1"
 
         self .profiles =[]
         self .current_profile =""
@@ -953,6 +953,12 @@ class Game :
         self .scene_data =None 
         self .scene_phase =None 
         self .scene_npcs =[]
+        self .player_hit =False 
+        self .hit_timer =0 
+        self .player_shake =False 
+        self .zap_timer =0 
+        self .zap_reverse =False 
+        self .monster_hit =False 
         if self .player_entrance :
             self .character_entry =True 
             self .character_entry_start =pygame .time .get_ticks ()
