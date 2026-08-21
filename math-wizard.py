@@ -3049,9 +3049,18 @@ class Game :
             pygame .draw .rect (self .screen ,(180 ,210 ,255 ),ind_rect ,1 ,border_radius =6 )
         else :
             self .diff_indicator_rect =None
-        lv_start =self .difficulty_position +1
-        lv_end =min (self .difficulty_position +self .num_story_levels ,len (LEVELS .get (self .config_story_operation ,[])))
-        range_surf =self ._render_cached (self .font_tiny ,f"livelli {lv_start }-{lv_end }",GRAY )
+        dp =self .difficulty_position
+        if dp <=5 :
+            diff_label ="1a elementare"
+        elif dp <=13 :
+            diff_label ="2a elementare"
+        elif dp <=22 :
+            diff_label ="3a elementare"
+        elif dp <=30 :
+            diff_label ="4a elementare"
+        else :
+            diff_label ="5a elementare"
+        range_surf =self ._render_cached (self .font_tiny ,diff_label ,GRAY )
         self .screen .blit (range_surf ,range_surf .get_rect (midleft =(bar_x +arrow_l +bar_w +arrow_r +15 ,y +25 )))
 
         # Livello iniziale
