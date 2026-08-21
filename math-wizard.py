@@ -611,7 +611,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.2.4"
+        self .version ="1.2.5"
 
         self .profiles =[]
         self .current_profile =""
@@ -1580,6 +1580,11 @@ class Game :
                     self .running =False 
             elif self .state =="options":
                 if event .key in (pygame .K_1 ,pygame .K_RETURN ):
+                    if self .options_cursor ==0 :
+                        self .state ="progressi"
+                    else :
+                        self .state ="confirm_delete"
+                elif event .key ==pygame .K_2 :
                     self .state ="confirm_delete"
                 elif event .key ==pygame .K_ESCAPE :
                     self .state ="menu"
@@ -1587,6 +1592,9 @@ class Game :
                 if event .key ==pygame .K_s :
                     self .delete_current_profile ()
                 elif event .key in (pygame .K_n ,pygame .K_ESCAPE ):
+                    self .state ="options"
+            elif self .state =="progressi":
+                if event .key ==pygame .K_ESCAPE :
                     self .state ="options"
             elif self .state =="options_auto":
                 if event .key in (pygame .K_UP ,pygame .K_w ):
@@ -1802,7 +1810,10 @@ class Game :
             elif self .state =="options":
                 for i ,hit in enumerate (getattr (self ,'options_btn_rects',[ ])):
                     if hit .collidepoint (mx ,my ):
-                        self .state ="confirm_delete"
+                        if i ==0 :
+                            self .state ="progressi"
+                        else :
+                            self .state ="confirm_delete"
                         return 
                 if getattr (self ,'options_back_rect',None )and self .options_back_rect .collidepoint (mx ,my ):
                     self .state ="menu"
@@ -1818,6 +1829,10 @@ class Game :
                 if getattr (self ,'confirm_no_rect',None )and self .confirm_no_rect .collidepoint (mx ,my ):
                     self .state ="options"
                     return 
+            elif self .state =="progressi":
+                if getattr (self ,'progressi_back_rect',None )and self .progressi_back_rect .collidepoint (mx ,my ):
+                    self .state ="options"
+                    return
             elif self .state =="options_auto":
                 sx =540 
                 lw ,vw ,rw =45 ,60 ,45 
@@ -2508,7 +2523,7 @@ class Game :
         elif self .state =="story":
             self .draw_story ()
         else :
-            if self .state in ("options","options_auto","config_fixed","confirm_delete"):
+            if self .state in ("options","options_auto","config_fixed","confirm_delete","progressi"):
                 self .screen .blit (self .bg_options ,(0 ,0 ))
             else :
                 self .screen .blit (self .bg_menu ,(0 ,0 ))
@@ -2522,6 +2537,8 @@ class Game :
                 self .draw_auto_options ()
             elif self .state =="config_fixed":
                 self .draw_config ()
+            elif self .state =="progressi":
+                self .draw_progressi ()
             elif self .state in ("game","gameover"):
                 self .draw_gameover ()
 
@@ -2752,11 +2769,11 @@ class Game :
         rect =title .get_rect (center =(SCREEN_WIDTH //2 ,120 ))
         self .screen .blit (title ,rect )
 
-        voci =["Elimina profilo attuale"]
+        voci =["Progressi","Elimina profilo attuale"]
         self .options_btn_rects =[ ]
         for i ,voce in enumerate (voci ):
             y =330 +i *120 
-            color =RED 
+            color =RED if i ==1 else WHITE  
             txt =self ._render_cached (self .font_large ,voce ,color )
             rect =txt .get_rect (center =(SCREEN_WIDTH //2 ,y +31 ))
             hit =rect .inflate (30 ,15 )
@@ -2804,6 +2821,46 @@ class Game :
         back_rect =back_txt .get_rect (center =(SCREEN_WIDTH //2 ,SCREEN_HEIGHT -30 ))
         self .options_back_rect =back_rect .inflate (30 ,15 )
         if self .options_back_rect .collidepoint (mx ,my ):
+            back_txt =self ._render_cached (self .font_small ,"Indietro",GOLD )
+        self .screen .blit (back_txt ,back_rect )
+
+    def draw_progressi (self ):
+        mx ,my =self ._mouse_pos ()
+        overlay =self ._overlay
+        overlay .set_alpha (200 )
+        overlay .fill (BG_DARK )
+        self .screen .blit (overlay ,(0 ,0 ))
+
+        title =self ._render_cached (self .font_title ,"PROGRESSI",GOLD )
+        rect =title .get_rect (center =(SCREEN_WIDTH //2 ,120 ))
+        self .screen .blit (title ,rect )
+
+        ops =[
+            ("moltiplicazione","Moltiplicazione"),
+            ("addizione","Addizione"),
+            ("sottrazione","Sottrazione"),
+            ("divisione","Divisione"),
+        ]
+        for i ,(key ,label )in enumerate (ops ):
+            y =250 +i *110
+            lv =self .story_progress .get (key ,0 )
+            pct =int (100 *lv /max (1 ,self .num_story_levels ))
+            lbl =self ._render_cached (self .font_large ,label ,WHITE )
+            self .screen .blit (lbl ,(300 ,y ))
+            bar_x =700
+            bar_w =600
+            bar_h =36
+            pygame .draw .rect (self .screen ,(60 ,60 ,70 ),(bar_x ,y +5 ,bar_w ,bar_h ),border_radius =8 )
+            fill_w =int (bar_w *min (lv ,self .num_story_levels )/max (1 ,self .num_story_levels ))
+            if fill_w >0 :
+                pygame .draw .rect (self .screen ,SEL_BLUE ,(bar_x ,y +5 ,fill_w ,bar_h ),border_radius =8 )
+            pct_txt =self ._render_cached (self .font_tiny ,f"{pct }%",WHITE )
+            self .screen .blit (pct_txt ,(bar_x +bar_w +20 ,y +14 ))
+
+        back_txt =self ._render_cached (self .font_small ,"Indietro",WHITE )
+        back_rect =back_txt .get_rect (center =(SCREEN_WIDTH //2 ,SCREEN_HEIGHT -30 ))
+        self .progressi_back_rect =back_rect .inflate (30 ,15 )
+        if self .progressi_back_rect .collidepoint (mx ,my ):
             back_txt =self ._render_cached (self .font_small ,"Indietro",GOLD )
         self .screen .blit (back_txt ,back_rect )
 
