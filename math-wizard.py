@@ -1579,15 +1579,8 @@ class Game :
                 elif event .key ==pygame .K_ESCAPE :
                     self .running =False 
             elif self .state =="options":
-                if event .key ==pygame .K_1 :
-                    self .state ="options_auto"
-                elif event .key ==pygame .K_2 :
+                if event .key in (pygame .K_1 ,pygame .K_RETURN ):
                     self .state ="confirm_delete"
-                elif event .key ==pygame .K_RETURN :
-                    if self .options_cursor ==0 :
-                        self .state ="options_auto"
-                    else :
-                        self .state ="confirm_delete"
                 elif event .key ==pygame .K_ESCAPE :
                     self .state ="menu"
             elif self .state =="confirm_delete":
@@ -1809,10 +1802,7 @@ class Game :
             elif self .state =="options":
                 for i ,hit in enumerate (getattr (self ,'options_btn_rects',[ ])):
                     if hit .collidepoint (mx ,my ):
-                        if i ==0 :
-                            self .state ="options_auto"
-                        else :
-                            self .state ="confirm_delete"
+                        self .state ="confirm_delete"
                         return 
                 if getattr (self ,'options_back_rect',None )and self .options_back_rect .collidepoint (mx ,my ):
                     self .state ="menu"
@@ -2762,11 +2752,11 @@ class Game :
         rect =title .get_rect (center =(SCREEN_WIDTH //2 ,120 ))
         self .screen .blit (title ,rect )
 
-        voci =["Storia","Elimina profilo attuale"]
+        voci =["Elimina profilo attuale"]
         self .options_btn_rects =[ ]
         for i ,voce in enumerate (voci ):
             y =330 +i *120 
-            color =RED if i ==1 else WHITE 
+            color =RED 
             txt =self ._render_cached (self .font_large ,voce ,color )
             rect =txt .get_rect (center =(SCREEN_WIDTH //2 ,y +31 ))
             hit =rect .inflate (30 ,15 )
