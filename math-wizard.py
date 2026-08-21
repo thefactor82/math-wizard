@@ -623,7 +623,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.3.1"
+        self .version ="1.3.2"
 
         self .profiles =[]
         self .current_profile =""
@@ -662,6 +662,7 @@ class Game :
         self .auto_timeout =DEFAULT_TIMEOUT
         self .initial_level =0
         self .difficulty_position =0
+        self .dragging_difficulty =False
         self .story_progress ={"moltiplicazione":0 ,"addizione":0 ,"sottrazione":0 ,"divisione":0 }
 
     def save_profiles (self ):
@@ -958,6 +959,19 @@ class Game :
     def max_initial_level (self ):
         prog =max (0 ,self .story_progress .get (self .config_story_operation ,0 ))
         return max (0 ,min (self .num_story_levels -1 ,prog -self .difficulty_position ))
+
+    def _update_difficulty_from_mouse (self ,mx ):
+        if not hasattr (self ,'diff_bar_rect'):
+            return
+        bar =self .diff_bar_rect
+        max_dp =max (1 ,self .max_difficulty_position ())
+        ratio =(mx -bar .x )/max (1 ,bar .w )
+        new_pos =round (ratio *max_dp )
+        new_pos =max (0 ,min (max_dp ,new_pos ))
+        if new_pos !=self .difficulty_position :
+            self .difficulty_position =new_pos
+            self .initial_level =min (self .initial_level ,self .max_initial_level ())
+            self .save_profile_config ()
 
     def is_last_story_level (self ):
         return self .level >=self .num_story_levels -1 
@@ -1890,17 +1904,11 @@ class Game :
                         self .save_profile_config ()
                     elif self .diff_bar_rect .collidepoint (mx ,my ):
                         self .options_cursor =1
-                        max_dp =max (1 ,self .max_difficulty_position ())
-                        ratio =(mx -self .diff_bar_rect .x )/max (1 ,self .diff_bar_rect .w )
-                        new_pos =round (ratio *max_dp )
-                        new_pos =max (0 ,min (max_dp ,new_pos ))
-                        self .difficulty_position =new_pos
-                        self .initial_level =min (self .initial_level ,self .max_initial_level ())
-                        self .save_profile_config ()
+                        self .dragging_difficulty =True
+                        self ._update_difficulty_from_mouse (mx )
                     elif hasattr (self ,'diff_indicator_rect')and self .diff_indicator_rect and self .diff_indicator_rect .collidepoint (mx ,my ):
                         self .options_cursor =1
-                    elif mx <sx :
-                        pass
+                        self .dragging_difficulty =True
                 if sx -3 <=mx <=sx +lw +vw +rw +3 and 477 <=my <=534 :
                     self .options_cursor =2
                     if mx <sx +lw :
@@ -1930,6 +1938,12 @@ class Game :
                     print (f"config mouse error: {e }")
                     import traceback 
                     traceback .print_exc ()
+        if event .type ==pygame .MOUSEMOTION and self .dragging_difficulty :
+            mx ,my =self ._scale_to_canvas (*event .pos )
+            if self .state =="options_auto":
+                self ._update_difficulty_from_mouse (mx )
+        if event .type ==pygame .MOUSEBUTTONUP :
+            self .dragging_difficulty =False
 
     def handle_config (self ,event ):
         ops =["moltiplicazione","addizione","sottrazione","divisione"]
