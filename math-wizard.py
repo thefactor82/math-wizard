@@ -240,12 +240,22 @@ def generate_addition_operands (pool_a ,pool_b ,reinforce_queue ,max_sum =None )
     return min (pool_a ,key =lambda x :abs (x -max_sum )),fallback_b 
 
 
-def select_operands (pool_a ,pool_b ,reinforce_queue ,operation ,integer_result =True ,max_sum =None ):
-    if operation =="divisione":
-        return generate_division_operands (pool_a ,pool_b ,reinforce_queue ,integer_result )
-    if operation =="addizione":
-        return generate_addition_operands (pool_a ,pool_b ,reinforce_queue ,max_sum )
-    return generate_operands (pool_a ,pool_b ,reinforce_queue )
+def select_operands (pool_a ,pool_b ,reinforce_queue ,operation ,integer_result =True ,max_sum =None ,min_value =None ,max_value =None ):
+    for _ in range (50 ):
+        if operation =="divisione":
+            a ,b =generate_division_operands (pool_a ,pool_b ,reinforce_queue ,integer_result )
+        elif operation =="addizione":
+            a ,b =generate_addition_operands (pool_a ,pool_b ,reinforce_queue ,max_sum )
+        else :
+            a ,b =generate_operands (pool_a ,pool_b ,reinforce_queue )
+        res =calculate_result (a ,b ,operation ,integer_result )
+        if min_value is not None and res <min_value :
+            continue 
+        if max_value is not None and res >max_value :
+            continue 
+        return a ,b 
+    a ,b =random .choice (pool_a ),random .choice (pool_b )
+    return a ,b 
 
 LEVELS ={}
 for src in (data_path ,resource_path ):
@@ -260,6 +270,8 @@ for src in (data_path ,resource_path ):
                 for lv in LEVELS [op ]:
                     lv ["pool_a"]=parse_pool (lv ["pool_a"])
                     lv ["pool_b"]=parse_pool (lv ["pool_b"])
+                    lv .setdefault ("min_value",None )
+                    lv .setdefault ("max_value",None )
         if LEVELS :
             break 
 if not LEVELS :
@@ -611,7 +623,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.2.6"
+        self .version ="1.2.7"
 
         self .profiles =[]
         self .current_profile =""
@@ -1306,7 +1318,7 @@ class Game :
             lv =self .effective_level ()
             lv_data =self .levels [lv ]
             for _ in range (20 ):
-                a ,b =select_operands (lv_data ["pool_a"],lv_data ["pool_b"],deque (),self .operation ,self .integer_result )
+                a ,b =select_operands (lv_data ["pool_a"],lv_data ["pool_b"],deque (),self .operation ,self .integer_result ,min_value =lv_data .get ("min_value"),max_value =lv_data .get ("max_value"))
                 if (a ,b )!=prev :
                     return a ,b 
         else :
@@ -1330,7 +1342,7 @@ class Game :
             lv =self .effective_level ()
             lv_data =self .levels [lv ]
             self .operation =self .config_story_operation 
-            self .a ,self .b =select_operands (lv_data ["pool_a"],lv_data ["pool_b"],self .reinforcement_queue ,self .operation ,self .integer_result )
+            self .a ,self .b =select_operands (lv_data ["pool_a"],lv_data ["pool_b"],self .reinforcement_queue ,self .operation ,self .integer_result ,min_value =lv_data .get ("min_value"),max_value =lv_data .get ("max_value"))
             if self .operation =="sottrazione"and self .a <self .b :
                 self .a ,self .b =self .b ,self .a 
             if (self .a ,self .b )==(self .prev_a ,self .prev_b ):
@@ -1385,7 +1397,7 @@ class Game :
             lv =self .effective_level ()
             lv_data =self .levels [lv ]
             self .operation =self .config_story_operation 
-            self .a ,self .b =select_operands (lv_data ["pool_a"],lv_data ["pool_b"],self .reinforcement_queue ,self .operation ,self .integer_result )
+            self .a ,self .b =select_operands (lv_data ["pool_a"],lv_data ["pool_b"],self .reinforcement_queue ,self .operation ,self .integer_result ,min_value =lv_data .get ("min_value"),max_value =lv_data .get ("max_value"))
             if self .operation =="sottrazione"and self .a <self .b :
                 self .a ,self .b =self .b ,self .a 
             self .questions_asked +=1 
@@ -3542,6 +3554,7 @@ class Game :
             f"Risultato: {self .expected_result }",
             f"Pool A: {format_pool_compact (self .levels [self .effective_level ()]['pool_a'])if self .mode =='auto'else format_pool_compact (self .pool_a )}",
             f"Pool B: {format_pool_compact (self .levels [self .effective_level ()]['pool_b'])if self .mode =='auto'else format_pool_compact (self .pool_b )}",
+            f"Min: {self .levels [self .effective_level ()].get ('min_value')if self .mode =='auto'else '-'}"+"   "+f"Max: {self .levels [self .effective_level ()].get ('max_value')if self .mode =='auto'else '-'}",
             f"Coda rinforzo: {list (self .reinforcement_queue )}",
             f"Progresso mostro: {(self .boss_progress if (self .boss_active and self .boss_phase =='fight')else self .monster_progress ):.2f}"+(f"  Tempo: {(pygame .time .get_ticks ()-self .question_start )/1000 :.1f}s"if self .question_active else ""),
             f"Consecutive: {self .consecutive_correct }",
