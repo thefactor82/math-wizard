@@ -623,7 +623,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.3.0"
+        self .version ="1.3.1"
 
         self .profiles =[]
         self .current_profile =""
@@ -1866,29 +1866,43 @@ class Game :
                     self .state ="options"
                     return
             elif self .state =="options_auto":
-                sx =540 
-                lw ,vw ,rw =45 ,60 ,45 
+                sx =540
+                lw ,vw ,rw =45 ,60 ,45
                 # Timeout
-                if sx -3 <=mx <=sx +lw +vw +rw +3 and 297 <=my <=354 :
-                    self .options_cursor =0 
+                if sx -3 <=mx <=sx +lw +vw +rw +3 and 257 <=my <=314 :
+                    self .options_cursor =0
                     if mx <sx +lw :
                         self .auto_timeout =max (3 ,self .auto_timeout -1 )
                     elif mx >=sx +lw +vw :
                         self .auto_timeout =min (99 ,self .auto_timeout +1 )
                     self .save_profile_config ()
-                elif hasattr (self ,'diff_min_rect')and hasattr (self ,'diff_max_rect'):
-                    if self .diff_min_rect .collidepoint (mx ,my ):
-                        self .options_cursor =1 
+                    # Difficoltà (barra scorrevole)
+                elif hasattr (self ,'diff_bar_rect'):
+                    if hasattr (self ,'diff_left_rect')and self .diff_left_rect .collidepoint (mx ,my ):
+                        self .options_cursor =1
                         self .difficulty_position =max (0 ,self .difficulty_position -1 )
                         self .initial_level =min (self .initial_level ,self .max_initial_level ())
                         self .save_profile_config ()
-                    elif self .diff_max_rect .collidepoint (mx ,my ):
-                        self .options_cursor =1 
+                    elif hasattr (self ,'diff_right_rect')and self .diff_right_rect .collidepoint (mx ,my ):
+                        self .options_cursor =1
                         self .difficulty_position =min (self .max_difficulty_position (),self .difficulty_position +1 )
                         self .initial_level =min (self .initial_level ,self .max_initial_level ())
                         self .save_profile_config ()
-                elif sx -3 <=mx <=sx +lw +vw +rw +3 and 402 <=my <=459 :
-                    self .options_cursor =2 
+                    elif self .diff_bar_rect .collidepoint (mx ,my ):
+                        self .options_cursor =1
+                        max_dp =max (1 ,self .max_difficulty_position ())
+                        ratio =(mx -self .diff_bar_rect .x )/max (1 ,self .diff_bar_rect .w )
+                        new_pos =round (ratio *max_dp )
+                        new_pos =max (0 ,min (max_dp ,new_pos ))
+                        self .difficulty_position =new_pos
+                        self .initial_level =min (self .initial_level ,self .max_initial_level ())
+                        self .save_profile_config ()
+                    elif hasattr (self ,'diff_indicator_rect')and self .diff_indicator_rect and self .diff_indicator_rect .collidepoint (mx ,my ):
+                        self .options_cursor =1
+                    elif mx <sx :
+                        pass
+                if sx -3 <=mx <=sx +lw +vw +rw +3 and 477 <=my <=534 :
+                    self .options_cursor =2
                     if mx <sx +lw :
                         self .initial_level =max (0 ,self .initial_level -1 )
                     elif mx >=sx +lw +vw :
@@ -1903,7 +1917,7 @@ class Game :
                             self .difficulty_position =min (self .difficulty_position ,self .max_difficulty_position ())
                             self .initial_level =min (self .initial_level ,self .max_initial_level ())
                             self .save_profile_config ()
-                            break 
+                            break
                             # CONFERMA
                 if SCREEN_WIDTH //2 -165 <=mx <=SCREEN_WIDTH //2 +165 and 717 <=my <=786 :
                     self .save_profile_config ()
@@ -2978,39 +2992,53 @@ class Game :
         t_surf =self ._render_cached (self .font_tiny ,str (self .auto_timeout ),WHITE )
         self .screen .blit (t_surf ,t_surf .get_rect (center =(sx +lw +vw //2 ,y +25 )))
 
-        # Difficoltà
+        # Difficoltà (barra scorrevole)
         y =370
         label_d =self ._render_cached (self .font_tiny ,"Difficoltà",WHITE )
         rect =label_d .get_rect (midleft =(120 ,y +25 ))
         self .screen .blit (label_d ,rect )
         focused =self .options_cursor ==1
-        dw_lw ,dw_vw ,dw_rw =45 ,120 ,45
-        diff_minus_rect =pygame .Rect (sx ,y ,dw_lw ,51 )
-        diff_plus_rect =pygame .Rect (sx +dw_lw +dw_vw ,y ,dw_rw ,51 )
-        self .diff_min_rect =diff_minus_rect
-        self .diff_max_rect =diff_plus_rect
-        hover_dminus =diff_minus_rect .collidepoint (mx ,my )
-        hover_dplus =diff_plus_rect .collidepoint (mx ,my )
+        bar_x =540
+        bar_w =400
+        bar_h =12
+        bar_y =y +19
+        arrow_l =36
+        arrow_r =36
+        dl_rect =pygame .Rect (bar_x ,y +2 ,arrow_l ,46 )
+        dr_rect =pygame .Rect (bar_x +arrow_l +bar_w ,y +2 ,arrow_r ,46 )
+        self .diff_bar_rect =pygame .Rect (bar_x +arrow_l ,bar_y ,bar_w ,bar_h )
+        self .diff_left_rect =dl_rect
+        self .diff_right_rect =dr_rect
         if focused :
-            pygame .draw .rect (self .screen ,SEL_BLUE ,(sx -3 ,y -3 ,dw_lw +dw_vw +dw_rw +6 ,57 ),0 ,border_radius =6 )
-        pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_dminus else (70 ,70 ,80 ),diff_minus_rect ,border_radius =6 )
-        pygame .draw .rect (self .screen ,(40 ,40 ,50 ),(sx +dw_lw ,y ,dw_vw ,51 ))
-        pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_dplus else (70 ,70 ,80 ),diff_plus_rect ,border_radius =6 )
-        if hover_dminus :
-            pygame .draw .rect (self .screen ,GOLD ,diff_minus_rect ,2 ,border_radius =6 )
-        if hover_dplus :
-            pygame .draw .rect (self .screen ,GOLD ,diff_plus_rect ,2 ,border_radius =6 )
-        d_minus =self ._render_cached (self .font_tiny ,"-",WHITE )
-        d_plus =self ._render_cached (self .font_tiny ,"+",WHITE )
-        self .screen .blit (d_minus ,d_minus .get_rect (center =(sx +dw_lw //2 ,y +25 )))
-        self .screen .blit (d_plus ,d_plus .get_rect (center =(sx +dw_lw +dw_vw +dw_rw //2 ,y +25 )))
-        max_dp =self .max_difficulty_position ()
-        d_surf =self ._render_cached (self .font_tiny ,f"{self .difficulty_position }/{max_dp }",WHITE )
-        self .screen .blit (d_surf ,d_surf .get_rect (center =(sx +dw_lw +dw_vw //2 ,y +25 )))
+            pygame .draw .rect (self .screen ,SEL_BLUE ,(bar_x -5 ,y -3 ,arrow_l +bar_w +arrow_r +10 ,57 ),0 ,border_radius =6 )
+        hover_dl =dl_rect .collidepoint (mx ,my )
+        hover_dr =dr_rect .collidepoint (mx ,my )
+        pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_dl else (70 ,70 ,80 ),dl_rect ,border_radius =6 )
+        pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_dr else (70 ,70 ,80 ),dr_rect ,border_radius =6 )
+        if hover_dl :
+            pygame .draw .rect (self .screen ,GOLD ,dl_rect ,2 ,border_radius =6 )
+        if hover_dr :
+            pygame .draw .rect (self .screen ,GOLD ,dr_rect ,2 ,border_radius =6 )
+        arr_l =self ._render_cached (self .font_tiny ,"<",WHITE )
+        arr_r =self ._render_cached (self .font_tiny ,">",WHITE )
+        self .screen .blit (arr_l ,arr_l .get_rect (center =dl_rect .center ))
+        self .screen .blit (arr_r ,arr_r .get_rect (center =dr_rect .center ))
+        pygame .draw .rect (self .screen ,(50 ,50 ,60 ),(bar_x +arrow_l ,bar_y ,bar_w ,bar_h ),border_radius =6 )
+        max_dp =max (1 ,self .max_difficulty_position ())
+        if max_dp >0 :
+            ratio =self .difficulty_position /max_dp
+            ind_w =max (16 ,bar_w //max (8 ,max_dp +2 ))
+            ind_x =bar_x +arrow_l +int (ratio *(bar_w -ind_w ))
+            ind_rect =pygame .Rect (ind_x ,bar_y -6 ,ind_w ,bar_h +12 )
+            self .diff_indicator_rect =ind_rect
+            pygame .draw .rect (self .screen ,(120 ,160 ,220 ),ind_rect ,border_radius =6 )
+            pygame .draw .rect (self .screen ,(180 ,210 ,255 ),ind_rect ,1 ,border_radius =6 )
+        else :
+            self .diff_indicator_rect =None
         lv_start =self .difficulty_position +1
         lv_end =min (self .difficulty_position +self .num_story_levels ,len (LEVELS .get (self .config_story_operation ,[])))
-        range_surf =self ._render_cached (self .font_tiny ,f"(livelli {lv_start }-{lv_end })",GRAY )
-        self .screen .blit (range_surf ,range_surf .get_rect (midleft =(sx +dw_lw +dw_vw +dw_rw +15 ,y +25 )))
+        range_surf =self ._render_cached (self .font_tiny ,f"livelli {lv_start }-{lv_end }",GRAY )
+        self .screen .blit (range_surf ,range_surf .get_rect (midleft =(bar_x +arrow_l +bar_w +arrow_r +15 ,y +25 )))
 
         # Livello iniziale
         y =480
