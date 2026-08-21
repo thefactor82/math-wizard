@@ -623,7 +623,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.2.7"
+        self .version ="1.3.0"
 
         self .profiles =[]
         self .current_profile =""
@@ -659,8 +659,9 @@ class Game :
         self .config_by_operation ["divisione"]["risultato_intero"]=True 
         self .config_by_operation ["divisione"]["swap"]=False 
         self .config =self .config_by_operation [self .config_operation ]
-        self .auto_timeout =DEFAULT_TIMEOUT 
-        self .initial_level =0 
+        self .auto_timeout =DEFAULT_TIMEOUT
+        self .initial_level =0
+        self .difficulty_position =0
         self .story_progress ={"moltiplicazione":0 ,"addizione":0 ,"sottrazione":0 ,"divisione":0 }
 
     def save_profiles (self ):
@@ -706,6 +707,7 @@ class Game :
         "storia_operazione":self .config_story_operation ,
         "auto_timeout":self .auto_timeout ,
         "livello_iniziale":self .initial_level ,
+        "difficolta_posizione":self .difficulty_position ,
         "storia_progresso":self .story_progress ,
         }
         for op in ["moltiplicazione","addizione","sottrazione","divisione"]:
@@ -734,6 +736,7 @@ class Game :
             self .config_story_operation =data .get ("storia_operazione",self .config_story_operation )
             self .auto_timeout =data .get ("auto_timeout",self .auto_timeout )
             self .initial_level =data .get ("livello_iniziale",self .initial_level )
+            self .difficulty_position =data .get ("difficolta_posizione",self .difficulty_position )
             story_progress =data .get ("storia_progresso",self .story_progress )
             if isinstance (story_progress ,dict ):
                 self .story_progress .update (story_progress )
@@ -946,7 +949,15 @@ class Game :
             self .start_level ()
 
     def effective_level (self ):
-        return min (self .level ,len (self .levels )-1 )
+        return min (self .difficulty_position +self .level ,len (self .levels )-1 )
+
+    def max_difficulty_position (self ):
+        total =len (LEVELS .get (self .config_story_operation ,[]))
+        return max (0 ,total -self .num_story_levels )
+
+    def max_initial_level (self ):
+        prog =max (0 ,self .story_progress .get (self .config_story_operation ,0 ))
+        return max (0 ,min (self .num_story_levels -1 ,prog -self .difficulty_position ))
 
     def is_last_story_level (self ):
         return self .level >=self .num_story_levels -1 
@@ -1610,33 +1621,38 @@ class Game :
                     self .state ="options"
             elif self .state =="options_auto":
                 if event .key in (pygame .K_UP ,pygame .K_w ):
-                    self .options_cursor =(self .options_cursor -1 )%3 
+                    self .options_cursor =(self .options_cursor -1 )%4
                 elif event .key in (pygame .K_DOWN ,pygame .K_s ):
-                    self .options_cursor =(self .options_cursor +1 )%3 
+                    self .options_cursor =(self .options_cursor +1 )%4
                 elif event .key in (pygame .K_PLUS ,pygame .K_EQUALS ,pygame .K_KP_PLUS ):
                     if self .options_cursor ==0 :
                         self .auto_timeout =min (99 ,self .auto_timeout +1 )
                     elif self .options_cursor ==1 :
-                        prog_max =max (0 ,self .story_progress .get (self .config_story_operation ,0 ))
-                        self .initial_level =min (prog_max ,self .initial_level +1 )
+                        self .difficulty_position =min (self .max_difficulty_position (),self .difficulty_position +1 )
+                        self .initial_level =min (self .initial_level ,self .max_initial_level ())
+                    elif self .options_cursor ==2 :
+                        self .initial_level =min (self .max_initial_level (),self .initial_level +1 )
                     else :
                         ops =["moltiplicazione","addizione","sottrazione","divisione"]
                         idx =(ops .index (self .config_story_operation )+1 )%4 
                         self .config_story_operation =ops [idx ]
-                        prog_max =max (0 ,self .story_progress .get (self .config_story_operation ,0 ))
-                        self .initial_level =min (self .initial_level ,prog_max )
+                        self .difficulty_position =min (self .difficulty_position ,self .max_difficulty_position ())
+                        self .initial_level =min (self .initial_level ,self .max_initial_level ())
                     self .save_profile_config ()
                 elif event .key in (pygame .K_MINUS ,pygame .K_KP_MINUS ):
                     if self .options_cursor ==0 :
                         self .auto_timeout =max (3 ,self .auto_timeout -1 )
                     elif self .options_cursor ==1 :
+                        self .difficulty_position =max (0 ,self .difficulty_position -1 )
+                        self .initial_level =min (self .initial_level ,self .max_initial_level ())
+                    elif self .options_cursor ==2 :
                         self .initial_level =max (0 ,self .initial_level -1 )
                     else :
                         ops =["moltiplicazione","addizione","sottrazione","divisione"]
                         idx =(ops .index (self .config_story_operation )-1 )%4 
                         self .config_story_operation =ops [idx ]
-                        prog_max =max (0 ,self .story_progress .get (self .config_story_operation ,0 ))
-                        self .initial_level =min (self .initial_level ,prog_max )
+                        self .difficulty_position =min (self .difficulty_position ,self .max_difficulty_position ())
+                        self .initial_level =min (self .initial_level ,self .max_initial_level ())
                     self .save_profile_config ()
                 elif event .key in (pygame .K_RETURN ,pygame .K_KP_ENTER ):
                     self .save_profile_config ()
@@ -1706,9 +1722,10 @@ class Game :
                     else :
                         self .level +=1 
                         next_lv =self .level 
-                    if next_lv >self .story_progress .get (self .config_story_operation ,0 ):
-                        self .story_progress [self .config_story_operation ]=next_lv 
-                        self .initial_level =min (next_lv ,self .num_story_levels -1 )
+                    abs_next =self .difficulty_position +next_lv 
+                    if abs_next >self .story_progress .get (self .config_story_operation ,0 ):
+                        self .story_progress [self .config_story_operation ]=abs_next 
+                        self .initial_level =min (self .initial_level ,self .max_initial_level ())
                         self .save_profile_config ()
                         if average <self .timeout_limit /2 :
                             self .timeout_limit =max (3 ,self .timeout_limit -1 )
@@ -1859,28 +1876,36 @@ class Game :
                     elif mx >=sx +lw +vw :
                         self .auto_timeout =min (99 ,self .auto_timeout +1 )
                     self .save_profile_config ()
-                    # Livello iniziale
+                elif hasattr (self ,'diff_min_rect')and hasattr (self ,'diff_max_rect'):
+                    if self .diff_min_rect .collidepoint (mx ,my ):
+                        self .options_cursor =1 
+                        self .difficulty_position =max (0 ,self .difficulty_position -1 )
+                        self .initial_level =min (self .initial_level ,self .max_initial_level ())
+                        self .save_profile_config ()
+                    elif self .diff_max_rect .collidepoint (mx ,my ):
+                        self .options_cursor =1 
+                        self .difficulty_position =min (self .max_difficulty_position (),self .difficulty_position +1 )
+                        self .initial_level =min (self .initial_level ,self .max_initial_level ())
+                        self .save_profile_config ()
                 elif sx -3 <=mx <=sx +lw +vw +rw +3 and 402 <=my <=459 :
-                    self .options_cursor =1 
+                    self .options_cursor =2 
                     if mx <sx +lw :
                         self .initial_level =max (0 ,self .initial_level -1 )
                     elif mx >=sx +lw +vw :
-                        prog_max =max (0 ,self .story_progress .get (self .config_story_operation ,0 ))
-                        self .initial_level =min (prog_max ,self .initial_level +1 )
+                        self .initial_level =min (self .max_initial_level (),self .initial_level +1 )
                     self .save_profile_config ()
-                    # Operazione — 4 pulsanti
                 if hasattr (self ,'opzioni_auto_op_buttons')and len (self .opzioni_auto_op_buttons )==4 :
                     ops =["moltiplicazione","addizione","sottrazione","divisione"]
                     for i ,btn in enumerate (self .opzioni_auto_op_buttons ):
                         if btn .collidepoint (mx ,my ):
-                            self .options_cursor =2 
+                            self .options_cursor =3
                             self .config_story_operation =ops [i ]
-                            prog_max =max (0 ,self .story_progress .get (self .config_story_operation ,0 ))
-                            self .initial_level =min (self .initial_level ,prog_max )
+                            self .difficulty_position =min (self .difficulty_position ,self .max_difficulty_position ())
+                            self .initial_level =min (self .initial_level ,self .max_initial_level ())
                             self .save_profile_config ()
                             break 
                             # CONFERMA
-                if SCREEN_WIDTH //2 -165 <=mx <=SCREEN_WIDTH //2 +165 and 627 <=my <=696 :
+                if SCREEN_WIDTH //2 -165 <=mx <=SCREEN_WIDTH //2 +165 and 717 <=my <=786 :
                     self .save_profile_config ()
                     self .mode ="auto"
                     self .start_game ()
@@ -2862,11 +2887,12 @@ class Game :
         for i ,(key ,label )in enumerate (ops ):
             y =260 +i *90
             lv =self .story_progress .get (key ,0 )
-            pct =int (100 *lv /max (1 ,self .num_story_levels ))
+            total =len (LEVELS .get (key ,[]))
+            pct =int (100 *lv /max (1 ,total ))
             lbl =self ._render_cached (self .font_small ,label ,WHITE )
             self .screen .blit (lbl ,(120 ,y +8 ))
             pygame .draw .rect (self .screen ,(60 ,60 ,70 ),(bar_x ,y +5 ,bar_w ,bar_h ),border_radius =6 )
-            fill_w =int (bar_w *min (lv ,self .num_story_levels )/max (1 ,self .num_story_levels ))
+            fill_w =int (bar_w *min (lv ,total )/max (1 ,total ))
             if fill_w >0 :
                 pygame .draw .rect (self .screen ,SEL_BLUE ,(bar_x ,y +5 ,fill_w ,bar_h ),border_radius =6 )
             pct_txt =self ._render_cached (self .font_tiny ,f"{pct }%",WHITE )
@@ -2923,14 +2949,15 @@ class Game :
         rect =title .get_rect (center =(SCREEN_WIDTH //2 ,120 ))
         self .screen .blit (title ,rect )
 
+        sx =540
+        lw ,vw ,rw =45 ,60 ,45
+
         # Timeout
-        y =300 
+        y =260
         label_t =self ._render_cached (self .font_tiny ,"Timeout (secondi)",WHITE )
         rect =label_t .get_rect (midleft =(120 ,y +25 ))
         self .screen .blit (label_t ,rect )
-        focused =self .options_cursor ==0 
-        sx =540 
-        lw ,vw ,rw =45 ,60 ,45 
+        focused =self .options_cursor ==0
         minus_rect =pygame .Rect (sx ,y ,lw ,51 )
         plus_rect =pygame .Rect (sx +lw +vw ,y ,rw ,51 )
         hover_minus =minus_rect .collidepoint (mx ,my )
@@ -2951,12 +2978,46 @@ class Game :
         t_surf =self ._render_cached (self .font_tiny ,str (self .auto_timeout ),WHITE )
         self .screen .blit (t_surf ,t_surf .get_rect (center =(sx +lw +vw //2 ,y +25 )))
 
+        # Difficoltà
+        y =370
+        label_d =self ._render_cached (self .font_tiny ,"Difficoltà",WHITE )
+        rect =label_d .get_rect (midleft =(120 ,y +25 ))
+        self .screen .blit (label_d ,rect )
+        focused =self .options_cursor ==1
+        dw_lw ,dw_vw ,dw_rw =45 ,120 ,45
+        diff_minus_rect =pygame .Rect (sx ,y ,dw_lw ,51 )
+        diff_plus_rect =pygame .Rect (sx +dw_lw +dw_vw ,y ,dw_rw ,51 )
+        self .diff_min_rect =diff_minus_rect
+        self .diff_max_rect =diff_plus_rect
+        hover_dminus =diff_minus_rect .collidepoint (mx ,my )
+        hover_dplus =diff_plus_rect .collidepoint (mx ,my )
+        if focused :
+            pygame .draw .rect (self .screen ,SEL_BLUE ,(sx -3 ,y -3 ,dw_lw +dw_vw +dw_rw +6 ,57 ),0 ,border_radius =6 )
+        pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_dminus else (70 ,70 ,80 ),diff_minus_rect ,border_radius =6 )
+        pygame .draw .rect (self .screen ,(40 ,40 ,50 ),(sx +dw_lw ,y ,dw_vw ,51 ))
+        pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_dplus else (70 ,70 ,80 ),diff_plus_rect ,border_radius =6 )
+        if hover_dminus :
+            pygame .draw .rect (self .screen ,GOLD ,diff_minus_rect ,2 ,border_radius =6 )
+        if hover_dplus :
+            pygame .draw .rect (self .screen ,GOLD ,diff_plus_rect ,2 ,border_radius =6 )
+        d_minus =self ._render_cached (self .font_tiny ,"-",WHITE )
+        d_plus =self ._render_cached (self .font_tiny ,"+",WHITE )
+        self .screen .blit (d_minus ,d_minus .get_rect (center =(sx +dw_lw //2 ,y +25 )))
+        self .screen .blit (d_plus ,d_plus .get_rect (center =(sx +dw_lw +dw_vw +dw_rw //2 ,y +25 )))
+        max_dp =self .max_difficulty_position ()
+        d_surf =self ._render_cached (self .font_tiny ,f"{self .difficulty_position }/{max_dp }",WHITE )
+        self .screen .blit (d_surf ,d_surf .get_rect (center =(sx +dw_lw +dw_vw //2 ,y +25 )))
+        lv_start =self .difficulty_position +1
+        lv_end =min (self .difficulty_position +self .num_story_levels ,len (LEVELS .get (self .config_story_operation ,[])))
+        range_surf =self ._render_cached (self .font_tiny ,f"(livelli {lv_start }-{lv_end })",GRAY )
+        self .screen .blit (range_surf ,range_surf .get_rect (midleft =(sx +dw_lw +dw_vw +dw_rw +15 ,y +25 )))
+
         # Livello iniziale
-        y =405 
+        y =480
         label_l =self ._render_cached (self .font_tiny ,"Livello iniziale",WHITE )
         rect =label_l .get_rect (midleft =(120 ,y +25 ))
         self .screen .blit (label_l ,rect )
-        focused =self .options_cursor ==1 
+        focused =self .options_cursor ==2
         minus_rect2 =pygame .Rect (sx ,y ,lw ,51 )
         plus_rect2 =pygame .Rect (sx +lw +vw ,y ,rw ,51 )
         hover_minus2 =minus_rect2 .collidepoint (mx ,my )
@@ -2976,23 +3037,26 @@ class Game :
         self .screen .blit (plus ,plus .get_rect (center =(sx +lw +vw +rw //2 ,y +25 )))
         l_surf =self ._render_cached (self .font_tiny ,str (self .initial_level +1 ),WHITE )
         self .screen .blit (l_surf ,l_surf .get_rect (center =(sx +lw +vw //2 ,y +25 )))
-        prog =self .story_progress .get (self .config_story_operation ,0 )
-        prog_surf =self ._render_cached (self .font_tiny ,f"(max {max (1 ,prog +1 )})",GRAY )
+        mx_il =self .max_initial_level ()
+        prog_surf =self ._render_cached (self .font_tiny ,f"(max {max (1 ,mx_il +1 )})",GRAY )
         self .screen .blit (prog_surf ,prog_surf .get_rect (midleft =(sx +lw +vw +rw +15 ,y +25 )))
+        act_lv =self .difficulty_position +self .initial_level +1
+        act_surf =self ._render_cached (self .font_tiny ,f"→ lv.{act_lv }",GRAY )
+        self .screen .blit (act_surf ,act_surf .get_rect (midleft =(sx +lw +vw +rw +120 ,y +25 )))
 
         # Operazione
-        y =510 
+        y =590
         label_o =self ._render_cached (self .font_tiny ,"Operazione",WHITE )
         rect =label_o .get_rect (midleft =(120 ,y +25 ))
         self .screen .blit (label_o ,rect )
         ops_list =[("moltiplicazione","Moltiplicazione"),("addizione","Addizione"),("sottrazione","Sottrazione"),("divisione","Divisione")]
-        bx =540 
+        bx =540
         self .opzioni_auto_op_buttons =[]
         for op_key ,op_label in ops_list :
-            bw =217 
-            bh =51 
+            bw =217
+            bh =51
             btn_rect =pygame .Rect (bx ,y ,bw ,bh )
-            selected =self .config_story_operation ==op_key 
+            selected =self .config_story_operation ==op_key
             hovered =btn_rect .collidepoint (mx ,my )
             if selected :
                 bg_col =(60 ,130 ,200 )
@@ -3006,15 +3070,15 @@ class Game :
             surf =self ._render_cached (self .font_tiny ,op_label ,WHITE )
             self .screen .blit (surf ,surf .get_rect (center =btn_rect .center ))
             self .opzioni_auto_op_buttons .append (btn_rect )
-            bx +=bw +18 
-        if self .options_cursor ==2 :
+            bx +=bw +18
+        if self .options_cursor ==3:
             ops_keys =["moltiplicazione","addizione","sottrazione","divisione"]
             sel_idx =ops_keys .index (self .config_story_operation )
             focus_rect =self .opzioni_auto_op_buttons [sel_idx ].inflate (12 ,12 )
             pygame .draw .rect (self .screen ,(255 ,255 ,100 ),focus_rect ,3 ,border_radius =9 )
 
             # CONFERMA
-        y_conf =630 
+        y_conf =710
         conf_rect =pygame .Rect (SCREEN_WIDTH //2 -165 ,y_conf ,330 ,69 )
         hover_conf =conf_rect .collidepoint (mx ,my )
         bg_conf =(50 ,140 ,50 )if hover_conf else (40 ,120 ,40 )
@@ -3549,6 +3613,7 @@ class Game :
             f"Tempo medio: {sum (self .answer_times )/len (self .answer_times ):.1f}s"if self .answer_times else "Tempo medio: --",
             f"Timeout: {self .timeout_limit }s"+(f" (iniziale {self .initial_timeout_limit }s)"if self .mode =='auto'else ""),
             f"Livello: {self .effective_level ()+1 }/{len (self .levels )}"if self .mode =='auto'else "Livello: -",
+            f"Difficoltà: {self .difficulty_position }/{self .max_difficulty_position ()}"if self .mode =='auto'else "Difficoltà: -",
             f"Operandi: {self .a } {segno_debug } {self .b }",
             f"Prev: {self .prev_a } {segno_debug } {self .prev_b }",
             f"Risultato: {self .expected_result }",
