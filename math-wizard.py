@@ -611,7 +611,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.2.3"
+        self .version ="1.2.4"
 
         self .profiles =[]
         self .current_profile =""
@@ -1561,13 +1561,11 @@ class Game :
             elif self .state =="menu":
                 if event .key ==pygame .K_RETURN :
                     if self .menu_cursor ==0 :
-                        self .mode ="auto"
-                        self .start_game ()
+                        self .state ="options_auto"
                     else :
                         self .show_config ()
                 elif event .key ==pygame .K_1 :
-                    self .mode ="auto"
-                    self .start_game ()
+                    self .state ="options_auto"
                 elif event .key ==pygame .K_2 :
                     self .show_config ()
                 elif event .key ==pygame .K_o :
@@ -1629,9 +1627,10 @@ class Game :
                     self .save_profile_config ()
                 elif event .key in (pygame .K_RETURN ,pygame .K_KP_ENTER ):
                     self .save_profile_config ()
-                    self .state ="menu"
+                    self .mode ="auto"
+                    self .start_game ()
                 elif event .key ==pygame .K_ESCAPE :
-                    self .state ="options"
+                    self .state ="menu"
             elif self .state =="config_fixed":
                 self .handle_config (event )
             elif self .state =="game":
@@ -1741,8 +1740,7 @@ class Game :
                 for i ,hit in enumerate (getattr (self ,'menu_btn_rects',[ ])):
                     if hit .collidepoint (mx ,my ):
                         if i ==0 :
-                            self .mode ="auto"
-                            self .start_game ()
+                            self .state ="options_auto"
                         else :
                             self .show_config ()
                         return 
@@ -1864,7 +1862,8 @@ class Game :
                             # CONFERMA
                 if SCREEN_WIDTH //2 -165 <=mx <=SCREEN_WIDTH //2 +165 and 627 <=my <=696 :
                     self .save_profile_config ()
-                    self .state ="menu"
+                    self .mode ="auto"
+                    self .start_game ()
             elif self .state =="config_fixed":
                 try :
                     self .handle_config (event )
