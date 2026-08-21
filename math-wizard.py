@@ -611,7 +611,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.2.5"
+        self .version ="1.2.6"
 
         self .profiles =[]
         self .current_profile =""
@@ -1689,12 +1689,15 @@ class Game :
                     richieste =5 +self .level 
                     recent_times =self .monster_times [-richieste :]
                     average =sum (recent_times )/len (recent_times )if recent_times else 0 
-                    if not self .is_last_story_level ():
+                    if self .is_last_story_level ():
+                        next_lv =self .num_story_levels 
+                    else :
                         self .level +=1 
-                        if self .level >self .story_progress .get (self .config_story_operation ,0 ):
-                            self .story_progress [self .config_story_operation ]=self .level 
-                            self .initial_level =self .level 
-                            self .save_profile_config ()
+                        next_lv =self .level 
+                    if next_lv >self .story_progress .get (self .config_story_operation ,0 ):
+                        self .story_progress [self .config_story_operation ]=next_lv 
+                        self .initial_level =min (next_lv ,self .num_story_levels -1 )
+                        self .save_profile_config ()
                         if average <self .timeout_limit /2 :
                             self .timeout_limit =max (3 ,self .timeout_limit -1 )
                     self .return_to_game =True 
@@ -2841,21 +2844,21 @@ class Game :
             ("sottrazione","Sottrazione"),
             ("divisione","Divisione"),
         ]
+        bar_x =350
+        bar_w =500
+        bar_h =22
         for i ,(key ,label )in enumerate (ops ):
-            y =250 +i *110
+            y =260 +i *90
             lv =self .story_progress .get (key ,0 )
             pct =int (100 *lv /max (1 ,self .num_story_levels ))
-            lbl =self ._render_cached (self .font_large ,label ,WHITE )
-            self .screen .blit (lbl ,(300 ,y ))
-            bar_x =700
-            bar_w =600
-            bar_h =36
-            pygame .draw .rect (self .screen ,(60 ,60 ,70 ),(bar_x ,y +5 ,bar_w ,bar_h ),border_radius =8 )
+            lbl =self ._render_cached (self .font_small ,label ,WHITE )
+            self .screen .blit (lbl ,(120 ,y +8 ))
+            pygame .draw .rect (self .screen ,(60 ,60 ,70 ),(bar_x ,y +5 ,bar_w ,bar_h ),border_radius =6 )
             fill_w =int (bar_w *min (lv ,self .num_story_levels )/max (1 ,self .num_story_levels ))
             if fill_w >0 :
-                pygame .draw .rect (self .screen ,SEL_BLUE ,(bar_x ,y +5 ,fill_w ,bar_h ),border_radius =8 )
+                pygame .draw .rect (self .screen ,SEL_BLUE ,(bar_x ,y +5 ,fill_w ,bar_h ),border_radius =6 )
             pct_txt =self ._render_cached (self .font_tiny ,f"{pct }%",WHITE )
-            self .screen .blit (pct_txt ,(bar_x +bar_w +20 ,y +14 ))
+            self .screen .blit (pct_txt ,(bar_x +bar_w +15 ,y +10 ))
 
         back_txt =self ._render_cached (self .font_small ,"Indietro",WHITE )
         back_rect =back_txt .get_rect (center =(SCREEN_WIDTH //2 ,SCREEN_HEIGHT -30 ))
