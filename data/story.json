@@ -20,34 +20,7 @@
   },
   {
     "tipo": "livello",
-    "bg": "forest1",
-    "monsters": [1,2,3,4,6,8],
-    "player_in": "sx",
-    "player_out": "dx",
-    "player_entrance": "y",
-    "monster_in": "dx"
-  },
-  {
-    "tipo": "livello",
     "bg": "forest2",
-    "monsters": [1,2,3,4,6,8],
-    "player_in": "sx",
-    "player_out": "dx",
-    "player_entrance": "y",
-    "monster_in": "dx"
-  },
-  {
-    "tipo": "livello",
-    "bg": "forest3",
-    "monsters": [1,2,3,4,5,6,8],
-    "player_in": "sx",
-    "player_out": "dx",
-    "player_entrance": "y",
-    "monster_in": "dx"
-  },
-  {
-    "tipo": "livello",
-    "bg": "forest4",
     "monsters": [1,2,3,4,6,8],
     "player_in": "sx",
     "player_out": "dx",
@@ -120,7 +93,7 @@
   },
   {
     "tipo": "livello",
-    "bg": "grass1",
+    "bg": "grass2",
     "monsters": [1,2,3,4,6,8],
     "player_in": "dx",
     "player_out": "sx",
@@ -130,16 +103,6 @@
   {
     "tipo": "livello",
     "bg": "cavern_entrance",
-    "monsters": [3,7,9,10,11],
-    "flying": [9,10,11],
-    "player_in": "dx",
-    "player_out": "sx",
-    "player_entrance": "y",
-    "monster_in": "sx"
-  },
-  {
-    "tipo": "livello",
-    "bg": "cavern1",
     "monsters": [3,7,9,10,11],
     "flying": [9,10,11],
     "player_in": "dx",
@@ -175,16 +138,6 @@
   },
   {
     "tipo": "livello",
-    "bg": "cavern1",
-    "monsters": [3,7,9,10,11],
-    "flying": [9,10,11],
-    "player_in": "sx",
-    "player_out": "dx",
-    "player_entrance": "y",
-    "monster_in": "dx"
-  },
-  {
-    "tipo": "livello",
     "bg": "cavern_entrance",
     "monsters": [1,2,3,4,6,7,8],
     "player_in": "sx",
@@ -194,7 +147,7 @@
   },
   {
     "tipo": "livello",
-    "bg": "grass1",
+    "bg": "grass2",
     "monsters": [1,2,3,4,6,8],
     "player_in": "sx",
     "player_out": "dx",
