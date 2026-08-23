@@ -3690,17 +3690,17 @@ class Game :
 
         if not self .level_is_scene :
             if self .mode =="auto":
-                stato_txt =f"Livello {self .effective_level ()+1 }/{len (self .levels )}"
+                stato_txt =f"Livello {self .level +1 }/{self .num_story_levels }"
                 mode_txt ="Storia"
             else :
                 stato_txt =f"Domanda {self .questions_asked }/{self .total_questions }"
                 mode_txt ="Allenamento"
-            mode_surf =self ._render_cached (self .font_small ,mode_txt ,WHITE )
-            stato_surf =self ._render_cached (self .font_small ,stato_txt ,WHITE )
-            y_top =30 
-            self .draw_text_shadow (self .font_small ,mode_txt ,WHITE ,(30 ,y_top ))
-            sx_stato =30 +mode_surf .get_width ()+30 
-            self .draw_text_shadow (self .font_small ,stato_txt ,WHITE ,(sx_stato ,y_top ))
+            mode_surf =self ._render_cached (self .font_tiny ,mode_txt ,WHITE )
+            stato_surf =self ._render_cached (self .font_tiny ,stato_txt ,WHITE )
+            y_top =30
+            self .draw_text_shadow (self .font_tiny ,mode_txt ,WHITE ,(30 ,y_top ))
+            sx_stato =30 +mode_surf .get_width ()+30
+            self .draw_text_shadow (self .font_tiny ,stato_txt ,WHITE ,(sx_stato ,y_top ))
 
             for i in range (WIZARD_LIVES ):
                 cx =CANVAS_WIDTH -105 -i *75 
@@ -3806,7 +3806,7 @@ class Game :
             f"Domande: {self .questions_asked }/{self .total_questions if self .mode =='fixed'else self .questions_per_level }",
             f"Tempo medio: {sum (self .answer_times )/len (self .answer_times ):.1f}s"if self .answer_times else "Tempo medio: --",
             f"Timeout: {self .timeout_limit }s"+(f" (iniziale {self .initial_timeout_limit }s)"if self .mode =='auto'else ""),
-            f"Livello: {self .effective_level ()+1 }/{len (self .levels )}"if self .mode =='auto'else "Livello: -",
+            f"Livello storia: {self .level +1 }/{self .num_story_levels }  (effettivo: {self .effective_level ()+1 }/{len (self .levels )})"if self .mode =='auto'else "Livello: -",
             f"Difficoltà: {self .difficulty_position }/{self .max_difficulty_position ()}"if self .mode =='auto'else "Difficoltà: -",
             f"Operandi: {self .a } {segno_debug } {self .b }",
             f"Prev: {self .prev_a } {segno_debug } {self .prev_b }",
