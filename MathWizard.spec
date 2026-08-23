@@ -18,7 +18,7 @@ a = Analysis(
     ['math-wizard.py'],
     pathex=[],
     binaries=[],
-    datas=[('graphics', 'graphics'), ('fonts', 'fonts')],
+    datas=[('graphics', 'graphics'), ('fonts', 'fonts'), ('music', 'music')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},

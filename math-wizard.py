@@ -403,6 +403,14 @@ class Game :
 
         self .load_resources ()
         self .setup_profiles ()
+        music_path =resource_path (os .path .join ("music","background.mp3"))
+        if os .path .exists (music_path ):
+            try :
+                pygame .music .load (music_path )
+                pygame .music .set_volume (self .music_volume /100 )
+                pygame .music .play (-1 )
+            except pygame .error :
+                pass 
         self .reset_game_state ()
         self .update_available =False 
         self .update_link_rect =None 
@@ -650,7 +658,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.3.7"
+        self .version ="1.3.8"
 
         self .profiles =[]
         self .current_profile =""
@@ -691,6 +699,7 @@ class Game :
         self .difficulty_position =0
         self .dragging_difficulty =False
         self .story_progress ={"moltiplicazione":0 ,"addizione":0 ,"sottrazione":0 ,"divisione":0 }
+        self .music_volume =80
 
     def save_profiles (self ):
         path =os .path .join (PROFILES_DIR ,"profiles.json")
@@ -738,6 +747,7 @@ class Game :
         "difficolta_posizione":self .difficulty_position ,
         "storia_progresso":self .story_progress ,
         "fullscreen":self .fullscreen ,
+        "volume_musica":self .music_volume ,
         }
         for op in ["moltiplicazione","addizione","sottrazione","divisione"]:
             data [op ]=dict (self .config_by_operation [op ])
@@ -771,6 +781,8 @@ class Game :
                 self .story_progress .update (story_progress )
             if "fullscreen"in data :
                 self .fullscreen =bool (data ["fullscreen"])
+            if "volume_musica"in data :
+                self .music_volume =max (0 ,min (100 ,int (data ["volume_musica"])))
         else :
         # Legacy format
             self .config_gender =data .get ("genere",self .config_gender )
@@ -785,6 +797,10 @@ class Game :
             self .config_by_operation ["sottrazione"]["differenza_positiva"]=data .get ("differenza_positiva",self .config_by_operation ["sottrazione"]["differenza_positiva"])
             self .config_by_operation ["divisione"]["risultato_intero"]=data .get ("risultato_intero",self .config_by_operation ["divisione"]["risultato_intero"])
         self .config =self .config_by_operation [self .config_operation ]
+        try :
+            pygame .music .set_volume (self .music_volume /100 )
+        except pygame .error :
+            pass
 
     def sessions_path (self ):
         nome =sanitize_profile_name (self .current_profile )or ".fallback"
@@ -1657,19 +1673,27 @@ class Game :
                     if self .options_cursor ==0 :
                         self .state ="progressi"
                     elif self .options_cursor ==1 :
-                        self .fullscreen =not self .fullscreen 
+                        self .fullscreen =not self .fullscreen
                         self ._apply_display_mode ()
                         self .setup_cursor ()
                         self .save_profile_config ()
-                    else :
+                    elif self .options_cursor ==3 :
                         self .state ="confirm_delete"
                 elif event .key ==pygame .K_2 :
-                    self .fullscreen =not self .fullscreen 
+                    self .fullscreen =not self .fullscreen
                     self ._apply_display_mode ()
                     self .setup_cursor ()
                     self .save_profile_config ()
                 elif event .key ==pygame .K_3 :
                     self .state ="confirm_delete"
+                elif event .key in (pygame .K_PLUS ,pygame .K_EQUALS ,pygame .K_KP_PLUS ):
+                    self .music_volume =min (100 ,self .music_volume +5 )
+                    pygame .music .set_volume (self .music_volume /100 )
+                    self .save_profile_config ()
+                elif event .key in (pygame .K_MINUS ,pygame .K_KP_MINUS ):
+                    self .music_volume =max (0 ,self .music_volume -5 )
+                    pygame .music .set_volume (self .music_volume /100 )
+                    self .save_profile_config ()
                 elif event .key ==pygame .K_ESCAPE :
                     self .state ="menu"
             elif self .state =="confirm_delete":
@@ -1903,18 +1927,28 @@ class Game :
                             self .state ="menu"
                             break 
             elif self .state =="options":
-                for i ,hit in enumerate (getattr (self ,'options_btn_rects',[ ])):
+                for idx ,hit in getattr (self ,'options_btn_rects',[ ]):
                     if hit .collidepoint (mx ,my ):
-                        if i ==0 :
+                        if idx ==0 :
                             self .state ="progressi"
-                        elif i ==1 :
-                            self .fullscreen =not self .fullscreen 
+                        elif idx ==1 :
+                            self .fullscreen =not self .fullscreen
                             self ._apply_display_mode ()
                             self .setup_cursor ()
                             self .save_profile_config ()
-                        else :
+                        elif idx ==3 :
                             self .state ="confirm_delete"
-                        return 
+                        return
+                if getattr (self ,'opt_mus_minus',None )and self .opt_mus_minus .collidepoint (mx ,my ):
+                    self .music_volume =max (0 ,self .music_volume -5 )
+                    pygame .music .set_volume (self .music_volume /100 )
+                    self .save_profile_config ()
+                    return
+                if getattr (self ,'opt_mus_plus',None )and self .opt_mus_plus .collidepoint (mx ,my ):
+                    self .music_volume =min (100 ,self .music_volume +5 )
+                    pygame .music .set_volume (self .music_volume /100 )
+                    self .save_profile_config ()
+                    return 
                 if getattr (self ,'options_back_rect',None )and self .options_back_rect .collidepoint (mx ,my ):
                     self .state ="menu"
                     return 
@@ -2913,19 +2947,41 @@ class Game :
         rect =title .get_rect (center =(CANVAS_WIDTH //2 ,120 ))
         self .screen .blit (title ,rect )
 
-        voci =["Progressi","Schermo: " +("intero"if self .fullscreen else "finestra"),"Elimina profilo attuale"]
+        voci =["Progressi","Schermo: " +("intero"if self .fullscreen else "finestra"),None ,"Elimina profilo attuale"]
+        voci_y =[330 ,450 ,570 ,690 ]
         self .options_btn_rects =[ ]
         for i ,voce in enumerate (voci ):
-            y =330 +i *120 
-            color =RED if i ==2 else WHITE  
+            if voce is None :
+                continue
+            y =voci_y [i ]
+            color =RED if i ==3 else WHITE
             txt =self ._render_cached (self .font_medium ,voce ,color )
             rect =txt .get_rect (center =(CANVAS_WIDTH //2 ,y +31 ))
             hit =rect .inflate (30 ,15 )
-            self .options_btn_rects .append (hit )
+            self .options_btn_rects .append ((i ,hit ))
             if hit .collidepoint (mx ,my ):
-                self .options_cursor =i 
+                self .options_cursor =i
                 txt =self ._render_cached (self .font_medium ,voce ,GOLD )
             self .screen .blit (txt ,rect )
+
+        mus_y =voci_y [2 ]
+        mus_lbl =self ._render_cached (self .font_medium ,"Musica: " +str (self .music_volume )+"%",WHITE )
+        mus_rect =mus_lbl .get_rect (center =(CANVAS_WIDTH //2 ,mus_y +31 ))
+        self .screen .blit (mus_lbl ,mus_rect )
+        sx_m =mus_rect .right +15
+        lw_m ,vw_m ,rw_m =45 ,60 ,45
+        self .opt_mus_minus =pygame .Rect (sx_m ,mus_y +5 ,lw_m ,51 )
+        self .opt_mus_plus =pygame .Rect (sx_m +lw_m +vw_m ,mus_y +5 ,rw_m ,51 )
+        hover_mm =self .opt_mus_minus .collidepoint (mx ,my )
+        hover_mp =self .opt_mus_plus .collidepoint (mx ,my )
+        pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_mm else (70 ,70 ,80 ),self .opt_mus_minus ,border_radius =6 )
+        pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_mp else (70 ,70 ,80 ),self .opt_mus_plus ,border_radius =6 )
+        if hover_mm :
+            pygame .draw .rect (self .screen ,GOLD ,self .opt_mus_minus ,2 ,border_radius =6 )
+        if hover_mp :
+            pygame .draw .rect (self .screen ,GOLD ,self .opt_mus_plus ,2 ,border_radius =6 )
+        self .screen .blit (self ._render_cached (self .font_tiny ,"-",WHITE ),self ._render_cached (self .font_tiny ,"-",WHITE ).get_rect (center =self .opt_mus_minus .center ))
+        self .screen .blit (self ._render_cached (self .font_tiny ,"+",WHITE ),self ._render_cached (self .font_tiny ,"+",WHITE ).get_rect (center =self .opt_mus_plus .center ))
 
         credits =[
         f"v{self .version }",
