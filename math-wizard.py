@@ -650,7 +650,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.3.5"
+        self .version ="1.3.6"
 
         self .profiles =[]
         self .current_profile =""
@@ -975,7 +975,11 @@ class Game :
             self .operation =self .config_story_operation 
             self .config =self .config_by_operation .get (self .config_story_operation ,self .config )
             self .integer_result =op_cfg .get ("risultato_intero",True )
-            self .show_story ()
+            if self .initial_level >0 :
+                self .state ="loading"
+                self .loading_start =pygame .time .get_ticks ()
+            else :
+                self .show_story ()
         else :
             self .start_level ()
 
@@ -2431,6 +2435,23 @@ class Game :
                 else :
                     self .state ="gameover"
             return 
+        if self .state =="loading":
+            if pygame .time .get_ticks ()-self .loading_start >=4000 :
+                cnt =0
+                skip_to =None
+                for i ,e in enumerate (self .story_entries ):
+                    if e .get ("tipo")=="livello":
+                        if cnt ==self .initial_level :
+                            skip_to =i
+                            break
+                        cnt +=1
+                if skip_to is not None :
+                    while skip_to >0 and self .story_entries [skip_to -1 ].get ("tipo")=="scena":
+                        skip_to -=1
+                    self .story_idx =skip_to
+                self .story_fade_alpha =255
+                self .show_story ()
+            return
         if self .state =="level_complete":
             return 
         if self .state =="story":
@@ -2640,6 +2661,8 @@ class Game :
             self .draw_level_complete ()
         elif self .state =="story":
             self .draw_story ()
+        elif self .state =="loading":
+            self .draw_loading ()
         else :
             if self .state in ("options","options_auto","config_fixed","confirm_delete","progressi"):
                 self .screen .blit (self .bg_options ,(0 ,0 ))
@@ -3820,6 +3843,22 @@ class Game :
             fade_surf .fill (self .story_fade_color )
             self .screen .blit (fade_surf ,(0 ,0 ))
 
+    def draw_loading (self ):
+        self .screen .blit (self .bg_options ,(0 ,0 ))
+        elapsed =pygame .time .get_ticks ()-self .loading_start
+        progress =min (elapsed /4000 ,1.0 )
+        frame_idx =(elapsed //200 )%4
+        data =self .char_data .get (self .config_gender ,self .char_data ["F"])
+        char_img =data ["run"][frame_idx ]
+        cw ,ch =char_img .get_size ()
+        start_x =-cw
+        end_x =CANVAS_WIDTH +300
+        px =start_x +(end_x -start_x )*progress
+        base_y =CANVAS_HEIGHT //2 -ch //2
+        wy =base_y +195
+        self .screen .blit (char_img ,(px ,wy ))
+        self .draw_text_shadow (self .font_small ,"Caricamento in corso...",WHITE ,center =(CANVAS_WIDTH //2 ,CANVAS_HEIGHT -45 ),offset =1 )
+
     def draw_player_exit (self ):
         if self .player_exit_retry :
             self .screen .blit (self .game_bg ,(0 ,0 ))
@@ -4038,7 +4077,7 @@ class Game :
         return list (reversed (ultime [-6 :]))
 
     def run (self ):
-        animated_states =("splash","profile_select","game","story","player_exit")
+        animated_states =("splash","profile_select","game","story","player_exit","loading")
         while self .running :
             events =pygame .event .get ()
             for event in events :
