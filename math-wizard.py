@@ -699,7 +699,7 @@ class Game :
         self .difficulty_position =0
         self .dragging_difficulty =False
         self .story_progress ={"moltiplicazione":0 ,"addizione":0 ,"sottrazione":0 ,"divisione":0 }
-        self .music_volume =80
+        self .music_volume =50
 
     def save_profiles (self ):
         path =os .path .join (PROFILES_DIR ,"profiles.json")
@@ -2419,6 +2419,12 @@ class Game :
             self .game_over =True 
 
     def update (self ):
+        if hasattr (self ,'music_fade_start')and self .music_fade_start is not None :
+            fade_elapsed =pygame .time .get_ticks ()-self .music_fade_start
+            vol =min (1.0 ,fade_elapsed /2000.0 )*self .music_volume /100
+            pygame .mixer .music .set_volume (vol )
+            if fade_elapsed >=2000 :
+                self .music_fade_start =None
         if self .zap_timer >0 :
             self .zap_timer -=1 
             if self .zap_timer ==0 :
@@ -2431,8 +2437,9 @@ class Game :
                 self .logo =None
                 self .state ="profile_select"
                 if self .music_loaded and not pygame .mixer .music .get_busy ():
-                    pygame .mixer .music .set_volume (self .music_volume /100 )
-                    pygame .mixer .music .fade_in (2000 )
+                    pygame .mixer .music .set_volume (0 )
+                    pygame .mixer .music .play (-1 )
+                    self .music_fade_start =pygame .time .get_ticks ()
             return 
         if self .state =="gameover":
             return 
