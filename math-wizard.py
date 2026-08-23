@@ -403,12 +403,12 @@ class Game :
 
         self .load_resources ()
         self .setup_profiles ()
+        self .music_loaded =False 
         music_path =resource_path (os .path .join ("music","background.mp3"))
         if os .path .exists (music_path ):
             try :
-                pygame .music .load (music_path )
-                pygame .music .set_volume (self .music_volume /100 )
-                pygame .music .play (-1 )
+                pygame .mixer .music .load (music_path )
+                self .music_loaded =True
             except pygame .error :
                 pass 
         self .reset_game_state ()
@@ -798,7 +798,7 @@ class Game :
             self .config_by_operation ["divisione"]["risultato_intero"]=data .get ("risultato_intero",self .config_by_operation ["divisione"]["risultato_intero"])
         self .config =self .config_by_operation [self .config_operation ]
         try :
-            pygame .music .set_volume (self .music_volume /100 )
+            pygame .mixer .music .set_volume (self .music_volume /100 )
         except pygame .error :
             pass
 
@@ -1688,11 +1688,11 @@ class Game :
                     self .state ="confirm_delete"
                 elif event .key in (pygame .K_PLUS ,pygame .K_EQUALS ,pygame .K_KP_PLUS ):
                     self .music_volume =min (100 ,self .music_volume +5 )
-                    pygame .music .set_volume (self .music_volume /100 )
+                    pygame .mixer .music .set_volume (self .music_volume /100 )
                     self .save_profile_config ()
                 elif event .key in (pygame .K_MINUS ,pygame .K_KP_MINUS ):
                     self .music_volume =max (0 ,self .music_volume -5 )
-                    pygame .music .set_volume (self .music_volume /100 )
+                    pygame .mixer .music .set_volume (self .music_volume /100 )
                     self .save_profile_config ()
                 elif event .key ==pygame .K_ESCAPE :
                     self .state ="menu"
@@ -1941,12 +1941,12 @@ class Game :
                         return
                 if getattr (self ,'opt_mus_minus',None )and self .opt_mus_minus .collidepoint (mx ,my ):
                     self .music_volume =max (0 ,self .music_volume -5 )
-                    pygame .music .set_volume (self .music_volume /100 )
+                    pygame .mixer .music .set_volume (self .music_volume /100 )
                     self .save_profile_config ()
                     return
                 if getattr (self ,'opt_mus_plus',None )and self .opt_mus_plus .collidepoint (mx ,my ):
                     self .music_volume =min (100 ,self .music_volume +5 )
-                    pygame .music .set_volume (self .music_volume /100 )
+                    pygame .mixer .music .set_volume (self .music_volume /100 )
                     self .save_profile_config ()
                     return 
                 if getattr (self ,'options_back_rect',None )and self .options_back_rect .collidepoint (mx ,my ):
@@ -2428,8 +2428,11 @@ class Game :
         if self .state =="splash":
             elapsed =pygame .time .get_ticks ()-self .splash_start 
             if (self .splash_skip and elapsed >=500 )or elapsed >=5000 :
-                self .logo =None 
+                self .logo =None
                 self .state ="profile_select"
+                if self .music_loaded and not pygame .mixer .music .get_busy ():
+                    pygame .mixer .music .set_volume (self .music_volume /100 )
+                    pygame .mixer .music .fade_in (2000 )
             return 
         if self .state =="gameover":
             return 
