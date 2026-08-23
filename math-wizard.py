@@ -650,7 +650,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.3.6"
+        self .version ="1.3.7"
 
         self .profiles =[]
         self .current_profile =""
@@ -2324,12 +2324,12 @@ class Game :
 
         if self .is_correct :
             self .consecutive_correct +=1 
-            if self .consecutive_correct >=30 and self .lives <WIZARD_LIVES and not self .game_over and not (self .boss_active and self .boss_phase =="fight"):
+            if self .consecutive_correct >=25 and self .lives <WIZARD_LIVES and not self .game_over and not (self .boss_active and self .boss_phase =="fight"):
                 self .lives +=1 
                 self .consecutive_correct =0 
                 self .heart_reward_active =True 
                 self .heart_reward_start =pygame .time .get_ticks ()
-            elif self .consecutive_correct >=30 :
+            elif self .consecutive_correct >=25 :
                 self .consecutive_correct =0 
         else :
             self .consecutive_correct =0 
