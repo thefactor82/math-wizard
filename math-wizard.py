@@ -422,6 +422,15 @@ class Game :
         self .music_crossfade_target =None
         self .music_crossfade_start =0
         self .music_crossfade_dur =500
+        self .sfx_volume =50 
+        self .sfx ={}
+        for name in ("zap","hit"):
+            sfx_path =resource_path (os .path .join ("music",name +".mp3"))
+            if os .path .exists (sfx_path ):
+                try :
+                    self .sfx [name ]=pygame .mixer .Sound (sfx_path )
+                except pygame .error :
+                    pass 
         threading .Thread (target =self .check_for_update ,daemon =True ).start ()
 
     def switch_music (self ,target ):
@@ -429,6 +438,12 @@ class Game :
             return 
         self .music_crossfade_target =target
         self .music_crossfade_start =pygame .time .get_ticks ()
+
+    def play_sfx (self ,name ):
+        snd =self .sfx .get (name )
+        if snd :
+            snd .set_volume (self .sfx_volume /100 )
+            snd .play ()
 
     def setup_cursor (self ):
         try :
@@ -714,6 +729,7 @@ class Game :
         self .dragging_difficulty =False
         self .story_progress ={"moltiplicazione":0 ,"addizione":0 ,"sottrazione":0 ,"divisione":0 }
         self .music_volume =50
+        self .sfx_volume =50
 
     def save_profiles (self ):
         path =os .path .join (PROFILES_DIR ,"profiles.json")
@@ -762,6 +778,7 @@ class Game :
         "storia_progresso":self .story_progress ,
         "fullscreen":self .fullscreen ,
         "volume_musica":self .music_volume ,
+        "volume_effetti":self .sfx_volume ,
         }
         for op in ["moltiplicazione","addizione","sottrazione","divisione"]:
             data [op ]=dict (self .config_by_operation [op ])
@@ -797,6 +814,8 @@ class Game :
                 self .fullscreen =bool (data ["fullscreen"])
             if "volume_musica"in data :
                 self .music_volume =max (0 ,min (100 ,int (data ["volume_musica"])))
+            if "volume_effetti"in data :
+                self .sfx_volume =max (0 ,min (100 ,int (data ["volume_effetti"])))
         else :
         # Legacy format
             self .config_gender =data .get ("genere",self .config_gender )
@@ -1695,22 +1714,28 @@ class Game :
                         self ._apply_display_mode ()
                         self .setup_cursor ()
                         self .save_profile_config ()
-                    elif self .options_cursor ==3 :
+                    elif self .options_cursor ==4 :
                         self .state ="confirm_delete"
                 elif event .key ==pygame .K_2 :
                     self .fullscreen =not self .fullscreen
                     self ._apply_display_mode ()
                     self .setup_cursor ()
                     self .save_profile_config ()
-                elif event .key ==pygame .K_3 :
+                elif event .key ==pygame .K_5 :
                     self .state ="confirm_delete"
                 elif event .key in (pygame .K_PLUS ,pygame .K_EQUALS ,pygame .K_KP_PLUS ):
-                    self .music_volume =min (100 ,self .music_volume +5 )
-                    pygame .mixer .music .set_volume (self .music_volume /100 )
+                    if self .options_cursor ==3 :
+                        self .sfx_volume =min (100 ,self .sfx_volume +5 )
+                    else :
+                        self .music_volume =min (100 ,self .music_volume +5 )
+                        pygame .mixer .music .set_volume (self .music_volume /100 )
                     self .save_profile_config ()
                 elif event .key in (pygame .K_MINUS ,pygame .K_KP_MINUS ):
-                    self .music_volume =max (0 ,self .music_volume -5 )
-                    pygame .mixer .music .set_volume (self .music_volume /100 )
+                    if self .options_cursor ==3 :
+                        self .sfx_volume =max (0 ,self .sfx_volume -5 )
+                    else :
+                        self .music_volume =max (0 ,self .music_volume -5 )
+                        pygame .mixer .music .set_volume (self .music_volume /100 )
                     self .save_profile_config ()
                 elif event .key ==pygame .K_ESCAPE :
                     self .state ="menu"
@@ -1954,7 +1979,7 @@ class Game :
                             self ._apply_display_mode ()
                             self .setup_cursor ()
                             self .save_profile_config ()
-                        elif idx ==3 :
+                        elif idx ==4 :
                             self .state ="confirm_delete"
                         return
                 if getattr (self ,'opt_mus_minus',None )and self .opt_mus_minus .collidepoint (mx ,my ):
@@ -1967,6 +1992,14 @@ class Game :
                     pygame .mixer .music .set_volume (self .music_volume /100 )
                     self .save_profile_config ()
                     return 
+                if getattr (self ,'opt_sfx_minus',None )and self .opt_sfx_minus .collidepoint (mx ,my ):
+                    self .sfx_volume =max (0 ,self .sfx_volume -5 )
+                    self .save_profile_config ()
+                    return
+                if getattr (self ,'opt_sfx_plus',None )and self .opt_sfx_plus .collidepoint (mx ,my ):
+                    self .sfx_volume =min (100 ,self .sfx_volume +5 )
+                    self .save_profile_config ()
+                    return
                 if getattr (self ,'options_back_rect',None )and self .options_back_rect .collidepoint (mx ,my ):
                     self .state ="menu"
                     return 
@@ -2344,6 +2377,7 @@ class Game :
         if risposta is not None and is_answer_correct (risposta ,self .expected_result ):
             self .is_correct =True 
             self .stats [level ]["corrette"]+=1 
+            self .play_sfx ("zap")
             if self .boss_active and self .boss_phase =="fight":
                 self .boss_hit =True 
                 self .boss_hit_start =pygame .time .get_ticks ()
@@ -2356,6 +2390,7 @@ class Game :
         else :
             self .is_correct =False 
             self .stats [level ]["sbagliate"]+=1 
+            self .play_sfx ("hit")
             self .wrong_questions .append ((self .a ,self .b ,self .operation ,text_value ,self .expected_result ))
             self .lives -=1 
             if self .boss_active and self .boss_phase =="fight":
@@ -2400,6 +2435,7 @@ class Game :
         if self .timeout_handled :
             return 
         self .timeout_handled =True 
+        self .play_sfx ("hit")
         elapsed_time =self .timeout_limit 
         self .answer_times .append (elapsed_time )
         if self .boss_active and self .boss_phase =="fight":
@@ -3005,14 +3041,14 @@ class Game :
         rect =title .get_rect (center =(CANVAS_WIDTH //2 ,120 ))
         self .screen .blit (title ,rect )
 
-        voci =["Progressi","Schermo: " +("intero"if self .fullscreen else "finestra"),None ,"Elimina profilo attuale"]
-        voci_y =[330 ,450 ,570 ,690 ]
+        voci =["Progressi","Schermo: " +("intero"if self .fullscreen else "finestra"),None ,None ,"Elimina profilo attuale"]
+        voci_y =[330 ,450 ,570 ,690 ,810 ]
         self .options_btn_rects =[ ]
         for i ,voce in enumerate (voci ):
             if voce is None :
                 continue
             y =voci_y [i ]
-            color =RED if i ==3 else WHITE
+            color =RED if i ==4 else WHITE
             txt =self ._render_cached (self .font_medium ,voce ,color )
             rect =txt .get_rect (center =(CANVAS_WIDTH //2 ,y +31 ))
             hit =rect .inflate (30 ,15 )
@@ -3040,6 +3076,25 @@ class Game :
             pygame .draw .rect (self .screen ,GOLD ,self .opt_mus_plus ,2 ,border_radius =6 )
         self .screen .blit (self ._render_cached (self .font_tiny ,"-",WHITE ),self ._render_cached (self .font_tiny ,"-",WHITE ).get_rect (center =self .opt_mus_minus .center ))
         self .screen .blit (self ._render_cached (self .font_tiny ,"+",WHITE ),self ._render_cached (self .font_tiny ,"+",WHITE ).get_rect (center =self .opt_mus_plus .center ))
+
+        sfx_y =voci_y [3 ]
+        sfx_lbl =self ._render_cached (self .font_medium ,"Effetti sonori: " +str (self .sfx_volume )+"%",WHITE )
+        sfx_rect =sfx_lbl .get_rect (center =(CANVAS_WIDTH //2 ,sfx_y +31 ))
+        self .screen .blit (sfx_lbl ,sfx_rect )
+        sx_s =sfx_rect .right +15
+        lw_s ,vw_s ,rw_s =45 ,60 ,45
+        self .opt_sfx_minus =pygame .Rect (sx_s ,sfx_y +5 ,lw_s ,51 )
+        self .opt_sfx_plus =pygame .Rect (sx_s +lw_s +vw_s ,sfx_y +5 ,rw_s ,51 )
+        hover_sm =self .opt_sfx_minus .collidepoint (mx ,my )
+        hover_sp =self .opt_sfx_plus .collidepoint (mx ,my )
+        pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_sm else (70 ,70 ,80 ),self .opt_sfx_minus ,border_radius =6 )
+        pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_sp else (70 ,70 ,80 ),self .opt_sfx_plus ,border_radius =6 )
+        if hover_sm :
+            pygame .draw .rect (self .screen ,GOLD ,self .opt_sfx_minus ,2 ,border_radius =6 )
+        if hover_sp :
+            pygame .draw .rect (self .screen ,GOLD ,self .opt_sfx_plus ,2 ,border_radius =6 )
+        self .screen .blit (self ._render_cached (self .font_tiny ,"-",WHITE ),self ._render_cached (self .font_tiny ,"-",WHITE ).get_rect (center =self .opt_sfx_minus .center ))
+        self .screen .blit (self ._render_cached (self .font_tiny ,"+",WHITE ),self ._render_cached (self .font_tiny ,"+",WHITE ).get_rect (center =self .opt_sfx_plus .center ))
 
         credits =[
         f"v{self .version }",
