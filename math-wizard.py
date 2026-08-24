@@ -404,17 +404,31 @@ class Game :
         self .load_resources ()
         self .setup_profiles ()
         self .music_loaded =False 
-        music_path =resource_path (os .path .join ("music","background.mp3"))
-        if os .path .exists (music_path ):
+        self .music_files ={}
+        for name in ("background","level"):
+            mp3_path =resource_path (os .path .join ("music",name +".mp3"))
+            if os .path .exists (mp3_path ):
+                self .music_files [name ]=mp3_path 
+        if "background"in self .music_files :
             try :
-                pygame .mixer .music .load (music_path )
+                pygame .mixer .music .load (self .music_files ["background"])
                 self .music_loaded =True
             except pygame .error :
                 pass 
         self .reset_game_state ()
         self .update_available =False 
         self .update_link_rect =None 
+        self .current_music ="background"
+        self .music_crossfade_target =None
+        self .music_crossfade_start =0
+        self .music_crossfade_dur =1000
         threading .Thread (target =self .check_for_update ,daemon =True ).start ()
+
+    def switch_music (self ,target ):
+        if target not in self .music_files or target ==self .current_music :
+            return 
+        self .music_crossfade_target =target
+        self .music_crossfade_start =pygame .time .get_ticks ()
 
     def setup_cursor (self ):
         try :
@@ -1030,6 +1044,7 @@ class Game :
         if self .mode =="auto":
             lv =self .level
             self .questions_per_level =random .randint (8 +lv ,15 +lv )
+            self .switch_music ("level")
         self .questions_asked =0 
         self .answer_times =[]
         self .monster_times =[]
@@ -2425,6 +2440,31 @@ class Game :
             pygame .mixer .music .set_volume (vol )
             if fade_elapsed >=2000 :
                 self .music_fade_start =None
+        if self .music_crossfade_target is not None :
+            elapsed =pygame .time .get_ticks ()-self .music_crossfade_start
+            half =self .music_crossfade_dur //2
+            if elapsed <half :
+                vol =self .music_volume *(1.0 -elapsed /half )/100
+                pygame .mixer .music .set_volume (max (0 ,vol ))
+            elif elapsed <self .music_crossfade_dur :
+                if not getattr (self ,'_crossfade_swapped',False ):
+                    target =self .music_crossfade_target
+                    try :
+                        pygame .mixer .music .load (self .music_files [target ])
+                        pygame .mixer .music .play (-1 )
+                    except pygame .error :
+                        pass
+                    self .current_music =target
+                    self ._crossfade_swapped =True
+                fade_in =elapsed -half
+                vol =self .music_volume *(fade_in /half )/100
+                pygame .mixer .music .set_volume (min (self .music_volume /100 ,vol ))
+            else :
+                pygame .mixer .music .set_volume (self .music_volume /100 )
+                self .music_crossfade_target =None
+                self ._crossfade_swapped =False
+        if self .current_music =="level"and self .state not in ("game","story","player_exit","level_complete","loading"):
+            self .switch_music ("background")
         if self .zap_timer >0 :
             self .zap_timer -=1 
             if self .zap_timer ==0 :
