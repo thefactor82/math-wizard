@@ -4199,7 +4199,7 @@ class Game :
                     self .running =False 
                 else :
                     self .handle_input (event )
-            if events or self .state in animated_states :
+            if events or self .state in animated_states or self .music_crossfade_target is not None :
                 self .update ()
                 self .draw ()
                 self .clock .tick (FPS )
