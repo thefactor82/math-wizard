@@ -2466,7 +2466,7 @@ class Game :
                 pygame .mixer .music .set_volume (self .music_volume /100 )
                 self .music_crossfade_target =None
                 self ._crossfade_swapped =False
-        if self .current_music =="level"and self .state not in ("game","story","player_exit","level_complete","loading"):
+        if self .current_music =="level"and self .state not in ("game","story","player_exit","level_complete","loading","gameover","level_complete"):
             self .switch_music ("background")
         if self .zap_timer >0 :
             self .zap_timer -=1 
@@ -2526,6 +2526,7 @@ class Game :
             if pygame .time .get_ticks ()-self .loading_start >=4000 :
                 if getattr (self ,'loading_training',False ):
                     self .loading_training =False
+                    self .state ="game"
                     self .start_level ()
                 else :
                     cnt =0
