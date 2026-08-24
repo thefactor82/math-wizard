@@ -421,7 +421,7 @@ class Game :
         self .current_music ="background"
         self .music_crossfade_target =None
         self .music_crossfade_start =0
-        self .music_crossfade_dur =1000
+        self .music_crossfade_dur =500
         threading .Thread (target =self .check_for_update ,daemon =True ).start ()
 
     def switch_music (self ,target ):
@@ -1011,7 +1011,9 @@ class Game :
             else :
                 self .show_story ()
         else :
-            self .start_level ()
+            self .state ="loading"
+            self .loading_start =pygame .time .get_ticks ()
+            self .loading_training =True
 
     def effective_level (self ):
         return min (self .difficulty_position +self .level ,len (self .levels )-1 )
@@ -1041,10 +1043,10 @@ class Game :
         return self .level >=self .num_story_levels -1 
 
     def start_level (self ):
+        self .switch_music ("level")
         if self .mode =="auto":
             lv =self .level
             self .questions_per_level =random .randint (8 +lv ,15 +lv )
-            self .switch_music ("level")
         self .questions_asked =0 
         self .answer_times =[]
         self .monster_times =[]
@@ -1091,6 +1093,7 @@ class Game :
                 self .story_monsters =entry .get ("monsters",list (range (1 ,9 )))
                 self .story_flying_monsters =entry .get ("flying",[])
                 self ._ensure_monsters (self .story_monsters )
+                self .switch_music ("level")
             bg_name =entry .get ("bg","game")
             self .story_next_bg =self ._get_bg (bg_name )or self .bg 
             self .player_in_dir =entry .get ("player_in","sx")
@@ -2521,20 +2524,24 @@ class Game :
             return 
         if self .state =="loading":
             if pygame .time .get_ticks ()-self .loading_start >=4000 :
-                cnt =0
-                skip_to =None
-                for i ,e in enumerate (self .story_entries ):
-                    if e .get ("tipo")=="livello":
-                        if cnt ==self .initial_level :
-                            skip_to =i
-                            break
-                        cnt +=1
-                if skip_to is not None :
-                    while skip_to >0 and self .story_entries [skip_to -1 ].get ("tipo")=="scena":
-                        skip_to -=1
-                    self .story_idx =skip_to
-                self .story_fade_alpha =255
-                self .show_story ()
+                if getattr (self ,'loading_training',False ):
+                    self .loading_training =False
+                    self .start_level ()
+                else :
+                    cnt =0
+                    skip_to =None
+                    for i ,e in enumerate (self .story_entries ):
+                        if e .get ("tipo")=="livello":
+                            if cnt ==self .initial_level :
+                                skip_to =i
+                                break
+                            cnt +=1
+                    if skip_to is not None :
+                        while skip_to >0 and self .story_entries [skip_to -1 ].get ("tipo")=="scena":
+                            skip_to -=1
+                        self .story_idx =skip_to
+                    self .story_fade_alpha =255
+                    self .show_story ()
             return
         if self .state =="level_complete":
             return 
