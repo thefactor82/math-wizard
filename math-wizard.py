@@ -4081,7 +4081,7 @@ class Game :
         self .gameover_buttons ={}
         completato =not (self .lives <=0 or (self .boss_active and self .boss_phase =="fight"))
         btns =[("MENU PRINCIPALE","menu")]if completato else [("RIPROVA","restart"),("MENU PRINCIPALE","menu")]
-        btn_w =400 
+        btn_w =350 
         total_w =len (btns )*btn_w +(len (btns )-1 )*45 
         start_x =CANVAS_WIDTH //2 -total_w //2 
         for i ,(label ,action )in enumerate (btns ):
@@ -4135,9 +4135,14 @@ class Game :
         mx ,my =self ._mouse_pos ()
         y =max (y +30 ,CANVAS_HEIGHT -150 )
         self .gameover_buttons ={}
-        for i ,(label ,action )in enumerate ([("Ricomincia","restart"),("Menu principale","menu")]):
-            bx =CANVAS_WIDTH //2 -150 +i *315 
-            btn_rect =pygame .Rect (bx ,y ,270 ,54 )
+        btns =[("RIPROVA","restart"),("MENU PRINCIPALE","menu")]
+        btn_w =400 
+        gap =45 
+        total_w =len (btns )*btn_w +(len (btns )-1 )*gap 
+        start_x =CANVAS_WIDTH //2 -total_w //2 
+        for i ,(label ,action )in enumerate (btns ):
+            bx =start_x +i *(btn_w +gap )
+            btn_rect =pygame .Rect (bx ,y ,btn_w ,54 )
             hovered =btn_rect .collidepoint (mx ,my )
             bg_col =(80 ,90 ,100 )if hovered else (60 ,60 ,70 )
             pygame .draw .rect (self .screen ,bg_col ,btn_rect ,border_radius =9 )
