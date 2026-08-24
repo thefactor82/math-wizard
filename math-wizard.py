@@ -4081,7 +4081,7 @@ class Game :
         self .gameover_buttons ={}
         completato =not (self .lives <=0 or (self .boss_active and self .boss_phase =="fight"))
         btns =[("MENU PRINCIPALE","menu")]if completato else [("RIPROVA","restart"),("MENU PRINCIPALE","menu")]
-        btn_w =350 
+        btn_w =400 
         total_w =len (btns )*btn_w +(len (btns )-1 )*45 
         start_x =CANVAS_WIDTH //2 -total_w //2 
         for i ,(label ,action )in enumerate (btns ):
