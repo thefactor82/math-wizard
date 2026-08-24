@@ -4028,7 +4028,7 @@ class Game :
         if self .lives <=0 or (self .boss_active and self .boss_phase =="fight"):
             self .draw_text_shadow (self .font_title ,"GAME OVER",RED ,center =(CANVAS_WIDTH //2 ,75 ))
         else :
-            self .draw_text_shadow (self .font_title ,"PARTITA TERMINATA",GOLD ,center =(CANVAS_WIDTH //2 ,75 ))
+            self .draw_text_shadow (self .font_large ,"PARTITA TERMINATA",GOLD ,center =(CANVAS_WIDTH //2 ,75 ))
 
         total_correct =sum (v ["corrette"]for v in self .stats .values ())
         total_wrong =sum (v ["sbagliate"]for v in self .stats .values ())
@@ -4045,7 +4045,7 @@ class Game :
         y =165 
         for text_value ,colore in lines :
             self .draw_text_shadow (self .font_medium ,text_value ,colore ,center =(CANVAS_WIDTH //2 ,y ))
-            y +=69 
+            y +=62 
 
         data =self .char_data .get (self .config_gender ,self .char_data ["F"])
         char_img =data ["hit"]if (self .lives <=0 or (self .boss_active and self .boss_phase =="fight"))else data ["idle"][0 ]
@@ -4071,13 +4071,13 @@ class Game :
                 else :
                     lines [-1 ]=test 
 
-        y_text =char_y +char_img .get_height ()+30 
+        y_text =char_y +char_img .get_height ()+20 
         for line in lines :
-            self .draw_text_shadow (self .font_small ,line ,WHITE ,center =(CANVAS_WIDTH //2 ,y_text ))
-            y_text +=52 
+            self .draw_text_shadow (self .font_tiny ,line ,WHITE ,center =(CANVAS_WIDTH //2 ,y_text ))
+            y_text +=40 
 
         mx ,my =self ._mouse_pos ()
-        y_btn =y_text +30 
+        y_btn =y_text +20 
         self .gameover_buttons ={}
         completato =not (self .lives <=0 or (self .boss_active and self .boss_phase =="fight"))
         btns =[("MENU PRINCIPALE","menu")]if completato else [("RIPROVA","restart"),("MENU PRINCIPALE","menu")]
