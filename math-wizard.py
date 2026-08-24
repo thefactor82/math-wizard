@@ -2466,7 +2466,7 @@ class Game :
                 pygame .mixer .music .set_volume (self .music_volume /100 )
                 self .music_crossfade_target =None
                 self ._crossfade_swapped =False
-        if self .current_music =="level"and self .state not in ("game","story","player_exit","level_complete","loading","gameover","level_complete"):
+        if self .current_music =="level"and self .state not in ("game","story","player_exit","level_complete","loading","gameover","level_complete")and self .music_crossfade_target is None :
             self .switch_music ("background")
         if self .zap_timer >0 :
             self .zap_timer -=1 
