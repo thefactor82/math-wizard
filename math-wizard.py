@@ -3042,7 +3042,7 @@ class Game :
         self .screen .blit (title ,rect )
 
         voci =["Progressi","Schermo: " +("intero"if self .fullscreen else "finestra"),None ,None ,"Elimina profilo attuale"]
-        voci_y =[330 ,450 ,570 ,690 ,810 ]
+        voci_y =[300 ,390 ,480 ,570 ,660 ]
         self .options_btn_rects =[ ]
         for i ,voce in enumerate (voci ):
             if voce is None :
@@ -3059,16 +3059,17 @@ class Game :
             self .screen .blit (txt ,rect )
 
         mus_y =voci_y [2 ]
-        mus_lbl =self ._render_cached (self .font_medium ,"Musica: " +str (self .music_volume )+"%",WHITE )
-        mus_rect =mus_lbl .get_rect (center =(CANVAS_WIDTH //2 ,mus_y +31 ))
+        mus_lbl =self ._render_cached (self .font_medium ,"Musica",WHITE )
+        mus_rect =mus_lbl .get_rect (midright =(CANVAS_WIDTH //2 -15 ,mus_y +25 ))
         self .screen .blit (mus_lbl ,mus_rect )
-        sx_m =mus_rect .right +15
-        lw_m ,vw_m ,rw_m =45 ,60 ,45
-        self .opt_mus_minus =pygame .Rect (sx_m ,mus_y +5 ,lw_m ,51 )
-        self .opt_mus_plus =pygame .Rect (sx_m +lw_m +vw_m ,mus_y +5 ,rw_m ,51 )
+        lw ,vw ,rw =45 ,60 ,45
+        sx_m =CANVAS_WIDTH //2 -15 +15
+        self .opt_mus_minus =pygame .Rect (sx_m ,mus_y +2 ,lw ,46 )
+        self .opt_mus_plus =pygame .Rect (sx_m +lw +vw ,mus_y +2 ,rw ,46 )
         hover_mm =self .opt_mus_minus .collidepoint (mx ,my )
         hover_mp =self .opt_mus_plus .collidepoint (mx ,my )
         pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_mm else (70 ,70 ,80 ),self .opt_mus_minus ,border_radius =6 )
+        pygame .draw .rect (self .screen ,(40 ,40 ,50 ),(sx_m +lw ,mus_y +2 ,vw ,46 ))
         pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_mp else (70 ,70 ,80 ),self .opt_mus_plus ,border_radius =6 )
         if hover_mm :
             pygame .draw .rect (self .screen ,GOLD ,self .opt_mus_minus ,2 ,border_radius =6 )
@@ -3076,18 +3077,20 @@ class Game :
             pygame .draw .rect (self .screen ,GOLD ,self .opt_mus_plus ,2 ,border_radius =6 )
         self .screen .blit (self ._render_cached (self .font_tiny ,"-",WHITE ),self ._render_cached (self .font_tiny ,"-",WHITE ).get_rect (center =self .opt_mus_minus .center ))
         self .screen .blit (self ._render_cached (self .font_tiny ,"+",WHITE ),self ._render_cached (self .font_tiny ,"+",WHITE ).get_rect (center =self .opt_mus_plus .center ))
+        mus_val =self ._render_cached (self .font_tiny ,str (self .music_volume ),WHITE )
+        self .screen .blit (mus_val ,mus_val .get_rect (center =(sx_m +lw +vw //2 ,mus_y +25 )))
 
         sfx_y =voci_y [3 ]
-        sfx_lbl =self ._render_cached (self .font_medium ,"Effetti sonori: " +str (self .sfx_volume )+"%",WHITE )
-        sfx_rect =sfx_lbl .get_rect (center =(CANVAS_WIDTH //2 ,sfx_y +31 ))
+        sfx_lbl =self ._render_cached (self .font_medium ,"Effetti sonori",WHITE )
+        sfx_rect =sfx_lbl .get_rect (midright =(CANVAS_WIDTH //2 -15 ,sfx_y +25 ))
         self .screen .blit (sfx_lbl ,sfx_rect )
-        sx_s =sfx_rect .right +15
-        lw_s ,vw_s ,rw_s =45 ,60 ,45
-        self .opt_sfx_minus =pygame .Rect (sx_s ,sfx_y +5 ,lw_s ,51 )
-        self .opt_sfx_plus =pygame .Rect (sx_s +lw_s +vw_s ,sfx_y +5 ,rw_s ,51 )
+        sx_s =CANVAS_WIDTH //2 -15 +15
+        self .opt_sfx_minus =pygame .Rect (sx_s ,sfx_y +2 ,lw ,46 )
+        self .opt_sfx_plus =pygame .Rect (sx_s +lw +vw ,sfx_y +2 ,rw ,46 )
         hover_sm =self .opt_sfx_minus .collidepoint (mx ,my )
         hover_sp =self .opt_sfx_plus .collidepoint (mx ,my )
         pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_sm else (70 ,70 ,80 ),self .opt_sfx_minus ,border_radius =6 )
+        pygame .draw .rect (self .screen ,(40 ,40 ,50 ),(sx_s +lw ,sfx_y +2 ,vw ,46 ))
         pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_sp else (70 ,70 ,80 ),self .opt_sfx_plus ,border_radius =6 )
         if hover_sm :
             pygame .draw .rect (self .screen ,GOLD ,self .opt_sfx_minus ,2 ,border_radius =6 )
@@ -3095,6 +3098,8 @@ class Game :
             pygame .draw .rect (self .screen ,GOLD ,self .opt_sfx_plus ,2 ,border_radius =6 )
         self .screen .blit (self ._render_cached (self .font_tiny ,"-",WHITE ),self ._render_cached (self .font_tiny ,"-",WHITE ).get_rect (center =self .opt_sfx_minus .center ))
         self .screen .blit (self ._render_cached (self .font_tiny ,"+",WHITE ),self ._render_cached (self .font_tiny ,"+",WHITE ).get_rect (center =self .opt_sfx_plus .center ))
+        sfx_val =self ._render_cached (self .font_tiny ,str (self .sfx_volume ),WHITE )
+        self .screen .blit (sfx_val ,sfx_val .get_rect (center =(sx_s +lw +vw //2 ,sfx_y +25 )))
 
         credits =[
         f"v{self .version }",
