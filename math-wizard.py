@@ -733,7 +733,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.3.15"
+        self .version ="1.3.16"
 
         self .profiles =[]
         self .current_profile =""
@@ -3874,16 +3874,26 @@ class Game :
         self .screen .blit (domanda ,rect )
 
         if self .question_active :
-            text_input =self .input_utente +("|"if pygame .time .get_ticks ()%1000 <500 else " ")
-            input_surf =self ._render_cached (self .font_input ,text_input ,WHITE )
-            input_rect =input_surf .get_rect (center =(CANVAS_WIDTH //2 ,232 ))
+            txt_only =self ._render_cached (self .font_input ,self .input_utente ,WHITE )
+            tw =txt_only .get_width ()
+            cursor_visible =pygame .time .get_ticks ()%1000 <500
+            cursor_char ="|"if cursor_visible else " "
+            cur_surf =self ._render_cached (self .font_input ,cursor_char ,WHITE )
+            cw =cur_surf .get_width ()
+            total_w =tw +cw
+            box_center_x =CANVAS_WIDTH //2
+            txt_x =box_center_x -total_w //2
+            input_rect =pygame .Rect (txt_x ,232 -txt_only .get_height ()//2 ,total_w ,txt_only .get_height ())
             box_rect =input_rect .inflate (60 ,24 )
             box_rect .width =max (box_rect .width ,180 )
+            box_rect .centerx =box_center_x 
             pygame .draw .rect (self .screen ,(40 ,40 ,60 ),box_rect ,border_radius =12 )
             pygame .draw .rect (self .screen ,(100 ,100 ,180 ),box_rect ,2 ,border_radius =12 )
-            ombra =self ._render_cached (self .font_input ,text_input ,(30 ,30 ,30 ))
-            self .screen .blit (ombra ,(input_rect .x +2 ,input_rect .y +2 ))
-            self .screen .blit (input_surf ,input_rect )
+            ombra =self ._render_cached (self .font_input ,self .input_utente ,(30 ,30 ,30 ))
+            self .screen .blit (ombra ,(txt_x +2 ,232 -txt_only .get_height ()//2 +2 ))
+            self .screen .blit (txt_only ,(txt_x ,232 -txt_only .get_height ()//2 ))
+            if cursor_visible :
+                self .screen .blit (cur_surf ,(txt_x +tw ,232 -cur_surf .get_height ()//2 ))
 
         if not self .level_is_scene :
             if self .mode =="auto":
