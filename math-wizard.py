@@ -800,7 +800,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.3.26"
+        self .version ="1.3.27"
 
         self .profiles =[]
         self .current_profile =""
@@ -2235,7 +2235,7 @@ class Game :
         pool_items =10 if pools_mode else 13 
 
         def row_y (r ):
-            base =[225 ,315 ,435 ,555 ,610 ,685 ,760 ,835 ,880 ]
+            base =[225 ,315 ,435 ,555 ,630 ,705 ,780 ,855 ,900 ]
             cell_h ,gap =45 ,9
             subrows_pool =(pool_items +4 )//5
             pool_extra =max (0 ,(subrows_pool -2 ))*(cell_h +gap )
@@ -2352,13 +2352,13 @@ class Game :
                         self .save_profile_config ()
                         return 
                 elif subtraction :
-                    if 525 <=mx <=810 and y3 -6 <=my <=y3 +60 :
-                        self .config_cursor_row =3 
-                        self .config_cursor_col =0 
+                    if 537 <=mx <=822 and y3 -6 <=my <=y3 +60 :
+                        self .config_cursor_row =3
+                        self .config_cursor_col =0
                         self .config ["differenza_positiva"]=not self .config ["differenza_positiva"]
-                        return 
+                        return
                 elif division :
-                    if 525 <=mx <=810 and y3 -6 <=my <=y3 +60 :
+                    if 537 <=mx <=822 and y3 -6 <=my <=y3 +60 :
                         self .config_cursor_row =3
                         self .config_cursor_col =0
                         self .config ["risultato_intero"]=not self .config ["risultato_intero"]
@@ -2405,7 +2405,7 @@ class Game :
                     # Row 6: swap
             y6 =row_y (6 )
             if y6 -6 <=my <=y6 +60 :
-                if 525 <=mx <=810 and not subtraction :
+                if 537 <=mx <=822 and not subtraction :
                     self .config_cursor_row =6
                     self .config_cursor_col =0
                     self .config ["swap"]=not self .config ["swap"]
@@ -3621,7 +3621,7 @@ class Game :
         division =self .config_operation =="divisione"
 
         def row_y (r ):
-            base =[225 ,315 ,435 ,555 ,610 ,685 ,760 ,835 ,880 ]
+            base =[225 ,315 ,435 ,555 ,630 ,705 ,780 ,855 ,900 ]
             pools_mode =addition or subtraction or division 
             cell_h ,gap =45 ,9 
             pool_items =10 if pools_mode else 13 
@@ -3726,7 +3726,7 @@ class Game :
             label_d =self ._render_cached (self .font_tiny ,"Differenza positiva",WHITE )
             rect =label_d .get_rect (midleft =(120 ,y +25 ))
             self .screen .blit (label_d ,rect )
-            toggle_rect =pygame .Rect (528 ,y ,279 ,54 )
+            toggle_rect =pygame .Rect (540 ,y ,279 ,54 )
             hover_toggle =toggle_rect .collidepoint (mx ,my )
             bg_d =(100 ,150 ,220 )if self .config ["differenza_positiva"]and hover_toggle else SEL_BLUE if self .config ["differenza_positiva"]else (80 ,80 ,90 )if hover_toggle else (60 ,60 ,70 )
             pygame .draw .rect (self .screen ,bg_d ,toggle_rect ,border_radius =9 )
@@ -3734,13 +3734,13 @@ class Game :
                 pygame .draw .rect (self .screen ,GOLD ,toggle_rect ,2 ,border_radius =9 )
             dp_txt ="ON"if self .config ["differenza_positiva"]else "OFF"
             dp_val =self ._render_cached (self .font_tiny ,dp_txt ,WHITE )
-            rect_dv =dp_val .get_rect (center =(667 ,y +27 ))
+            rect_dv =dp_val .get_rect (center =(679 ,y +27 ))
             self .screen .blit (dp_val ,rect_dv )
         elif division :
             label_r =self ._render_cached (self .font_tiny ,"Risultato intero",WHITE )
             rect =label_r .get_rect (midleft =(120 ,y +25 ))
             self .screen .blit (label_r ,rect )
-            toggle_rect =pygame .Rect (528 ,y ,279 ,54 )
+            toggle_rect =pygame .Rect (540 ,y ,279 ,54 )
             hover_toggle =toggle_rect .collidepoint (mx ,my )
             bg_r =(100 ,150 ,220 )if self .config ["risultato_intero"]and hover_toggle else SEL_BLUE if self .config ["risultato_intero"]else (80 ,80 ,90 )if hover_toggle else (60 ,60 ,70 )
             pygame .draw .rect (self .screen ,bg_r ,toggle_rect ,border_radius =9 )
@@ -3748,7 +3748,7 @@ class Game :
                 pygame .draw .rect (self .screen ,GOLD ,toggle_rect ,2 ,border_radius =9 )
             ri_txt ="ON"if self .config ["risultato_intero"]else "OFF"
             ri_val =self ._render_cached (self .font_tiny ,ri_txt ,WHITE )
-            rect_rv =ri_val .get_rect (center =(667 ,y +27 ))
+            rect_rv =ri_val .get_rect (center =(679 ,y +27 ))
             self .screen .blit (ri_val ,rect_rv )
 
             # Row 4: Riporto / Prestito
@@ -3811,9 +3811,9 @@ class Game :
         # Row 6: Commutazione
         row =6
         y =row_y (row )
-        swap_locked =subtraction 
-        toggle_rect =pygame .Rect (528 ,y ,279 ,54 )
-        hover_toggle =toggle_rect .collidepoint (mx ,my )and not swap_locked 
+        swap_locked =subtraction
+        toggle_rect =pygame .Rect (540 ,y ,279 ,54 )
+        hover_toggle =toggle_rect .collidepoint (mx ,my )and not swap_locked
         bg_swap =(100 ,150 ,220 )if (self .config ["swap"]and hover_toggle )else SEL_BLUE if self .config ["swap"]else (80 ,80 ,90 )if hover_toggle else (60 ,60 ,70 )if not swap_locked else (60 ,60 ,70 )
         if swap_locked :
             bg_swap =(60 ,60 ,70 )
@@ -3825,7 +3825,7 @@ class Game :
         rect_sl =swap_label .get_rect (midleft =(120 ,y +27 ))
         self .screen .blit (swap_label ,rect_sl )
         swap_val =self ._render_cached (self .font_tiny ,sw_txt ,WHITE )
-        rect_sv =swap_val .get_rect (center =(667 ,y +27 ))
+        rect_sv =swap_val .get_rect (center =(679 ,y +27 ))
         self .screen .blit (swap_val ,rect_sv )
 
         # Row 7: Timeout
