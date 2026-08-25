@@ -286,8 +286,10 @@ def select_operands (pool_a ,pool_b ,reinforce_queue ,operation ,integer_result 
             continue
         if need_carry is not None and needs_carry (a ,b )!=need_carry :
             continue
-        if need_borrow is not None and needs_borrow (a ,b )!=need_borrow :
-            continue
+        if need_borrow is not None :
+            lo ,hi =min (a ,b ),max (a ,b )
+            if needs_borrow (hi ,lo )!=need_borrow :
+                continue
         return a ,b
     a ,b =random .choice (pool_a ),random .choice (pool_b )
     return a ,b
@@ -794,7 +796,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.3.22"
+        self .version ="1.3.23"
 
         self .profiles =[]
         self .current_profile =""
