@@ -687,7 +687,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.3.11"
+        self .version ="1.3.12"
 
         self .profiles =[]
         self .current_profile =""
@@ -1986,19 +1986,27 @@ class Game :
                     self .music_volume =max (0 ,self .music_volume -5 )
                     pygame .mixer .music .set_volume (self .music_volume /100 )
                     self .save_profile_config ()
+                    self ._opts_hold =("mus_minus",pygame .time .get_ticks ())
+                    self ._opts_last_repeat =0
                     return
                 if getattr (self ,'opt_mus_plus',None )and self .opt_mus_plus .collidepoint (mx ,my ):
                     self .music_volume =min (100 ,self .music_volume +5 )
                     pygame .mixer .music .set_volume (self .music_volume /100 )
                     self .save_profile_config ()
+                    self ._opts_hold =("mus_plus",pygame .time .get_ticks ())
+                    self ._opts_last_repeat =0
                     return 
                 if getattr (self ,'opt_sfx_minus',None )and self .opt_sfx_minus .collidepoint (mx ,my ):
                     self .sfx_volume =max (0 ,self .sfx_volume -5 )
                     self .save_profile_config ()
+                    self ._opts_hold =("sfx_minus",pygame .time .get_ticks ())
+                    self ._opts_last_repeat =0
                     return
                 if getattr (self ,'opt_sfx_plus',None )and self .opt_sfx_plus .collidepoint (mx ,my ):
                     self .sfx_volume =min (100 ,self .sfx_volume +5 )
                     self .save_profile_config ()
+                    self ._opts_hold =("sfx_plus",pygame .time .get_ticks ())
+                    self ._opts_last_repeat =0
                     return
                 if getattr (self ,'options_back_rect',None )and self .options_back_rect .collidepoint (mx ,my ):
                     self .state ="menu"
@@ -2083,6 +2091,8 @@ class Game :
                 self ._update_difficulty_from_mouse (mx )
         if event .type ==pygame .MOUSEBUTTONUP :
             self .dragging_difficulty =False
+            if getattr (self ,'_opts_hold',None ):
+                self ._opts_hold =None 
 
     def handle_config (self ,event ):
         ops =["moltiplicazione","addizione","sottrazione","divisione"]
@@ -2502,6 +2512,44 @@ class Game :
                 pygame .mixer .music .set_volume (self .music_volume /100 )
                 self .music_crossfade_target =None
                 self ._crossfade_swapped =False
+        if getattr (self ,'_opts_hold',None )and self .state =="options":
+            action ,start =self ._opts_hold
+            now =pygame .time .get_ticks ()
+            held =pygame .mouse .get_pressed ()[0 ]
+            if not held :
+                self ._opts_hold =None
+            else :
+                if now -start >=400 :
+                    if not hasattr (self ,'_opts_last_repeat'):
+                        self ._opts_last_repeat =0
+                    if now -self ._opts_last_repeat >=100 :
+                        self ._opts_last_repeat =now
+                        mx ,my =self ._mouse_pos ()
+                        hover =False
+                        if action =="mus_minus"and getattr (self ,'opt_mus_minus',None ):
+                            hover =self .opt_mus_minus .collidepoint (mx ,my )
+                            if hover and self .music_volume >0:
+                                self .music_volume =max (0 ,self .music_volume -5 )
+                                pygame .mixer .music .set_volume (self .music_volume /100 )
+                                self .save_profile_config ()
+                        elif action =="mus_plus"and getattr (self ,'opt_mus_plus',None ):
+                            hover =self .opt_mus_plus .collidepoint (mx ,my )
+                            if hover and self .music_volume <100:
+                                self .music_volume =min (100 ,self .music_volume +5 )
+                                pygame .mixer .music .set_volume (self .music_volume /100 )
+                                self .save_profile_config ()
+                        elif action =="sfx_minus"and getattr (self ,'opt_sfx_minus',None ):
+                            hover =self .opt_sfx_minus .collidepoint (mx ,my )
+                            if hover and self .sfx_volume >0:
+                                self .sfx_volume =max (0 ,self .sfx_volume -5 )
+                                self .save_profile_config ()
+                        elif action =="sfx_plus"and getattr (self ,'opt_sfx_plus',None ):
+                            hover =self .opt_sfx_plus .collidepoint (mx ,my )
+                            if hover and self .sfx_volume <100:
+                                self .sfx_volume =min (100 ,self .sfx_volume +5 )
+                                self .save_profile_config ()
+                        if not hover :
+                            self ._opts_hold =None
         if self .current_music =="level"and self .state not in ("game","story","player_exit","level_complete","loading","gameover","level_complete")and self .music_crossfade_target is None :
             self .switch_music ("background")
         if self .zap_timer >0 :
@@ -4264,7 +4312,7 @@ class Game :
                     self .running =False 
                 else :
                     self .handle_input (event )
-            if events or self .state in animated_states or self .music_crossfade_target is not None :
+            if events or self .state in animated_states or self .music_crossfade_target is not None or getattr (self ,'_opts_hold',None )is not None :
                 self .update ()
                 self .draw ()
                 self .clock .tick (FPS )
