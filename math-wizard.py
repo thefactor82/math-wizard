@@ -405,10 +405,17 @@ class Game :
         self .setup_profiles ()
         self .music_loaded =False 
         self .music_files ={}
-        for name in ("background","level"):
+        for name in ("background",):
             mp3_path =resource_path (os .path .join ("music",name +".mp3"))
             if os .path .exists (mp3_path ):
                 self .music_files [name ]=mp3_path 
+        self .level_tracks =[]
+        for i in range (4 ):
+            mp3_path =resource_path (os .path .join ("music",f"level{i}.mp3"))
+            if os .path .exists (mp3_path ):
+                self .level_tracks .append (mp3_path )
+        self .music_files ["level"]=""
+        self ._last_level_track_idx =-1 
         if "background"in self .music_files :
             try :
                 pygame .mixer .music .load (self .music_files ["background"])
@@ -434,6 +441,19 @@ class Game :
         threading .Thread (target =self .check_for_update ,daemon =True ).start ()
 
     def switch_music (self ,target ):
+        if target =="level":
+            if not self .level_tracks :
+                return 
+            if len (self .level_tracks )==1 :
+                idx =0
+            else :
+                candidates =[i for i in range (len (self .level_tracks ))if i !=self ._last_level_track_idx ]
+                idx =random .choice (candidates )
+            self ._last_level_track_idx =idx
+            self .music_files ["level"]=self .level_tracks [idx]
+            self .music_crossfade_target ="level"
+            self .music_crossfade_start =pygame .time .get_ticks ()
+            return 
         if target not in self .music_files or target ==self .current_music :
             return 
         self .music_crossfade_target =target
@@ -733,7 +753,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.3.16"
+        self .version ="1.3.17"
 
         self .profiles =[]
         self .current_profile =""
