@@ -687,7 +687,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.3.12"
+        self .version ="1.3.13"
 
         self .profiles =[]
         self .current_profile =""
@@ -3222,8 +3222,8 @@ class Game :
             fill_w =int (bar_w *min (lv ,total )/max (1 ,total ))
             if fill_w >0 :
                 pygame .draw .rect (self .screen ,SEL_BLUE ,(bar_x ,y ,fill_w ,bar_h ),border_radius =6 )
-            pct_txt =self ._render_cached (self .font_tiny ,f"{pct }%",WHITE )
-            self .screen .blit (pct_txt ,(bar_x +bar_w +15 ,y +3 ))
+            pct_txt =self ._render_cached (self .font_small ,f"{pct }%",WHITE )
+            self .screen .blit (pct_txt ,(bar_x +bar_w +15 ,y -2 ))
 
         back_txt =self ._render_cached (self .font_small ,"Indietro",WHITE )
         back_rect =back_txt .get_rect (center =(CANVAS_WIDTH //2 ,CANVAS_HEIGHT -30 ))
