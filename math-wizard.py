@@ -294,9 +294,9 @@ def select_operands (pool_a ,pool_b ,reinforce_queue ,operation ,integer_result 
             else :
                 if needs_borrow (a ,b )!=need_borrow :
                     continue
-        return a ,b
+        return a ,b ,False
     a ,b =random .choice (pool_a ),random .choice (pool_b )
-    return a ,b
+    return a ,b ,True
 
 LEVELS ={}
 for src in (data_path ,resource_path ):
@@ -800,7 +800,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.3.24"
+        self .version ="1.3.25"
 
         self .profiles =[]
         self .current_profile =""
@@ -965,8 +965,9 @@ class Game :
         self .lives =WIZARD_LIVES 
         self .level =0 
         self .is_correct =0 
-        self .a =0 
-        self .b =0 
+        self .a =0
+        self .b =0
+        self ._operands_fallback =False 
         self .prev_a =-1 
         self .prev_b =-1 
         self .expected_result =0 
@@ -1542,20 +1543,21 @@ class Game :
 
     def _new_distinct_pair (self ):
         prev =(self .prev_a ,self .prev_b )
-        a ,b =None ,None 
+        a ,b =None ,None
+        fb =False
         if self .mode =="auto":
             lv =self .effective_level ()
             lv_data =self .levels [lv ]
             for _ in range (20 ):
-                a ,b =select_operands (lv_data ["pool_a"],lv_data ["pool_b"],deque (),self .operation ,self .integer_result ,min_value =lv_data .get ("min_value"),max_value =lv_data .get ("max_value"),carry_prob =lv_data .get ("carry"),borrow_prob =lv_data .get ("borrow"))
+                a ,b ,fb =select_operands (lv_data ["pool_a"],lv_data ["pool_b"],deque (),self .operation ,self .integer_result ,min_value =lv_data .get ("min_value"),max_value =lv_data .get ("max_value"),carry_prob =lv_data .get ("carry"),borrow_prob =lv_data .get ("borrow"))
                 if (a ,b )!=prev :
-                    return a ,b 
+                    return a ,b ,fb
         else :
             for _ in range (20 ):
-                a ,b =select_operands (self .pool_a ,self .pool_b ,deque (),self .operation ,self .integer_result ,self .max_sum )
+                a ,b ,fb =select_operands (self .pool_a ,self .pool_b ,deque (),self .operation ,self .integer_result ,self .max_sum )
                 if (a ,b )!=prev :
-                    return a ,b 
-        return a ,b 
+                    return a ,b ,fb
+        return a ,b ,fb 
 
     def new_question (self ):
         if self .lives <=0 :
@@ -1576,7 +1578,7 @@ class Game :
                 self .a ,self .b =self .b ,self .a 
             if (self .a ,self .b )==(self .prev_a ,self .prev_b ):
                 if self .operation =="divisione":
-                    self .a ,self .b =self ._new_distinct_pair ()
+                    self .a ,self .b ,self ._operands_fallback =self ._new_distinct_pair ()
                 else :
                     self .a ,self .b =self .b ,self .a 
             self .expected_result =calculate_result (self .a ,self .b ,self .operation ,self .integer_result )
@@ -1626,10 +1628,10 @@ class Game :
             lv =self .effective_level ()
             lv_data =self .levels [lv ]
             self .operation =self .config_story_operation 
-            self .a ,self .b =select_operands (lv_data ["pool_a"],lv_data ["pool_b"],self .reinforcement_queue ,self .operation ,self .integer_result ,min_value =lv_data .get ("min_value"),max_value =lv_data .get ("max_value"),carry_prob =lv_data .get ("carry"),borrow_prob =lv_data .get ("borrow"))
+            self .a ,self .b ,self ._operands_fallback =select_operands (lv_data ["pool_a"],lv_data ["pool_b"],self .reinforcement_queue ,self .operation ,self .integer_result ,min_value =lv_data .get ("min_value"),max_value =lv_data .get ("max_value"),carry_prob =lv_data .get ("carry"),borrow_prob =lv_data .get ("borrow"))
             if self .operation =="sottrazione"and self .a <self .b :
                 self .a ,self .b =self .b ,self .a 
-            self .questions_asked +=1 
+            self .questions_asked +=1
         else :
             if self .questions_asked >=self .total_questions :
                 self .save_session ()
@@ -1637,7 +1639,7 @@ class Game :
                 self .player_exit_x =112 
                 self .state ="player_exit"
                 return 
-            self .a ,self .b =select_operands (
+            self .a ,self .b ,self ._operands_fallback =select_operands (
             self .pool_a ,
             self .pool_b ,
             self .reinforcement_queue ,
@@ -1657,7 +1659,7 @@ class Game :
 
         if (self .a ,self .b )==(self .prev_a ,self .prev_b ):
             if self .operation =="divisione":
-                self .a ,self .b =self ._new_distinct_pair ()
+                self .a ,self .b ,self ._operands_fallback =self ._new_distinct_pair ()
             elif self .a ==self .b :
                 if self .mode =="auto":
                     lv =self .effective_level ()
@@ -4171,6 +4173,7 @@ class Game :
             f"Operandi: {self .a } {segno_debug } {self .b }",
             f"Riporto: {int (self .levels [self .effective_level ()].get ('carry',0 )*100 )if self .mode =='auto'else self .config .get ('riporto',0 )}%" +(f"  has:{needs_carry (self .a ,self .b )}"if self .operation =='addizione'else ""),
             f"Prestito: {int (self .levels [self .effective_level ()].get ('borrow',0 )*100 )if self .mode =='auto'else self .config .get ('prestito',0 )}%" +(f"  has:{needs_borrow (self .a ,self .b )}"if self .operation =='sottrazione'else ""),
+            f"Fallback: {'SI'if getattr (self ,'_operands_fallback',False )else 'NO'}",
             f"Prev: {self .prev_a } {segno_debug } {self .prev_b }",
             f"Risultato: {self .expected_result }",
             f"Pool A: {format_pool_compact (self .levels [self .effective_level ()]['pool_a'])if self .mode =='auto'else format_pool_compact (self .pool_a )}",
