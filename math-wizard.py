@@ -754,7 +754,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.3.19"
+        self .version ="1.3.20"
 
         self .profiles =[]
         self .current_profile =""
@@ -2592,7 +2592,7 @@ class Game :
                     target =self .music_crossfade_target
                     try :
                         pygame .mixer .music .load (self .music_files [target ])
-                        pygame .mixer .music .play (-1 )
+                        pygame .mixer .music .play (1 if target =="level"else -1 )
                     except pygame .error :
                         pass
                     self .current_music =target
@@ -2605,6 +2605,18 @@ class Game :
                 pygame .mixer .music .set_volume (self .music_volume /100 )
                 self .music_crossfade_target =None
                 self ._crossfade_swapped =False
+        if self .current_music =="level"and self .music_crossfade_target is None and self .level_tracks and not pygame .mixer .music .get_busy ():
+            candidates =[i for i in range (len (self .level_tracks ))if i !=self ._last_level_track_idx ]
+            idx =random .choice (candidates )if candidates else random .randrange (len (self .level_tracks ))
+            self ._last_level_track_idx =idx
+            self .music_files ["level"]=self .level_tracks [idx]
+            try :
+                pygame .mixer .music .load (self .music_files ["level"])
+                pygame .mixer .music .play (1 )
+                pygame .mixer .music .set_volume (self .music_volume /100 )
+            except pygame .error :
+                pass
+            self ._music_start_tick =pygame .time .get_ticks ()
         if getattr (self ,'_opts_hold',None )and self .state in ("options","options_auto","config_fixed"):
             action ,start =self ._opts_hold
             now =pygame .time .get_ticks ()
