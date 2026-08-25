@@ -800,7 +800,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.3.28"
+        self .version ="1.3.29"
 
         self .profiles =[]
         self .current_profile =""
@@ -1876,33 +1876,33 @@ class Game :
                     self .options_cursor =(self .options_cursor +1 )%4
                 elif event .key in (pygame .K_PLUS ,pygame .K_EQUALS ,pygame .K_KP_PLUS ):
                     if self .options_cursor ==0 :
-                        self .auto_timeout =min (99 ,self .auto_timeout +1 )
+                        ops =["moltiplicazione","addizione","sottrazione","divisione"]
+                        idx =(ops .index (self .config_story_operation )+1 )%4
+                        self .config_story_operation =ops [idx ]
+                        self .difficulty_position =min (self .difficulty_position ,self .max_difficulty_position ())
+                        self .initial_level =min (self .initial_level ,self .max_initial_level ())
                     elif self .options_cursor ==1 :
                         self .difficulty_position =min (self .max_difficulty_position (),self .difficulty_position +1 )
                         self .initial_level =min (self .initial_level ,self .max_initial_level ())
                     elif self .options_cursor ==2 :
                         self .initial_level =min (self .max_initial_level (),self .initial_level +1 )
                     else :
-                        ops =["moltiplicazione","addizione","sottrazione","divisione"]
-                        idx =(ops .index (self .config_story_operation )+1 )%4 
-                        self .config_story_operation =ops [idx ]
-                        self .difficulty_position =min (self .difficulty_position ,self .max_difficulty_position ())
-                        self .initial_level =min (self .initial_level ,self .max_initial_level ())
+                        self .auto_timeout =min (99 ,self .auto_timeout +1 )
                     self .save_profile_config ()
                 elif event .key in (pygame .K_MINUS ,pygame .K_KP_MINUS ):
                     if self .options_cursor ==0 :
-                        self .auto_timeout =max (3 ,self .auto_timeout -1 )
+                        ops =["moltiplicazione","addizione","sottrazione","divisione"]
+                        idx =(ops .index (self .config_story_operation )-1 )%4
+                        self .config_story_operation =ops [idx ]
+                        self .difficulty_position =min (self .difficulty_position ,self .max_difficulty_position ())
+                        self .initial_level =min (self .initial_level ,self .max_initial_level ())
                     elif self .options_cursor ==1 :
                         self .difficulty_position =max (0 ,self .difficulty_position -1 )
                         self .initial_level =min (self .initial_level ,self .max_initial_level ())
                     elif self .options_cursor ==2 :
                         self .initial_level =max (0 ,self .initial_level -1 )
                     else :
-                        ops =["moltiplicazione","addizione","sottrazione","divisione"]
-                        idx =(ops .index (self .config_story_operation )-1 )%4 
-                        self .config_story_operation =ops [idx ]
-                        self .difficulty_position =min (self .difficulty_position ,self .max_difficulty_position ())
-                        self .initial_level =min (self .initial_level ,self .max_initial_level ())
+                        self .auto_timeout =max (3 ,self .auto_timeout -1 )
                     self .save_profile_config ()
                 elif event .key in (pygame .K_RETURN ,pygame .K_KP_ENTER ):
                     self .save_profile_config ()
@@ -2151,20 +2151,19 @@ class Game :
             elif self .state =="options_auto":
                 sx =540
                 lw ,vw ,rw =45 ,60 ,45
-                # Timeout
-                if sx -3 <=mx <=sx +lw +vw +rw +3 and 257 <=my <=314 :
-                    self .options_cursor =0
-                    if mx <sx +lw :
-                        self .auto_timeout =max (3 ,self .auto_timeout -1 )
-                        self ._opts_hold =("auto_timeout_minus",pygame .time .get_ticks ())
-                        self ._opts_last_repeat =0
-                    elif mx >=sx +lw +vw :
-                        self .auto_timeout =min (99 ,self .auto_timeout +1 )
-                        self ._opts_hold =("auto_timeout_plus",pygame .time .get_ticks ())
-                        self ._opts_last_repeat =0
-                    self .save_profile_config ()
+                # Operazione
+                if hasattr (self ,'opzioni_auto_op_buttons')and len (self .opzioni_auto_op_buttons )==4 :
+                    ops =["moltiplicazione","addizione","sottrazione","divisione"]
+                    for i ,btn in enumerate (self .opzioni_auto_op_buttons ):
+                        if btn .collidepoint (mx ,my ):
+                            self .options_cursor =0
+                            self .config_story_operation =ops [i ]
+                            self .difficulty_position =min (self .difficulty_position ,self .max_difficulty_position ())
+                            self .initial_level =min (self .initial_level ,self .max_initial_level ())
+                            self .save_profile_config ()
+                            break
                     # Difficoltà (barra scorrevole)
-                elif hasattr (self ,'diff_bar_rect'):
+                if hasattr (self ,'diff_bar_rect'):
                     if hasattr (self ,'diff_left_rect')and self .diff_left_rect .collidepoint (mx ,my ):
                         self .options_cursor =1
                         self .difficulty_position =max (0 ,self .difficulty_position -1 )
@@ -2182,6 +2181,7 @@ class Game :
                     elif hasattr (self ,'diff_indicator_rect')and self .diff_indicator_rect and self .diff_indicator_rect .collidepoint (mx ,my ):
                         self .options_cursor =1
                         self .dragging_difficulty =True
+                # Livello iniziale
                 if sx -3 <=mx <=sx +lw +vw +rw +3 and 477 <=my <=534 :
                     self .options_cursor =2
                     if mx <sx +lw :
@@ -2193,16 +2193,18 @@ class Game :
                         self ._opts_hold =("initial_level_plus",pygame .time .get_ticks ())
                         self ._opts_last_repeat =0
                     self .save_profile_config ()
-                if hasattr (self ,'opzioni_auto_op_buttons')and len (self .opzioni_auto_op_buttons )==4 :
-                    ops =["moltiplicazione","addizione","sottrazione","divisione"]
-                    for i ,btn in enumerate (self .opzioni_auto_op_buttons ):
-                        if btn .collidepoint (mx ,my ):
-                            self .options_cursor =3
-                            self .config_story_operation =ops [i ]
-                            self .difficulty_position =min (self .difficulty_position ,self .max_difficulty_position ())
-                            self .initial_level =min (self .initial_level ,self .max_initial_level ())
-                            self .save_profile_config ()
-                            break
+                # Timeout
+                if sx -3 <=mx <=sx +lw +vw +rw +3 and 587 <=my <=644 :
+                    self .options_cursor =3
+                    if mx <sx +lw :
+                        self .auto_timeout =max (3 ,self .auto_timeout -1 )
+                        self ._opts_hold =("auto_timeout_minus",pygame .time .get_ticks ())
+                        self ._opts_last_repeat =0
+                    elif mx >=sx +lw +vw :
+                        self .auto_timeout =min (99 ,self .auto_timeout +1 )
+                        self ._opts_hold =("auto_timeout_plus",pygame .time .get_ticks ())
+                        self ._opts_last_repeat =0
+                    self .save_profile_config ()
                             # CONFERMA
                 if CANVAS_WIDTH //2 -165 <=mx <=CANVAS_WIDTH //2 +165 and 717 <=my <=786 :
                     self .save_profile_config ()
@@ -3443,31 +3445,38 @@ class Game :
         sx =540
         lw ,vw ,rw =45 ,60 ,45
 
-        # Timeout
+        # Operazione
         y =260
-        label_t =self ._render_cached (self .font_tiny ,"Timeout (secondi)",WHITE )
-        rect =label_t .get_rect (midleft =(120 ,y +25 ))
-        self .screen .blit (label_t ,rect )
-        focused =self .options_cursor ==0
-        minus_rect =pygame .Rect (sx ,y ,lw ,51 )
-        plus_rect =pygame .Rect (sx +lw +vw ,y ,rw ,51 )
-        hover_minus =minus_rect .collidepoint (mx ,my )
-        hover_plus =plus_rect .collidepoint (mx ,my )
-        if focused :
-            pygame .draw .rect (self .screen ,SEL_BLUE ,(sx -3 ,y -3 ,lw +vw +rw +6 ,57 ),0 ,border_radius =6 )
-        pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_minus else (70 ,70 ,80 ),minus_rect ,border_radius =6 )
-        pygame .draw .rect (self .screen ,(40 ,40 ,50 ),(sx +lw ,y ,vw ,51 ))
-        pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_plus else (70 ,70 ,80 ),plus_rect ,border_radius =6 )
-        if hover_minus :
-            pygame .draw .rect (self .screen ,GOLD ,minus_rect ,2 ,border_radius =12 )
-        if hover_plus :
-            pygame .draw .rect (self .screen ,GOLD ,plus_rect ,2 ,border_radius =12 )
-        minus =self ._render_cached (self .font_tiny ,"-",WHITE )
-        plus =self ._render_cached (self .font_tiny ,"+",WHITE )
-        self .screen .blit (minus ,minus .get_rect (center =(sx +lw //2 ,y +25 )))
-        self .screen .blit (plus ,plus .get_rect (center =(sx +lw +vw +rw //2 ,y +25 )))
-        t_surf =self ._render_cached (self .font_tiny ,str (self .auto_timeout ),WHITE )
-        self .screen .blit (t_surf ,t_surf .get_rect (center =(sx +lw +vw //2 ,y +25 )))
+        label_o =self ._render_cached (self .font_tiny ,"Operazione",WHITE )
+        rect =label_o .get_rect (midleft =(120 ,y +25 ))
+        self .screen .blit (label_o ,rect )
+        ops_list =[("moltiplicazione","Moltiplicazione"),("addizione","Addizione"),("sottrazione","Sottrazione"),("divisione","Divisione")]
+        bx =540
+        self .opzioni_auto_op_buttons =[]
+        for op_key ,op_label in ops_list :
+            bw =280
+            bh =62
+            btn_rect =pygame .Rect (bx ,y ,bw ,bh )
+            selected =self .config_story_operation ==op_key
+            hovered =btn_rect .collidepoint (mx ,my )
+            if selected :
+                bg_col =(60 ,130 ,200 )
+            elif hovered :
+                bg_col =(90 ,90 ,100 )
+            else :
+                bg_col =(70 ,70 ,80 )
+            if selected or hovered :
+                pygame .draw .rect (self .screen ,GOLD if hovered else (100 ,180 ,255 ),btn_rect ,2 if hovered else 1 ,border_radius =6 )
+            pygame .draw .rect (self .screen ,bg_col ,btn_rect ,border_radius =6 )
+            surf =self ._render_cached (self .font_small ,op_label ,WHITE )
+            self .screen .blit (surf ,surf .get_rect (center =btn_rect .center ))
+            self .opzioni_auto_op_buttons .append (btn_rect )
+            bx +=bw +18
+        if self .options_cursor ==0:
+            ops_keys =["moltiplicazione","addizione","sottrazione","divisione"]
+            sel_idx =ops_keys .index (self .config_story_operation )
+            focus_rect =self .opzioni_auto_op_buttons [sel_idx ].inflate (12 ,12 )
+            pygame .draw .rect (self .screen ,(255 ,255 ,100 ),focus_rect ,3 ,border_radius =9 )
 
         # Difficoltà (barra scorrevole)
         y =370
@@ -3558,38 +3567,31 @@ class Game :
         act_surf =self ._render_cached (self .font_tiny ,f"→ lv.{act_lv }",GRAY )
         self .screen .blit (act_surf ,act_surf .get_rect (midleft =(sx +lw +vw +rw +120 ,y +25 )))
 
-        # Operazione
+        # Timeout
         y =590
-        label_o =self ._render_cached (self .font_tiny ,"Operazione",WHITE )
-        rect =label_o .get_rect (midleft =(120 ,y +25 ))
-        self .screen .blit (label_o ,rect )
-        ops_list =[("moltiplicazione","Moltiplicazione"),("addizione","Addizione"),("sottrazione","Sottrazione"),("divisione","Divisione")]
-        bx =540
-        self .opzioni_auto_op_buttons =[]
-        for op_key ,op_label in ops_list :
-            bw =280
-            bh =62
-            btn_rect =pygame .Rect (bx ,y ,bw ,bh )
-            selected =self .config_story_operation ==op_key
-            hovered =btn_rect .collidepoint (mx ,my )
-            if selected :
-                bg_col =(60 ,130 ,200 )
-            elif hovered :
-                bg_col =(90 ,90 ,100 )
-            else :
-                bg_col =(70 ,70 ,80 )
-            if selected or hovered :
-                pygame .draw .rect (self .screen ,GOLD if hovered else (100 ,180 ,255 ),btn_rect ,2 if hovered else 1 ,border_radius =6 )
-            pygame .draw .rect (self .screen ,bg_col ,btn_rect ,border_radius =6 )
-            surf =self ._render_cached (self .font_small ,op_label ,WHITE )
-            self .screen .blit (surf ,surf .get_rect (center =btn_rect .center ))
-            self .opzioni_auto_op_buttons .append (btn_rect )
-            bx +=bw +18
-        if self .options_cursor ==3:
-            ops_keys =["moltiplicazione","addizione","sottrazione","divisione"]
-            sel_idx =ops_keys .index (self .config_story_operation )
-            focus_rect =self .opzioni_auto_op_buttons [sel_idx ].inflate (12 ,12 )
-            pygame .draw .rect (self .screen ,(255 ,255 ,100 ),focus_rect ,3 ,border_radius =9 )
+        label_t =self ._render_cached (self .font_tiny ,"Timeout (secondi)",WHITE )
+        rect =label_t .get_rect (midleft =(120 ,y +25 ))
+        self .screen .blit (label_t ,rect )
+        focused =self .options_cursor ==3
+        minus_rect =pygame .Rect (sx ,y ,lw ,51 )
+        plus_rect =pygame .Rect (sx +lw +vw ,y ,rw ,51 )
+        hover_minus =minus_rect .collidepoint (mx ,my )
+        hover_plus =plus_rect .collidepoint (mx ,my )
+        if focused :
+            pygame .draw .rect (self .screen ,SEL_BLUE ,(sx -3 ,y -3 ,lw +vw +rw +6 ,57 ),0 ,border_radius =6 )
+        pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_minus else (70 ,70 ,80 ),minus_rect ,border_radius =6 )
+        pygame .draw .rect (self .screen ,(40 ,40 ,50 ),(sx +lw ,y ,vw ,51 ))
+        pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_plus else (70 ,70 ,80 ),plus_rect ,border_radius =6 )
+        if hover_minus :
+            pygame .draw .rect (self .screen ,GOLD ,minus_rect ,2 ,border_radius =12 )
+        if hover_plus :
+            pygame .draw .rect (self .screen ,GOLD ,plus_rect ,2 ,border_radius =12 )
+        minus =self ._render_cached (self .font_tiny ,"-",WHITE )
+        plus =self ._render_cached (self .font_tiny ,"+",WHITE )
+        self .screen .blit (minus ,minus .get_rect (center =(sx +lw //2 ,y +25 )))
+        self .screen .blit (plus ,plus .get_rect (center =(sx +lw +vw +rw //2 ,y +25 )))
+        t_surf =self ._render_cached (self .font_tiny ,str (self .auto_timeout ),WHITE )
+        self .screen .blit (t_surf ,t_surf .get_rect (center =(sx +lw +vw //2 ,y +25 )))
 
             # CONFERMA
         y_conf =710
