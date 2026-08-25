@@ -244,10 +244,34 @@ def generate_addition_operands (pool_a ,pool_b ,reinforce_queue ,max_sum =None )
         a =random .choice (pool_a )
         b =random .choice (pool_b )
     fallback_b =0 if 0 in pool_b else random .choice (pool_b )
-    return min (pool_a ,key =lambda x :abs (x -max_sum )),fallback_b 
+    return min (pool_a ,key =lambda x :abs (x -max_sum )),fallback_b
 
 
-def select_operands (pool_a ,pool_b ,reinforce_queue ,operation ,integer_result =True ,max_sum =None ,min_value =None ,max_value =None ):
+def needs_carry (a ,b ):
+    while a >0 or b >0 :
+        if (a %10 +b %10 )>=10 :
+            return True
+        a //=10
+        b //=10
+    return False
+
+
+def needs_borrow (a ,b ):
+    while a >0 or b >0 :
+        if a %10 <b %10 :
+            return True
+        a //=10
+        b //=10
+    return False
+
+
+def select_operands (pool_a ,pool_b ,reinforce_queue ,operation ,integer_result =True ,max_sum =None ,min_value =None ,max_value =None ,carry_prob =None ,borrow_prob =None ):
+    need_carry =None
+    if carry_prob is not None and operation =="addizione":
+        need_carry =random .random ()<carry_prob
+    need_borrow =None
+    if borrow_prob is not None and operation =="sottrazione":
+        need_borrow =random .random ()<borrow_prob
     for _ in range (50 ):
         if operation =="divisione":
             a ,b =generate_division_operands (pool_a ,pool_b ,reinforce_queue ,integer_result )
@@ -257,12 +281,16 @@ def select_operands (pool_a ,pool_b ,reinforce_queue ,operation ,integer_result 
             a ,b =generate_operands (pool_a ,pool_b ,reinforce_queue )
         res =calculate_result (a ,b ,operation ,integer_result )
         if min_value is not None and res <min_value :
-            continue 
+            continue
         if max_value is not None and res >max_value :
-            continue 
-        return a ,b 
+            continue
+        if need_carry is not None and needs_carry (a ,b )!=need_carry :
+            continue
+        if need_borrow is not None and needs_borrow (a ,b )!=need_borrow :
+            continue
+        return a ,b
     a ,b =random .choice (pool_a ),random .choice (pool_b )
-    return a ,b 
+    return a ,b
 
 LEVELS ={}
 for src in (data_path ,resource_path ):
@@ -498,6 +526,18 @@ class Game :
             self .save_profile_config ()
         elif action =="somma_massima_plus":
             self .config ["somma_massima"]=min (199 ,self .config ["somma_massima"]+1 )
+            self .save_profile_config ()
+        elif action =="riporto_minus":
+            self .config ["riporto"]=max (0 ,self .config ["riporto"]-5 )
+            self .save_profile_config ()
+        elif action =="riporto_plus":
+            self .config ["riporto"]=min (100 ,self .config ["riporto"]+5 )
+            self .save_profile_config ()
+        elif action =="prestito_minus":
+            self .config ["prestito"]=max (0 ,self .config ["prestito"]-5 )
+            self .save_profile_config ()
+        elif action =="prestito_plus":
+            self .config ["prestito"]=min (100 ,self .config ["prestito"]+5 )
             self .save_profile_config ()
         elif action =="domande_minus":
             self .config ["domande"]=max (1 ,self .config ["domande"]-1 )
@@ -754,7 +794,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.3.20"
+        self .version ="1.3.21"
 
         self .profiles =[]
         self .current_profile =""
@@ -785,8 +825,10 @@ class Game :
             "swap":True ,
             "timeout":DEFAULT_TIMEOUT ,
             }
-        self .config_by_operation ["addizione"]["somma_massima"]=10 
-        self .config_by_operation ["sottrazione"]["differenza_positiva"]=True 
+        self .config_by_operation ["addizione"]["somma_massima"]=10
+        self .config_by_operation ["addizione"]["riporto"]=0
+        self .config_by_operation ["sottrazione"]["differenza_positiva"]=True
+        self .config_by_operation ["sottrazione"]["prestito"]=0 
         self .config_by_operation ["divisione"]["risultato_intero"]=True 
         self .config_by_operation ["divisione"]["swap"]=False 
         self .config =self .config_by_operation [self .config_operation ]
@@ -1499,7 +1541,7 @@ class Game :
             lv =self .effective_level ()
             lv_data =self .levels [lv ]
             for _ in range (20 ):
-                a ,b =select_operands (lv_data ["pool_a"],lv_data ["pool_b"],deque (),self .operation ,self .integer_result ,min_value =lv_data .get ("min_value"),max_value =lv_data .get ("max_value"))
+                a ,b =select_operands (lv_data ["pool_a"],lv_data ["pool_b"],deque (),self .operation ,self .integer_result ,min_value =lv_data .get ("min_value"),max_value =lv_data .get ("max_value"),carry_prob =lv_data .get ("carry"),borrow_prob =lv_data .get ("borrow"))
                 if (a ,b )!=prev :
                     return a ,b 
         else :
@@ -1523,7 +1565,7 @@ class Game :
             lv =self .effective_level ()
             lv_data =self .levels [lv ]
             self .operation =self .config_story_operation 
-            self .a ,self .b =select_operands (lv_data ["pool_a"],lv_data ["pool_b"],self .reinforcement_queue ,self .operation ,self .integer_result ,min_value =lv_data .get ("min_value"),max_value =lv_data .get ("max_value"))
+            self .a ,self .b =select_operands (lv_data ["pool_a"],lv_data ["pool_b"],self .reinforcement_queue ,self .operation ,self .integer_result ,min_value =lv_data .get ("min_value"),max_value =lv_data .get ("max_value"),carry_prob =lv_data .get ("carry"),borrow_prob =lv_data .get ("borrow"))
             if self .operation =="sottrazione"and self .a <self .b :
                 self .a ,self .b =self .b ,self .a 
             if (self .a ,self .b )==(self .prev_a ,self .prev_b ):
@@ -1578,7 +1620,7 @@ class Game :
             lv =self .effective_level ()
             lv_data =self .levels [lv ]
             self .operation =self .config_story_operation 
-            self .a ,self .b =select_operands (lv_data ["pool_a"],lv_data ["pool_b"],self .reinforcement_queue ,self .operation ,self .integer_result ,min_value =lv_data .get ("min_value"),max_value =lv_data .get ("max_value"))
+            self .a ,self .b =select_operands (lv_data ["pool_a"],lv_data ["pool_b"],self .reinforcement_queue ,self .operation ,self .integer_result ,min_value =lv_data .get ("min_value"),max_value =lv_data .get ("max_value"),carry_prob =lv_data .get ("carry"),borrow_prob =lv_data .get ("borrow"))
             if self .operation =="sottrazione"and self .a <self .b :
                 self .a ,self .b =self .b ,self .a 
             self .questions_asked +=1 
@@ -1596,6 +1638,8 @@ class Game :
             self .operation ,
             self .integer_result ,
             self .max_sum ,
+            carry_prob =self .config .get ("riporto",0 )/100 if self .operation =="addizione"else None ,
+            borrow_prob =self .config .get ("prestito",0 )/100 if self .operation =="sottrazione"else None ,
             )
             if self .swap_operandi and random .random ()<0.5 :
                 if self .operation !="divisione"or not self .integer_result :
@@ -2182,9 +2226,9 @@ class Game :
         pool_items =10 if pools_mode else 13 
 
         def row_y (r ):
-            base =[225 ,315 ,435 ,555 ,630 ,705 ,780 ,825 ]
-            cell_h ,gap =45 ,9 
-            subrows_pool =(pool_items +4 )//5 
+            base =[225 ,315 ,435 ,555 ,610 ,685 ,760 ,835 ,880 ]
+            cell_h ,gap =45 ,9
+            subrows_pool =(pool_items +4 )//5
             pool_extra =max (0 ,(subrows_pool -2 ))*(cell_h +gap )
             offset =0 
             if r >=2 :
@@ -2215,17 +2259,22 @@ class Game :
         def skip_sum (r ,step ):
             if not addition and not subtraction and not division :
                 if step ==1 and r ==2 :
-                    return 4 
-                if step ==-1 and r ==4 :
-                    return 2 
+                    return 5
+                if step ==-1 and r ==5 :
+                    return 2
+            elif division :
+                if step ==1 and r ==3 :
+                    return 5
+                if step ==-1 and r ==5 :
+                    return 3
             return r 
 
         if event .type ==pygame .MOUSEBUTTONDOWN :
             mx ,my =self ._scale_to_canvas (*event .pos ) 
 
-            # Row 7: CONFERMA
-            y7 =row_y (7 )
-            if CANVAS_WIDTH //2 -165 <=mx <=CANVAS_WIDTH //2 +165 and y7 <=my <=y7 +69 :
+            # Row 8: CONFERMA
+            y8 =row_y (8 )
+            if CANVAS_WIDTH //2 -165 <=mx <=CANVAS_WIDTH //2 +165 and y8 <=my <=y8 +69 :
                 self .save_profile_config ()
                 self .mode ="fixed"
                 self .start_game ()
@@ -2301,18 +2350,38 @@ class Game :
                         return 
                 elif division :
                     if 525 <=mx <=810 and y3 -6 <=my <=y3 +60 :
-                        self .config_cursor_row =3 
-                        self .config_cursor_col =0 
+                        self .config_cursor_row =3
+                        self .config_cursor_col =0
                         self .config ["risultato_intero"]=not self .config ["risultato_intero"]
-                        return 
+                        return
 
-                        # Row 4: domande
-            y4 =row_y (4 )
-            if y4 -3 <=my <=y4 +54 :
-                lw =45 
+                        # Row 4: riporto / prestito
+            if addition or subtraction :
+                y4 =row_y (4 )
+                if y4 -3 <=my <=y4 +54 :
+                    lw =45
+                    if 540 -3 <=mx <=540 +150 +3 :
+                        self .config_cursor_row =4
+                        self .config_cursor_col =0
+                        key ="riporto"if addition else "prestito"
+                        if mx <540 +lw :
+                            self .config [key]=max (0 ,self .config [key]-5 )
+                            self ._opts_hold =(f"{key}_minus",pygame .time .get_ticks ())
+                            self ._opts_last_repeat =0
+                        elif mx >=540 +lw +60 :
+                            self .config [key]=min (100 ,self .config [key]+5 )
+                            self ._opts_hold =(f"{key}_plus",pygame .time .get_ticks ())
+                            self ._opts_last_repeat =0
+                        self .save_profile_config ()
+                        return
+
+                        # Row 5: domande
+            y5 =row_y (5 )
+            if y5 -3 <=my <=y5 +54 :
+                lw =45
                 if 540 -3 <=mx <=540 +150 +3 :
-                    self .config_cursor_row =4 
-                    self .config_cursor_col =0 
+                    self .config_cursor_row =5
+                    self .config_cursor_col =0
                     if mx <540 +lw :
                         self .config ["domande"]=max (1 ,self .config ["domande"]-1 )
                         self ._opts_hold =("domande_minus",pygame .time .get_ticks ())
@@ -2322,23 +2391,23 @@ class Game :
                         self ._opts_hold =("domande_plus",pygame .time .get_ticks ())
                         self ._opts_last_repeat =0
                     self .save_profile_config ()
-                    return 
+                    return
 
-                    # Row 5: swap
-            y5 =row_y (5 )
-            if y5 -6 <=my <=y5 +60 :
-                if 525 <=mx <=810 and not subtraction :
-                    self .config_cursor_row =5 
-                    self .config_cursor_col =0 
-                    self .config ["swap"]=not self .config ["swap"]
-                    return 
-
-                    # Row 6: timeout
+                    # Row 6: swap
             y6 =row_y (6 )
-            if y6 -3 <=my <=y6 +54 :
+            if y6 -6 <=my <=y6 +60 :
+                if 525 <=mx <=810 and not subtraction :
+                    self .config_cursor_row =6
+                    self .config_cursor_col =0
+                    self .config ["swap"]=not self .config ["swap"]
+                    return
+
+                    # Row 7: timeout
+            y7 =row_y (7 )
+            if y7 -3 <=my <=y7 +54 :
                 lw =45 
                 if 540 -3 <=mx <=540 +150 +3 :
-                    self .config_cursor_row =6 
+                    self .config_cursor_row =7 
                     self .config_cursor_col =0 
                     if mx <540 +lw :
                         self .config ["timeout"]=max (3 ,self .config ["timeout"]-1 )
@@ -2382,11 +2451,11 @@ class Game :
                     if idx >=0 :
                         sub +=1 
                     else :
-                        row =skip_sum (min (7 ,row +1 ),1 )
+                        row =skip_sum (min (8 ,row +1 ),1 )
                 else :
-                    row =skip_sum (min (7 ,row +1 ),1 )
+                    row =skip_sum (min (8 ,row +1 ),1 )
             else :
-                row =skip_sum (min (7 ,row +1 ),1 )
+                row =skip_sum (min (8 ,row +1 ),1 )
             self .config_cursor_col =min (col ,max_col_for_row (row ))
         elif event .key ==pygame .K_LEFT :
             if row ==0 :
@@ -2431,21 +2500,29 @@ class Game :
                 self .config ["differenza_positiva"]=not self .config ["differenza_positiva"]
             elif row ==3 and division :
                 self .config ["risultato_intero"]=not self .config ["risultato_intero"]
-            elif row ==5 and not subtraction :
+            elif row ==6 and not subtraction :
                 self .config ["swap"]=not self .config ["swap"]
         elif event .key in (pygame .K_PLUS ,pygame .K_EQUALS ,pygame .K_KP_PLUS ):
             if row ==3 and addition :
                 self .config ["somma_massima"]=min (199 ,self .config ["somma_massima"]+1 )
-            elif row ==4 :
+            elif row ==4 and addition :
+                self .config ["riporto"]=min (100 ,self .config ["riporto"]+5 )
+            elif row ==4 and subtraction :
+                self .config ["prestito"]=min (100 ,self .config ["prestito"]+5 )
+            elif row ==5 :
                 self .config ["domande"]=min (99 ,self .config ["domande"]+1 )
-            elif row ==6 :
+            elif row ==7 :
                 self .config ["timeout"]=min (99 ,self .config ["timeout"]+1 )
         elif event .key in (pygame .K_MINUS ,pygame .K_KP_MINUS ):
             if row ==3 and addition :
                 self .config ["somma_massima"]=max (1 ,self .config ["somma_massima"]-1 )
-            elif row ==4 :
+            elif row ==4 and addition :
+                self .config ["riporto"]=max (0 ,self .config ["riporto"]-5 )
+            elif row ==4 and subtraction :
+                self .config ["prestito"]=max (0 ,self .config ["prestito"]-5 )
+            elif row ==5 :
                 self .config ["domande"]=max (1 ,self .config ["domande"]-1 )
-            elif row ==6 :
+            elif row ==7 :
                 self .config ["timeout"]=max (3 ,self .config ["timeout"]-1 )
 
         self .config_cursor_row =row 
@@ -3535,7 +3612,7 @@ class Game :
         division =self .config_operation =="divisione"
 
         def row_y (r ):
-            base =[225 ,315 ,435 ,555 ,630 ,705 ,780 ,825 ]
+            base =[225 ,315 ,435 ,555 ,610 ,685 ,760 ,835 ,880 ]
             pools_mode =addition or subtraction or division 
             cell_h ,gap =45 ,9 
             pool_items =10 if pools_mode else 13 
@@ -3665,8 +3742,39 @@ class Game :
             rect_rv =ri_val .get_rect (center =(667 ,y +27 ))
             self .screen .blit (ri_val ,rect_rv )
 
-            # Row 4: Domande
-        row =4 
+            # Row 4: Riporto / Prestito
+        if addition or subtraction :
+            row =4
+            y =row_y (row )
+            if addition :
+                label_rp =self ._render_cached (self .font_tiny ,"Riporto (%)",WHITE )
+            else :
+                label_rp =self ._render_cached (self .font_tiny ,"Prestito (%)",WHITE )
+            rect =label_rp .get_rect (midleft =(120 ,y +25 ))
+            self .screen .blit (label_rp ,rect )
+            rx =540
+            lw ,vw ,rw =45 ,60 ,45
+            minus_rect =pygame .Rect (rx ,y ,lw ,51 )
+            plus_rect =pygame .Rect (rx +lw +vw ,y ,rw ,51 )
+            hover_minus =minus_rect .collidepoint (mx ,my )
+            hover_plus =plus_rect .collidepoint (mx ,my )
+            pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_minus else (70 ,70 ,80 ),minus_rect ,border_radius =6 )
+            pygame .draw .rect (self .screen ,(40 ,40 ,50 ),(rx +lw ,y ,vw ,51 ))
+            pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_plus else (70 ,70 ,80 ),plus_rect ,border_radius =6 )
+            if hover_minus :
+                pygame .draw .rect (self .screen ,GOLD ,minus_rect ,2 ,border_radius =6 )
+            if hover_plus :
+                pygame .draw .rect (self .screen ,GOLD ,plus_rect ,2 ,border_radius =6 )
+            minus =self ._render_cached (self .font_tiny ,"-",WHITE )
+            plus =self ._render_cached (self .font_tiny ,"+",WHITE )
+            self .screen .blit (minus ,minus .get_rect (center =(rx +lw //2 ,y +25 )))
+            self .screen .blit (plus ,plus .get_rect (center =(rx +lw +vw +rw //2 ,y +25 )))
+            rp_val =self .config .get ("riporto"if addition else "prestito",0 )
+            rp_surf =self ._render_cached (self .font_tiny ,str (rp_val ),WHITE )
+            self .screen .blit (rp_surf ,rp_surf .get_rect (center =(rx +lw +vw //2 ,y +25 )))
+
+            # Row 5: Domande
+        row =5
         y =row_y (row )
         label_q =self ._render_cached (self .font_tiny ,"Domande",WHITE )
         rect =label_q .get_rect (midleft =(120 ,y +25 ))
@@ -3691,8 +3799,8 @@ class Game :
         q_surf =self ._render_cached (self .font_tiny ,str (self .config ["domande"]),WHITE )
         self .screen .blit (q_surf ,q_surf .get_rect (center =(qx +lw +vw //2 ,y +25 )))
 
-        # Row 5: Commutazione
-        row =5 
+        # Row 6: Commutazione
+        row =6
         y =row_y (row )
         swap_locked =subtraction 
         toggle_rect =pygame .Rect (528 ,y ,279 ,54 )
@@ -3711,8 +3819,8 @@ class Game :
         rect_sv =swap_val .get_rect (center =(667 ,y +27 ))
         self .screen .blit (swap_val ,rect_sv )
 
-        # Row 6: Timeout
-        row =6 
+        # Row 7: Timeout
+        row =7 
         y =row_y (row )
         label_t =self ._render_cached (self .font_tiny ,"Timeout (secondi)",WHITE )
         rect =label_t .get_rect (midleft =(120 ,y +25 ))
@@ -3737,8 +3845,8 @@ class Game :
         t_surf =self ._render_cached (self .font_tiny ,str (self .config ["timeout"]),WHITE )
         self .screen .blit (t_surf ,t_surf .get_rect (center =(tx +lw +vw //2 ,y +25 )))
 
-        # Row 7: CONFERMA
-        row =7 
+        # Row 8: CONFERMA
+        row =8 
         y =row_y (row )
         conf_rect =pygame .Rect (CANVAS_WIDTH //2 -165 ,y ,330 ,69 )
         hover_conf =conf_rect .collidepoint (mx ,my )
