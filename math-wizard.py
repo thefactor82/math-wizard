@@ -800,7 +800,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.3.29"
+        self .version ="1.3.30"
 
         self .profiles =[]
         self .current_profile =""
@@ -825,8 +825,8 @@ class Game :
         self .config_by_operation ={}
         for op in ["moltiplicazione","addizione","sottrazione","divisione"]:
             self .config_by_operation [op ]={
-            "pool_a":[n <10 for n in range (100 )],
-            "pool_b":[n <10 for n in range (100 )],
+            "pool_a":[n <10 for n in range (150 )],
+            "pool_b":[n <10 for n in range (150 )],
             "domande":10 ,
             "swap":True ,
             "timeout":DEFAULT_TIMEOUT ,
@@ -913,9 +913,9 @@ class Game :
             for op in ["moltiplicazione","addizione","sottrazione","divisione"]:
                 if op in data and isinstance (data [op ],dict ):
                     if "pool_a"in data [op ]:
-                        self .config_by_operation [op ]["pool_a"]=normalize_pool_list (data [op ]["pool_a"],100 )
+                        self .config_by_operation [op ]["pool_a"]=normalize_pool_list (data [op ]["pool_a"],150 )
                     if "pool_b"in data [op ]:
-                        self .config_by_operation [op ]["pool_b"]=normalize_pool_list (data [op ]["pool_b"],100 )
+                        self .config_by_operation [op ]["pool_b"]=normalize_pool_list (data [op ]["pool_b"],150 )
                     self .config_by_operation [op ].update ({k :v for k ,v in data [op ].items ()if k not in ("pool_a","pool_b")})
             self .config_gender =data .get ("genere",self .config_gender )
             self .config_story_operation =data .get ("storia_operazione",self .config_story_operation )
@@ -936,8 +936,8 @@ class Game :
             self .config_gender =data .get ("genere",self .config_gender )
             self .auto_timeout =data .get ("timeout",self .auto_timeout )
             for op in self .config_by_operation :
-                self .config_by_operation [op ]["pool_a"]=normalize_pool_list (data .get ("pool_a",self .config_by_operation [op ]["pool_a"]),100 )
-                self .config_by_operation [op ]["pool_b"]=normalize_pool_list (data .get ("pool_b",self .config_by_operation [op ]["pool_b"]),100 )
+                self .config_by_operation [op ]["pool_a"]=normalize_pool_list (data .get ("pool_a",self .config_by_operation [op ]["pool_a"]),150 )
+                self .config_by_operation [op ]["pool_b"]=normalize_pool_list (data .get ("pool_b",self .config_by_operation [op ]["pool_b"]),150 )
                 self .config_by_operation [op ]["domande"]=data .get ("domande",self .config_by_operation [op ]["domande"])
                 self .config_by_operation [op ]["swap"]=data .get ("swap",self .config_by_operation [op ]["swap"])
                 self .config_by_operation [op ]["timeout"]=data .get ("timeout",self .config_by_operation [op ]["timeout"])
@@ -1122,7 +1122,7 @@ class Game :
             self .positive_difference =self .config .get ("differenza_positiva",True )
             self .integer_result =self .config .get ("risultato_intero",True )
             division =self .config_operation =="divisione"
-            pool_range =range (13 )if self .config_operation =="moltiplicazione"else range (100 )
+            pool_range =range (150 )
             self .pool_a =[n for n in pool_range if self .config ["pool_a"][n ]]
             self .pool_b =[n for n in pool_range if self .config ["pool_b"][n ]]
             if not self .pool_a :
@@ -2232,14 +2232,14 @@ class Game :
         addition =self .config_operation =="addizione"
         subtraction =self .config_operation =="sottrazione"
         division =self .config_operation =="divisione"
-        pools_mode =addition or subtraction or division 
-        cols_u =5 
-        pool_items =10 if pools_mode else 13 
+        multiplication =self .config_operation =="moltiplicazione"
+        cols_u =8
+        pool_items =15 if multiplication else 10
 
         def row_y (r ):
             base =[225 ,315 ,435 ,555 ,630 ,705 ,780 ,855 ,900 ]
-            cell_h ,gap =45 ,9
-            subrows_pool =(pool_items +4 )//5
+            cell_h ,gap =45 ,8
+            subrows_pool =(pool_items +7 )//8
             pool_extra =max (0 ,(subrows_pool -2 ))*(cell_h +gap )
             offset =0 
             if r >=2 :
@@ -2249,9 +2249,7 @@ class Game :
             return base [r ]+offset 
 
         def pool_ncols ():
-            if pools_mode :
-                return (10 ,5 )
-            return (13 ,5 )
+            return (pool_items ,cols_u )
 
         def pool_rows ():
             items ,cols =pool_ncols ()
@@ -2264,7 +2262,7 @@ class Game :
 
         def max_col_for_row (r ):
             if r in (1 ,2 ):
-                return 4 
+                return cols_u -1 
             return 0 
 
         def skip_sum (r ,step ):
@@ -2309,8 +2307,8 @@ class Game :
                 r =1 +ri 
                 y_base =row_y (r )
                 subrows =(pool_items +cols_u -1 )//cols_u 
-                cell_w ,cell_h =150 ,45 
-                gap =9 
+                cell_w ,cell_h =80 ,45 
+                gap =8 
                 grid_x =540 
                 for sr in range (subrows ):
                     sy =y_base +sr *(cell_h +gap )
@@ -2324,15 +2322,11 @@ class Game :
                             self .config_cursor_col =c 
                             self .config_cursor_subrow =sr 
                             pool =self .config ["pool_a"]if r ==1 else self .config ["pool_b"]
-                            if pools_mode :
-                                start =idx *10 
-                                if not (any (pool [start :start +10 ])and sum (pool )==10 ):
-                                    new_state =not any (pool [start :start +10 ])
-                                    for i in range (start ,start +10 ):
-                                        pool [i ]=new_state 
-                            else :
-                                if not (pool [idx ]and sum (pool )==1 ):
-                                    pool [idx ]=not pool [idx ]
+                            start =idx *10
+                            if not (any (pool [start :start +10 ])and sum (pool )==10 ):
+                                new_state =not any (pool [start :start +10 ])
+                                for i in range (start ,start +10 ):
+                                    pool [i ]=new_state 
                             return 
 
                             # Row 3: somma massima (addizione) / differenza positiva (sottrazione)
@@ -2484,7 +2478,7 @@ class Game :
                 self .config_operation =ops [(op_idx +1 )%4 ]
                 self .config =self .config_by_operation [self .config_operation ]
             elif row in (1 ,2 ):
-                if col <4 :
+                if col <cols_u -1 :
                     idx =pool_index (sub ,col +1 )
                     if idx >=0 :
                         col +=1 
@@ -2498,15 +2492,11 @@ class Game :
                 pool =self .config ["pool_a"]if row ==1 else self .config ["pool_b"]
                 idx =pool_index (sub ,col )
                 if idx >=0 :
-                    if pools_mode :
-                        start =idx *10 
-                        if not (any (pool [start :start +10 ])and sum (pool )==10 ):
-                            new_state =not any (pool [start :start +10 ])
-                            for i in range (start ,start +10 ):
-                                pool [i ]=new_state 
-                    else :
-                        if not (pool [idx ]and sum (pool )==1 ):
-                            pool [idx ]=not pool [idx ]
+                    start =idx *10
+                    if not (any (pool [start :start +10 ])and sum (pool )==10 ):
+                        new_state =not any (pool [start :start +10 ])
+                        for i in range (start ,start +10 ):
+                            pool [i ]=new_state 
             elif row ==3 and subtraction :
                 self .config ["differenza_positiva"]=not self .config ["differenza_positiva"]
             elif row ==3 and division :
@@ -3624,10 +3614,10 @@ class Game :
 
         def row_y (r ):
             base =[225 ,315 ,435 ,555 ,630 ,705 ,780 ,855 ,900 ]
-            pools_mode =addition or subtraction or division 
-            cell_h ,gap =45 ,9 
-            pool_items =10 if pools_mode else 13 
-            subrows_pool =(pool_items +4 )//5 
+            cell_h ,gap =45 ,8
+            multiplication =self .config_operation =="moltiplicazione"
+            pool_items =15 if multiplication else 10
+            subrows_pool =(pool_items +7 )//8
             pool_extra =max (0 ,(subrows_pool -2 ))*(cell_h +gap )
             offset =0 
             if r >=2 :
@@ -3656,11 +3646,11 @@ class Game :
             rect_t =txt .get_rect (center =(sx +145 ,y +31 ))
             self .screen .blit (txt ,rect_t )
 
-            # Row 1-2: Pool A / Pool B (unified 5-col grid)
+            # Row 1-2: Pool A / Pool B (8-col grid)
         labels =["Operando A","Operando B"]
         pools =[self .config ["pool_a"],self .config ["pool_b"]]
-        cols_u =5 
-        pools_mode =addition or subtraction or division 
+        cols_u =8
+        multiplication =self .config_operation =="moltiplicazione"
         for ri in range (2 ):
             row =1 +ri 
             y_base =row_y (row )
@@ -3668,10 +3658,10 @@ class Game :
             rect =label .get_rect (midleft =(120 ,y_base +25 ))
             self .screen .blit (label ,rect )
 
-            items =10 if pools_mode else 13 
+            items =15 if multiplication else 10
             subrows =(items +cols_u -1 )//cols_u 
-            cell_w ,cell_h =150 ,45 
-            gap =9 
+            cell_w ,cell_h =80 ,45 
+            gap =8 
             grid_x =540 
             for sr in range (subrows ):
                 sy =y_base +sr *(cell_h +gap )
@@ -3680,14 +3670,10 @@ class Game :
                     if idx >=items :
                         break 
                     sx =grid_x +c *(cell_w +gap )
-                    if pools_mode :
-                        start =idx *10 
-                        end =min (start +9 ,99 )
-                        selected =any (pools [ri ][start :start +10 ])
-                        txt =f"{start }-{end }"
-                    else :
-                        selected =pools [ri ][idx ]
-                        txt =str (idx )
+                    start =idx *10
+                    end =min (start +9 ,149 )
+                    selected =any (pools [ri ][start :start +10 ])
+                    txt =f"{start }-{end }"
                     cell_rect =pygame .Rect (sx ,sy ,cell_w ,cell_h )
                     hovered_cell =cell_rect .collidepoint (mx ,my )
                     bg_col =(100 ,150 ,220 )if selected and hovered_cell else SEL_BLUE if selected else (80 ,80 ,90 )if hovered_cell else (60 ,60 ,70 )
