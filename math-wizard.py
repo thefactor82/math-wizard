@@ -800,7 +800,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.3.27"
+        self .version ="1.3.28"
 
         self .profiles =[]
         self .current_profile =""
@@ -2293,8 +2293,8 @@ class Game :
             y0 =row_y (0 )
             if y0 -3 <=my <=y0 +54 :
                 for i in range (4 ):
-                    sx =540 +i *255 
-                    if sx <=mx <=sx +237 :
+                    sx =540 +i *308
+                    if sx <=mx <=sx +290 :
                         self .config_operation =ops [i ]
                         self .config =self .config_by_operation [self .config_operation ]
                         self .config_cursor_row =0 
