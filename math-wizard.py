@@ -794,7 +794,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.3.21"
+        self .version ="1.3.22"
 
         self .profiles =[]
         self .current_profile =""
@@ -4162,6 +4162,8 @@ class Game :
             f"Livello storia: {self .level +1 }/{self .num_story_levels }  (effettivo: {self .effective_level ()+1 }/{len (self .levels )})"if self .mode =='auto'else "Livello: -",
             f"Difficoltà: {self .difficulty_position }/{self .max_difficulty_position ()}"if self .mode =='auto'else "Difficoltà: -",
             f"Operandi: {self .a } {segno_debug } {self .b }",
+            f"Riporto: {int (self .levels [self .effective_level ()].get ('carry',0 )*100 )if self .mode =='auto'else self .config .get ('riporto',0 )}%" +(f"  has:{needs_carry (self .a ,self .b )}"if self .operation =='addizione'else ""),
+            f"Prestito: {int (self .levels [self .effective_level ()].get ('borrow',0 )*100 )if self .mode =='auto'else self .config .get ('prestito',0 )}%" +(f"  has:{needs_borrow (self .a ,self .b )}"if self .operation =='sottrazione'else ""),
             f"Prev: {self .prev_a } {segno_debug } {self .prev_b }",
             f"Risultato: {self .expected_result }",
             f"Pool A: {format_pool_compact (self .levels [self .effective_level ()]['pool_a'])if self .mode =='auto'else format_pool_compact (self .pool_a )}",
