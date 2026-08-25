@@ -445,6 +445,52 @@ class Game :
             snd .set_volume (self .sfx_volume /100 )
             snd .play ()
 
+    def _apply_hold_action (self ,action ):
+        if action =="mus_minus":
+            self .music_volume =max (0 ,self .music_volume -5 )
+            pygame .mixer .music .set_volume (self .music_volume /100 )
+            self .save_profile_config ()
+        elif action =="mus_plus":
+            self .music_volume =min (100 ,self .music_volume +5 )
+            pygame .mixer .music .set_volume (self .music_volume /100 )
+            self .save_profile_config ()
+        elif action =="sfx_minus":
+            self .sfx_volume =max (0 ,self .sfx_volume -5 )
+            self .save_profile_config ()
+        elif action =="sfx_plus":
+            self .sfx_volume =min (100 ,self .sfx_volume +5 )
+            self .save_profile_config ()
+        elif action =="auto_timeout_minus":
+            self .auto_timeout =max (3 ,self .auto_timeout -1 )
+            self .save_profile_config ()
+        elif action =="auto_timeout_plus":
+            self .auto_timeout =min (99 ,self .auto_timeout +1 )
+            self .save_profile_config ()
+        elif action =="initial_level_minus":
+            self .initial_level =max (0 ,self .initial_level -1 )
+            self .save_profile_config ()
+        elif action =="initial_level_plus":
+            self .initial_level =min (self .max_initial_level (),self .initial_level +1 )
+            self .save_profile_config ()
+        elif action =="somma_massima_minus":
+            self .config ["somma_massima"]=max (1 ,self .config ["somma_massima"]-1 )
+            self .save_profile_config ()
+        elif action =="somma_massima_plus":
+            self .config ["somma_massima"]=min (199 ,self .config ["somma_massima"]+1 )
+            self .save_profile_config ()
+        elif action =="domande_minus":
+            self .config ["domande"]=max (1 ,self .config ["domande"]-1 )
+            self .save_profile_config ()
+        elif action =="domande_plus":
+            self .config ["domande"]=min (99 ,self .config ["domande"]+1 )
+            self .save_profile_config ()
+        elif action =="timeout_minus":
+            self .config ["timeout"]=max (3 ,self .config ["timeout"]-1 )
+            self .save_profile_config ()
+        elif action =="timeout_plus":
+            self .config ["timeout"]=min (99 ,self .config ["timeout"]+1 )
+            self .save_profile_config ()
+
     def setup_cursor (self ):
         try :
             import os 
@@ -687,7 +733,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.3.14"
+        self .version ="1.3.15"
 
         self .profiles =[]
         self .current_profile =""
@@ -2034,8 +2080,12 @@ class Game :
                     self .options_cursor =0
                     if mx <sx +lw :
                         self .auto_timeout =max (3 ,self .auto_timeout -1 )
+                        self ._opts_hold =("auto_timeout_minus",pygame .time .get_ticks ())
+                        self ._opts_last_repeat =0
                     elif mx >=sx +lw +vw :
                         self .auto_timeout =min (99 ,self .auto_timeout +1 )
+                        self ._opts_hold =("auto_timeout_plus",pygame .time .get_ticks ())
+                        self ._opts_last_repeat =0
                     self .save_profile_config ()
                     # Difficoltà (barra scorrevole)
                 elif hasattr (self ,'diff_bar_rect'):
@@ -2060,8 +2110,12 @@ class Game :
                     self .options_cursor =2
                     if mx <sx +lw :
                         self .initial_level =max (0 ,self .initial_level -1 )
+                        self ._opts_hold =("initial_level_minus",pygame .time .get_ticks ())
+                        self ._opts_last_repeat =0
                     elif mx >=sx +lw +vw :
                         self .initial_level =min (self .max_initial_level (),self .initial_level +1 )
+                        self ._opts_hold =("initial_level_plus",pygame .time .get_ticks ())
+                        self ._opts_last_repeat =0
                     self .save_profile_config ()
                 if hasattr (self ,'opzioni_auto_op_buttons')and len (self .opzioni_auto_op_buttons )==4 :
                     ops =["moltiplicazione","addizione","sottrazione","divisione"]
@@ -2208,8 +2262,13 @@ class Game :
                         self .config_cursor_col =0 
                         if mx <540 +lw :
                             self .config ["somma_massima"]=max (1 ,self .config ["somma_massima"]-1 )
+                            self ._opts_hold =("somma_massima_minus",pygame .time .get_ticks ())
+                            self ._opts_last_repeat =0
                         elif mx >=540 +lw +60 :
                             self .config ["somma_massima"]=min (199 ,self .config ["somma_massima"]+1 )
+                            self ._opts_hold =("somma_massima_plus",pygame .time .get_ticks ())
+                            self ._opts_last_repeat =0
+                        self .save_profile_config ()
                         return 
                 elif subtraction :
                     if 525 <=mx <=810 and y3 -6 <=my <=y3 +60 :
@@ -2233,8 +2292,13 @@ class Game :
                     self .config_cursor_col =0 
                     if mx <540 +lw :
                         self .config ["domande"]=max (1 ,self .config ["domande"]-1 )
+                        self ._opts_hold =("domande_minus",pygame .time .get_ticks ())
+                        self ._opts_last_repeat =0
                     elif mx >=540 +lw +60 :
                         self .config ["domande"]=min (99 ,self .config ["domande"]+1 )
+                        self ._opts_hold =("domande_plus",pygame .time .get_ticks ())
+                        self ._opts_last_repeat =0
+                    self .save_profile_config ()
                     return 
 
                     # Row 5: swap
@@ -2255,8 +2319,13 @@ class Game :
                     self .config_cursor_col =0 
                     if mx <540 +lw :
                         self .config ["timeout"]=max (3 ,self .config ["timeout"]-1 )
+                        self ._opts_hold =("timeout_minus",pygame .time .get_ticks ())
+                        self ._opts_last_repeat =0
                     elif mx >=540 +lw +60 :
                         self .config ["timeout"]=min (99 ,self .config ["timeout"]+1 )
+                        self ._opts_hold =("timeout_plus",pygame .time .get_ticks ())
+                        self ._opts_last_repeat =0
+                    self .save_profile_config ()
                     return 
 
             return 
@@ -2512,7 +2581,7 @@ class Game :
                 pygame .mixer .music .set_volume (self .music_volume /100 )
                 self .music_crossfade_target =None
                 self ._crossfade_swapped =False
-        if getattr (self ,'_opts_hold',None )and self .state =="options":
+        if getattr (self ,'_opts_hold',None )and self .state in ("options","options_auto","config_fixed"):
             action ,start =self ._opts_hold
             now =pygame .time .get_ticks ()
             if now -start >=400 :
@@ -2520,32 +2589,7 @@ class Game :
                     self ._opts_last_repeat =0
                 if now -self ._opts_last_repeat >=100 :
                     self ._opts_last_repeat =now
-                    mx ,my =self ._mouse_pos ()
-                    hover =False
-                    if action =="mus_minus"and getattr (self ,'opt_mus_minus',None ):
-                        hover =self .opt_mus_minus .collidepoint (mx ,my )
-                        if hover and self .music_volume >0:
-                            self .music_volume =max (0 ,self .music_volume -5 )
-                            pygame .mixer .music .set_volume (self .music_volume /100 )
-                            self .save_profile_config ()
-                    elif action =="mus_plus"and getattr (self ,'opt_mus_plus',None ):
-                        hover =self .opt_mus_plus .collidepoint (mx ,my )
-                        if hover and self .music_volume <100:
-                            self .music_volume =min (100 ,self .music_volume +5 )
-                            pygame .mixer .music .set_volume (self .music_volume /100 )
-                            self .save_profile_config ()
-                    elif action =="sfx_minus"and getattr (self ,'opt_sfx_minus',None ):
-                        hover =self .opt_sfx_minus .collidepoint (mx ,my )
-                        if hover and self .sfx_volume >0:
-                            self .sfx_volume =max (0 ,self .sfx_volume -5 )
-                            self .save_profile_config ()
-                    elif action =="sfx_plus"and getattr (self ,'opt_sfx_plus',None ):
-                        hover =self .opt_sfx_plus .collidepoint (mx ,my )
-                        if hover and self .sfx_volume <100:
-                            self .sfx_volume =min (100 ,self .sfx_volume +5 )
-                            self .save_profile_config ()
-                    if not hover :
-                        self ._opts_hold =None
+                    self ._apply_hold_action (action )
         if self .current_music =="level"and self .state not in ("game","story","player_exit","level_complete","loading","gameover","level_complete")and self .music_crossfade_target is None :
             self .switch_music ("background")
         if self .zap_timer >0 :
@@ -3219,7 +3263,8 @@ class Game :
             if fill_w >0 :
                 pygame .draw .rect (self .screen ,SEL_BLUE ,(bar_x ,y ,fill_w ,bar_h ),border_radius =6 )
             pct_txt =self ._render_cached (self .font_small ,f"{pct }%",WHITE )
-            self .screen .blit (pct_txt ,(bar_x +bar_w +15 ,y -2 ))
+            pct_rect =pct_txt .get_rect (midleft =(bar_x +bar_w +15 ,y +bar_h //2 ))
+            self .screen .blit (pct_txt ,pct_rect )
 
         back_txt =self ._render_cached (self .font_small ,"Indietro",WHITE )
         back_rect =back_txt .get_rect (center =(CANVAS_WIDTH //2 ,CANVAS_HEIGHT -30 ))
@@ -4300,7 +4345,7 @@ class Game :
         return list (reversed (ultime [-6 :]))
 
     def run (self ):
-        animated_states =("splash","profile_select","game","story","player_exit","loading","options")
+        animated_states =("splash","profile_select","game","story","player_exit","loading","options","options_auto","config_fixed")
         while self .running :
             events =pygame .event .get ()
             for event in events :
