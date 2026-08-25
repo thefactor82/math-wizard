@@ -265,7 +265,7 @@ def needs_borrow (a ,b ):
     return False
 
 
-def select_operands (pool_a ,pool_b ,reinforce_queue ,operation ,integer_result =True ,max_sum =None ,min_value =None ,max_value =None ,carry_prob =None ,borrow_prob =None ):
+def select_operands (pool_a ,pool_b ,reinforce_queue ,operation ,integer_result =True ,max_sum =None ,min_value =None ,max_value =None ,carry_prob =None ,borrow_prob =None ,positive_diff =True ):
     need_carry =None
     if carry_prob is not None and operation =="addizione":
         need_carry =random .random ()<carry_prob
@@ -287,9 +287,13 @@ def select_operands (pool_a ,pool_b ,reinforce_queue ,operation ,integer_result 
         if need_carry is not None and needs_carry (a ,b )!=need_carry :
             continue
         if need_borrow is not None :
-            lo ,hi =min (a ,b ),max (a ,b )
-            if needs_borrow (hi ,lo )!=need_borrow :
-                continue
+            if positive_diff :
+                lo ,hi =min (a ,b ),max (a ,b )
+                if needs_borrow (hi ,lo )!=need_borrow :
+                    continue
+            else :
+                if needs_borrow (a ,b )!=need_borrow :
+                    continue
         return a ,b
     a ,b =random .choice (pool_a ),random .choice (pool_b )
     return a ,b
@@ -796,7 +800,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.3.23"
+        self .version ="1.3.24"
 
         self .profiles =[]
         self .current_profile =""
@@ -1642,6 +1646,7 @@ class Game :
             self .max_sum ,
             carry_prob =self .config .get ("riporto",0 )/100 if self .operation =="addizione"else None ,
             borrow_prob =self .config .get ("prestito",0 )/100 if self .operation =="sottrazione"else None ,
+            positive_diff =self .positive_difference ,
             )
             if self .swap_operandi and random .random ()<0.5 :
                 if self .operation !="divisione"or not self .integer_result :
