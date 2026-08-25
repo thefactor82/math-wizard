@@ -426,6 +426,7 @@ class Game :
         self .update_available =False 
         self .update_link_rect =None 
         self .current_music ="background"
+        self ._music_start_tick =0
         self .music_crossfade_target =None
         self .music_crossfade_start =0
         self .music_crossfade_dur =500
@@ -753,7 +754,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.3.18"
+        self .version ="1.3.19"
 
         self .profiles =[]
         self .current_profile =""
@@ -2595,6 +2596,7 @@ class Game :
                     except pygame .error :
                         pass
                     self .current_music =target
+                    self ._music_start_tick =pygame .time .get_ticks ()
                     self ._crossfade_swapped =True
                 fade_in =elapsed -half
                 vol =self .music_volume *(fade_in /half )/100
@@ -2629,6 +2631,7 @@ class Game :
                     pygame .mixer .music .set_volume (0 )
                     pygame .mixer .music .play (-1 )
                     self .music_fade_start =pygame .time .get_ticks ()
+                    self ._music_start_tick =pygame .time .get_ticks ()
             return 
         if self .state =="gameover":
             return 
@@ -4028,6 +4031,7 @@ class Game :
             lines =[
             "DEBUG",
             f"Modalita: {'Storia'if self .mode =='auto'else 'Allenamento'}",
+            f"Musica: {self .current_music }  {os .path .basename (self .music_files .get (self .current_music ,''))}  {max (0 ,(pygame .time .get_ticks ()-self ._music_start_tick )//1000 )}s",
             f"Domanda attiva: {self .question_active }",
             f"Feedback: {self .feedback }",
             f"Game over: {self .game_over }",
