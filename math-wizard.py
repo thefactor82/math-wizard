@@ -753,7 +753,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.3.17"
+        self .version ="1.3.18"
 
         self .profiles =[]
         self .current_profile =""
@@ -1128,7 +1128,8 @@ class Game :
         return self .level >=self .num_story_levels -1 
 
     def start_level (self ):
-        self .switch_music ("level")
+        if self .current_music !="level":
+            self .switch_music ("level")
         if self .mode =="auto":
             lv =self .level
             self .questions_per_level =random .randint (8 +lv ,15 +lv )
@@ -1178,7 +1179,8 @@ class Game :
                 self .story_monsters =entry .get ("monsters",list (range (1 ,9 )))
                 self .story_flying_monsters =entry .get ("flying",[])
                 self ._ensure_monsters (self .story_monsters )
-                self .switch_music ("level")
+                if self .current_music !="level":
+                    self .switch_music ("level")
             bg_name =entry .get ("bg","game")
             self .story_next_bg =self ._get_bg (bg_name )or self .bg 
             self .player_in_dir =entry .get ("player_in","sx")
