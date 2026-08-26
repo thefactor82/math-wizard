@@ -303,354 +303,354 @@
   ],
   "addizione": [
 {
-      "pool_a": [0, 4],
-      "pool_b": [0, 4],
+      "pool_a": "0-4",
+      "pool_b": "0-4",
       "min_value": 0,
       "max_value": 8,
       "carry": 0.00
     },
     {
-      "pool_a": [0, 5],
-      "pool_b": [0, 5],
+      "pool_a": "0-5",
+      "pool_b": "0-5",
       "min_value": 0,
       "max_value": 10,
       "carry": 0.00
     },
     {
-      "pool_a": [0, 5],
-      "pool_b": [0, 6],
+      "pool_a": "0-5",
+      "pool_b": "0-6",
       "min_value": 0,
       "max_value": 11,
       "carry": 0.00
     },
     {
-      "pool_a": [0, 6],
-      "pool_b": [0, 6],
+      "pool_a": "0-6",
+      "pool_b": "0-6",
       "min_value": 0,
       "max_value": 12,
       "carry": 0.00
     },
     {
-      "pool_a": [0, 7],
-      "pool_b": [0, 7],
+      "pool_a": "0-7",
+      "pool_b": "0-7",
       "min_value": 0,
       "max_value": 14,
       "carry": 0.00
     },
     {
-      "pool_a": [0, 8],
-      "pool_b": [0, 8],
+      "pool_a": "0-8",
+      "pool_b": "0-8",
       "min_value": 0,
       "max_value": 16,
       "carry": 0.00
     },
     {
-      "pool_a": [0, 9],
-      "pool_b": [0, 9],
+      "pool_a": "0-9",
+      "pool_b": "0-9",
       "min_value": 0,
       "max_value": 18,
       "carry": 0.05
     },
     {
-      "pool_a": [1, 9],
-      "pool_b": [0, 9],
+      "pool_a": "1-9",
+      "pool_b": "0-9",
       "min_value": 2,
       "max_value": 18,
       "carry": 0.05
     },
     {
-      "pool_a": [1, 10],
-      "pool_b": [1, 10],
+      "pool_a": "1-10",
+      "pool_b": "1-10",
       "min_value": 3,
       "max_value": 20,
       "carry": 0.10
     },
     {
-      "pool_a": [2, 10],
-      "pool_b": [1, 10],
+      "pool_a": "2-10",
+      "pool_b": "1-10",
       "min_value": 4,
       "max_value": 20,
       "carry": 0.10
     },
     {
-      "pool_a": [2, 11],
-      "pool_b": [2, 11],
+      "pool_a": "2-11",
+      "pool_b": "2-11",
       "min_value": 5,
       "max_value": 20,
       "carry": 0.15
     },
     {
-      "pool_a": [3, 11],
-      "pool_b": [2, 11],
+      "pool_a": "3-11",
+      "pool_b": "2-11",
       "min_value": 6,
       "max_value": 20,
       "carry": 0.15
     },
     {
-      "pool_a": [3, 12],
-      "pool_b": [3, 12],
+      "pool_a": "3-12",
+      "pool_b": "3-12",
       "min_value": 7,
       "max_value": 22,
       "carry": 0.20
     },
     {
-      "pool_a": [4, 13],
-      "pool_b": [3, 13],
+      "pool_a": "4-13",
+      "pool_b": "3-13",
       "min_value": 8,
       "max_value": 24,
       "carry": 0.20
     },
     {
-      "pool_a": [4, 14],
-      "pool_b": [4, 14],
+      "pool_a": "4-14",
+      "pool_b": "4-14",
       "min_value": 9,
       "max_value": 26,
       "carry": 0.25
     },
     {
-      "pool_a": [5, 15],
-      "pool_b": [4, 15],
+      "pool_a": "5-15",
+      "pool_b": "4-15",
       "min_value": 10,
       "max_value": 28,
       "carry": 0.25
     },
     {
-      "pool_a": [5, 16],
-      "pool_b": [5, 16],
+      "pool_a": "5-16",
+      "pool_b": "5-16",
       "min_value": 11,
       "max_value": 30,
       "carry": 0.30
     },
     {
-      "pool_a": [6, 18],
-      "pool_b": [5, 18],
+      "pool_a": "6-18",
+      "pool_b": "5-18",
       "min_value": 12,
       "max_value": 32,
       "carry": 0.30
     },
     {
-      "pool_a": [7, 19],
-      "pool_b": [6, 19],
+      "pool_a": "7-19",
+      "pool_b": "6-19",
       "min_value": 14,
       "max_value": 35,
       "carry": 0.35
     },
     {
-      "pool_a": [8, 21],
-      "pool_b": [7, 21],
+      "pool_a": "8-21",
+      "pool_b": "7-21",
       "min_value": 16,
       "max_value": 38,
       "carry": 0.35
     },
 
     {
-      "pool_a": [9, 23],
-      "pool_b": [8, 23],
+      "pool_a": "9-23",
+      "pool_b": "8-23",
       "min_value": 18,
       "max_value": 42,
       "carry": 0.40
     },
     {
-      "pool_a": [10, 25],
-      "pool_b": [9, 25],
+      "pool_a": "10-25",
+      "pool_b": "9-25",
       "min_value": 20,
       "max_value": 46,
       "carry": 0.40
     },
     {
-      "pool_a": [11, 27],
-      "pool_b": [10, 27],
+      "pool_a": "11-27",
+      "pool_b": "10-27",
       "min_value": 22,
       "max_value": 50,
       "carry": 0.45
     },
     {
-      "pool_a": [12, 29],
-      "pool_b": [11, 29],
+      "pool_a": "12-29",
+      "pool_b": "11-29",
       "min_value": 24,
       "max_value": 54,
       "carry": 0.45
     },
     {
-      "pool_a": [13, 32],
-      "pool_b": [12, 32],
+      "pool_a": "13-32",
+      "pool_b": "12-32",
       "min_value": 26,
       "max_value": 58,
       "carry": 0.50
     },
     {
-      "pool_a": [14, 35],
-      "pool_b": [13, 35],
+      "pool_a": "14-35",
+      "pool_b": "13-35",
       "min_value": 28,
       "max_value": 64,
       "carry": 0.50
     },
     {
-      "pool_a": [15, 38],
-      "pool_b": [14, 38],
+      "pool_a": "15-38",
+      "pool_b": "14-38",
       "min_value": 30,
       "max_value": 70,
       "carry": 0.55
     },
     {
-      "pool_a": [16, 42],
-      "pool_b": [15, 42],
+      "pool_a": "16-42",
+      "pool_b": "15-42",
       "min_value": 32,
       "max_value": 76,
       "carry": 0.55
     },
     {
-      "pool_a": [18, 46],
-      "pool_b": [16, 46],
+      "pool_a": "18-46",
+      "pool_b": "16-46",
       "min_value": 35,
       "max_value": 82,
       "carry": 0.60
     },
     {
-      "pool_a": [20, 50],
-      "pool_b": [18, 50],
+      "pool_a": "20-50",
+      "pool_b": "18-50",
       "min_value": 38,
       "max_value": 90,
       "carry": 0.60
     },
 
     {
-      "pool_a": [22, 54],
-      "pool_b": [20, 54],
+      "pool_a": "22-54",
+      "pool_b": "20-54",
       "min_value": 42,
       "max_value": 96,
       "carry": 0.65
     },
     {
-      "pool_a": [24, 58],
-      "pool_b": [22, 58],
+      "pool_a": "24-58",
+      "pool_b": "22-58",
       "min_value": 46,
       "max_value": 104,
       "carry": 0.65
     },
     {
-      "pool_a": [26, 62],
-      "pool_b": [24, 62],
+      "pool_a": "26-62",
+      "pool_b": "24-62",
       "min_value": 50,
       "max_value": 112,
       "carry": 0.70
     },
     {
-      "pool_a": [28, 67],
-      "pool_b": [26, 67],
+      "pool_a": "28-67",
+      "pool_b": "26-67",
       "min_value": 54,
       "max_value": 120,
       "carry": 0.70
     },
     {
-      "pool_a": [30, 72],
-      "pool_b": [28, 72],
+      "pool_a": "30-72",
+      "pool_b": "28-72",
       "min_value": 58,
       "max_value": 130,
       "carry": 0.75
     },
     {
-      "pool_a": [32, 78],
-      "pool_b": [30, 78],
+      "pool_a": "32-78",
+      "pool_b": "30-78",
       "min_value": 62,
       "max_value": 140,
       "carry": 0.75
     },
     {
-      "pool_a": [35, 84],
-      "pool_b": [32, 84],
+      "pool_a": "35-84",
+      "pool_b": "32-84",
       "min_value": 68,
       "max_value": 150,
       "carry": 0.80
     },
     {
-      "pool_a": [38, 90],
-      "pool_b": [35, 90],
+      "pool_a": "38-90",
+      "pool_b": "35-90",
       "min_value": 74,
       "max_value": 160,
       "carry": 0.80
     },
     {
-      "pool_a": [40, 96],
-      "pool_b": [38, 96],
+      "pool_a": "40-96",
+      "pool_b": "38-96",
       "min_value": 80,
       "max_value": 170,
       "carry": 0.85
     },
     {
-      "pool_a": [42, 102],
-      "pool_b": [40, 102],
+      "pool_a": "42-102",
+      "pool_b": "40-102",
       "min_value": 86,
       "max_value": 180,
       "carry": 0.85
     },
 
     {
-      "pool_a": [45, 108],
-      "pool_b": [42, 108],
+      "pool_a": "45-108",
+      "pool_b": "42-108",
       "min_value": 92,
       "max_value": 190,
       "carry": 0.90
     },
     {
-      "pool_a": [48, 114],
-      "pool_b": [45, 114],
+      "pool_a": "48-114",
+      "pool_b": "45-114",
       "min_value": 98,
       "max_value": 200,
       "carry": 0.90
     },
     {
-      "pool_a": [51, 120],
-      "pool_b": [48, 120],
+      "pool_a": "51-120",
+      "pool_b": "48-120",
       "min_value": 104,
       "max_value": 210,
       "carry": 0.90
     },
     {
-      "pool_a": [54, 126],
-      "pool_b": [51, 126],
+      "pool_a": "54-126",
+      "pool_b": "51-126",
       "min_value": 110,
       "max_value": 220,
       "carry": 0.95
     },
     {
-      "pool_a": [58, 132],
-      "pool_b": [54, 132],
+      "pool_a": "58-132",
+      "pool_b": "54-132",
       "min_value": 118,
       "max_value": 235,
       "carry": 0.95
     },
     {
-      "pool_a": [62, 138],
-      "pool_b": [58, 138],
+      "pool_a": "62-138",
+      "pool_b": "58-138",
       "min_value": 126,
       "max_value": 250,
       "carry": 0.95
     },
     {
-      "pool_a": [66, 142],
-      "pool_b": [62, 142],
+      "pool_a": "66-142",
+      "pool_b": "62-142",
       "min_value": 134,
       "max_value": 265,
       "carry": 1.00
     },
     {
-      "pool_a": [70, 146],
-      "pool_b": [66, 146],
+      "pool_a": "70-146",
+      "pool_b": "66-146",
       "min_value": 142,
       "max_value": 280,
       "carry": 1.00
     },
     {
-      "pool_a": [75, 150],
-      "pool_b": [70, 150],
+      "pool_a": "75-150",
+      "pool_b": "70-150",
       "min_value": 152,
       "max_value": 295,
       "carry": 1.00
     },
     {
-      "pool_a": [80, 150],
-      "pool_b": [76, 150],
+      "pool_a": "80-150",
+      "pool_b": "76-150",
       "min_value": 176,
       "max_value": 300,
       "carry": 1.00
@@ -658,381 +658,625 @@
   ],
   "sottrazione": [
     {
-      "pool_a": [0, 5],
-      "pool_b": [0, 4],
+      "pool_a": "0-5",
+      "pool_b": "0-4",
       "min_value": 0,
       "max_value": 5,
       "borrow": 0.00
     },
     {
-      "pool_a": [0, 6],
-      "pool_b": [0, 5],
+      "pool_a": "0-6",
+      "pool_b": "0-5",
       "min_value": 0,
       "max_value": 6,
       "borrow": 0.00
     },
     {
-      "pool_a": [0, 7],
-      "pool_b": [0, 6],
+      "pool_a": "0-7",
+      "pool_b": "0-6",
       "min_value": 0,
       "max_value": 7,
       "borrow": 0.00
     },
     {
-      "pool_a": [0, 8],
-      "pool_b": [0, 7],
+      "pool_a": "0-8",
+      "pool_b": "0-7",
       "min_value": 0,
       "max_value": 8,
       "borrow": 0.00
     },
     {
-      "pool_a": [0, 9],
-      "pool_b": [0, 8],
+      "pool_a": "0-9",
+      "pool_b": "0-8",
       "min_value": 0,
       "max_value": 9,
       "borrow": 0.00
     },
     {
-      "pool_a": [1, 10],
-      "pool_b": [0, 9],
+      "pool_a": "1-10",
+      "pool_b": "0-9",
       "min_value": 1,
       "max_value": 10,
       "borrow": 0.00
     },
     {
-      "pool_a": [2, 11],
-      "pool_b": [0, 9],
+      "pool_a": "2-11",
+      "pool_b": "0-9",
       "min_value": 1,
       "max_value": 11,
       "borrow": 0.00
     },
     {
-      "pool_a": [3, 12],
-      "pool_b": [1, 10],
+      "pool_a": "3-12",
+      "pool_b": "1-10",
       "min_value": 1,
       "max_value": 12,
       "borrow": 0.00
     },
     {
-      "pool_a": [4, 13],
-      "pool_b": [1, 11],
+      "pool_a": "4-13",
+      "pool_b": "1-11",
       "min_value": 2,
       "max_value": 13,
       "borrow": 0.05
     },
     {
-      "pool_a": [5, 15],
-      "pool_b": [1, 12],
+      "pool_a": "5-15",
+      "pool_b": "1-12",
       "min_value": 2,
       "max_value": 15,
       "borrow": 0.05
     },
 
     {
-      "pool_a": [6, 16],
-      "pool_b": [2, 13],
+      "pool_a": "6-16",
+      "pool_b": "2-13",
       "min_value": 2,
       "max_value": 16,
       "borrow": 0.10
     },
     {
-      "pool_a": [7, 18],
-      "pool_b": [2, 14],
+      "pool_a": "7-18",
+      "pool_b": "2-14",
       "min_value": 3,
       "max_value": 18,
       "borrow": 0.10
     },
     {
-      "pool_a": [8, 20],
-      "pool_b": [3, 15],
+      "pool_a": "8-20",
+      "pool_b": "3-15",
       "min_value": 3,
       "max_value": 20,
       "borrow": 0.15
     },
     {
-      "pool_a": [9, 22],
-      "pool_b": [3, 17],
+      "pool_a": "9-22",
+      "pool_b": "3-17",
       "min_value": 4,
       "max_value": 22,
       "borrow": 0.15
     },
     {
-      "pool_a": [10, 24],
-      "pool_b": [4, 18],
+      "pool_a": "10-24",
+      "pool_b": "4-18",
       "min_value": 4,
       "max_value": 24,
       "borrow": 0.20
     },
     {
-      "pool_a": [11, 26],
-      "pool_b": [5, 20],
+      "pool_a": "11-26",
+      "pool_b": "5-20",
       "min_value": 5,
       "max_value": 26,
       "borrow": 0.25
     },
     {
-      "pool_a": [12, 28],
-      "pool_b": [5, 21],
+      "pool_a": "12-28",
+      "pool_b": "5-21",
       "min_value": 5,
       "max_value": 28,
       "borrow": 0.25
     },
     {
-      "pool_a": [13, 30],
-      "pool_b": [6, 23],
+      "pool_a": "13-30",
+      "pool_b": "6-23",
       "min_value": 6,
       "max_value": 30,
       "borrow": 0.30
     },
     {
-      "pool_a": [14, 32],
-      "pool_b": [6, 24],
+      "pool_a": "14-32",
+      "pool_b": "6-24",
       "min_value": 6,
       "max_value": 32,
       "borrow": 0.30
     },
     {
-      "pool_a": [15, 35],
-      "pool_b": [7, 26],
+      "pool_a": "15-35",
+      "pool_b": "7-26",
       "min_value": 7,
       "max_value": 35,
       "borrow": 0.35
     },
 
     {
-      "pool_a": [16, 38],
-      "pool_b": [8, 28],
+      "pool_a": "16-38",
+      "pool_b": "8-28",
       "min_value": 8,
       "max_value": 38,
       "borrow": 0.35
     },
     {
-      "pool_a": [17, 41],
-      "pool_b": [8, 30],
+      "pool_a": "17-41",
+      "pool_b": "8-30",
       "min_value": 8,
       "max_value": 41,
       "borrow": 0.40
     },
     {
-      "pool_a": [18, 44],
-      "pool_b": [9, 32],
+      "pool_a": "18-44",
+      "pool_b": "9-32",
       "min_value": 9,
       "max_value": 44,
       "borrow": 0.40
     },
     {
-      "pool_a": [20, 48],
-      "pool_b": [10, 35],
+      "pool_a": "20-48",
+      "pool_b": "10-35",
       "min_value": 10,
       "max_value": 48,
       "borrow": 0.45
     },
     {
-      "pool_a": [22, 52],
-      "pool_b": [10, 38],
+      "pool_a": "22-52",
+      "pool_b": "10-38",
       "min_value": 10,
       "max_value": 52,
       "borrow": 0.45
     },
     {
-      "pool_a": [24, 56],
-      "pool_b": [11, 41],
+      "pool_a": "24-56",
+      "pool_b": "11-41",
       "min_value": 11,
       "max_value": 56,
       "borrow": 0.50
     },
     {
-      "pool_a": [26, 60],
-      "pool_b": [12, 44],
+      "pool_a": "26-60",
+      "pool_b": "12-44",
       "min_value": 12,
       "max_value": 60,
       "borrow": 0.50
     },
     {
-      "pool_a": [28, 64],
-      "pool_b": [13, 47],
+      "pool_a": "28-64",
+      "pool_b": "13-47",
       "min_value": 13,
       "max_value": 64,
       "borrow": 0.55
     },
     {
-      "pool_a": [30, 68],
-      "pool_b": [14, 50],
+      "pool_a": "30-68",
+      "pool_b": "14-50",
       "min_value": 14,
       "max_value": 68,
       "borrow": 0.55
     },
     {
-      "pool_a": [32, 72],
-      "pool_b": [15, 53],
+      "pool_a": "32-72",
+      "pool_b": "15-53",
       "min_value": 15,
       "max_value": 72,
       "borrow": 0.60
     },
 
     {
-      "pool_a": [34, 76],
-      "pool_b": [16, 56],
+      "pool_a": "34-76",
+      "pool_b": "16-56",
       "min_value": 16,
       "max_value": 76,
       "borrow": 0.60
     },
     {
-      "pool_a": [36, 80],
-      "pool_b": [17, 59],
+      "pool_a": "36-80",
+      "pool_b": "17-59",
       "min_value": 17,
       "max_value": 80,
       "borrow": 0.65
     },
     {
-      "pool_a": [38, 85],
-      "pool_b": [18, 62],
+      "pool_a": "38-85",
+      "pool_b": "18-62",
       "min_value": 18,
       "max_value": 85,
       "borrow": 0.65
     },
     {
-      "pool_a": [40, 90],
-      "pool_b": [20, 66],
+      "pool_a": "40-90",
+      "pool_b": "20-66",
       "min_value": 20,
       "max_value": 90,
       "borrow": 0.70
     },
     {
-      "pool_a": [42, 95],
-      "pool_b": [21, 70],
+      "pool_a": "42-95",
+      "pool_b": "21-70",
       "min_value": 21,
       "max_value": 95,
       "borrow": 0.70
     },
     {
-      "pool_a": [45, 100],
-      "pool_b": [22, 74],
+      "pool_a": "45-100",
+      "pool_b": "22-74",
       "min_value": 22,
       "max_value": 100,
       "borrow": 0.75
     },
     {
-      "pool_a": [48, 105],
-      "pool_b": [24, 78],
+      "pool_a": "48-105",
+      "pool_b": "24-78",
       "min_value": 24,
       "max_value": 105,
       "borrow": 0.75
     },
     {
-      "pool_a": [50, 110],
-      "pool_b": [25, 82],
+      "pool_a": "50-110",
+      "pool_b": "25-82",
       "min_value": 25,
       "max_value": 110,
       "borrow": 0.80
     },
     {
-      "pool_a": [52, 115],
-      "pool_b": [26, 86],
+      "pool_a": "52-115",
+      "pool_b": "26-86",
       "min_value": 26,
       "max_value": 115,
       "borrow": 0.80
     },
     {
-      "pool_a": [55, 120],
-      "pool_b": [28, 90],
+      "pool_a": "55-120",
+      "pool_b": "28-90",
       "min_value": 28,
       "max_value": 120,
       "borrow": 0.85
     },
 
     {
-      "pool_a": [58, 125],
-      "pool_b": [30, 94],
+      "pool_a": "58-125",
+      "pool_b": "30-94",
       "min_value": 30,
       "max_value": 125,
       "borrow": 0.85
     },
     {
-      "pool_a": [60, 130],
-      "pool_b": [32, 98],
+      "pool_a": "60-130",
+      "pool_b": "32-98",
       "min_value": 32,
       "max_value": 130,
       "borrow": 0.90
     },
     {
-      "pool_a": [63, 135],
-      "pool_b": [34, 102],
+      "pool_a": "63-135",
+      "pool_b": "34-102",
       "min_value": 34,
       "max_value": 135,
       "borrow": 0.90
     },
     {
-      "pool_a": [66, 140],
-      "pool_b": [36, 106],
+      "pool_a": "66-140",
+      "pool_b": "36-106",
       "min_value": 36,
       "max_value": 140,
       "borrow": 0.90
     },
     {
-      "pool_a": [70, 145],
-      "pool_b": [38, 110],
+      "pool_a": "70-145",
+      "pool_b": "38-110",
       "min_value": 38,
       "max_value": 145,
       "borrow": 0.95
     },
     {
-      "pool_a": [74, 150],
-      "pool_b": [40, 114],
+      "pool_a": "74-150",
+      "pool_b": "40-114",
       "min_value": 40,
       "max_value": 150,
       "borrow": 0.95
     },
     {
-      "pool_a": [78, 160],
-      "pool_b": [42, 120],
+      "pool_a": "78-160",
+      "pool_b": "42-120",
       "min_value": 42,
       "max_value": 160,
       "borrow": 0.95
     },
     {
-      "pool_a": [82, 170],
-      "pool_b": [45, 128],
+      "pool_a": "82-170",
+      "pool_b": "45-128",
       "min_value": 45,
       "max_value": 170,
       "borrow": 1.00
     },
     {
-      "pool_a": [86, 180],
-      "pool_b": [48, 136],
+      "pool_a": "86-180",
+      "pool_b": "48-136",
       "min_value": 48,
       "max_value": 180,
       "borrow": 1.00
     },
     {
-      "pool_a": [90, 200],
-      "pool_b": [50, 150],
+      "pool_a": "90-200",
+      "pool_b": "50-150",
       "min_value": 50,
       "max_value": 200,
       "borrow": 1.00
     }
   ],
   "divisione": [
-    {"pool_a": "1-12", "pool_b": "1-3"},
-    {"pool_a": "1-18", "pool_b": "1-5"},
-    {"pool_a": "1-24", "pool_b": "1-7"},
-    {"pool_a": "1-30", "pool_b": "1-8"},
-    {"pool_a": "1-36", "pool_b": "1-9"},
-    {"pool_a": "1-42", "pool_b": "1-10"},
-    {"pool_a": "1-48", "pool_b": "2-10"},
-    {"pool_a": "1-54", "pool_b": "2-10"},
-    {"pool_a": "1-60", "pool_b": "2-10"},
-    {"pool_a": "1-66", "pool_b": "2-11"},
-    {"pool_a": "1-72", "pool_b": "2-11"},
-    {"pool_a": "1-78", "pool_b": "2-11"},
-    {"pool_a": "1-84", "pool_b": "2-12"},
-    {"pool_a": "1-90", "pool_b": "2-12"},
-    {"pool_a": "1-99", "pool_b": "2-12"},
-    {"pool_a": "1-99", "pool_b": "2-13"},
-    {"pool_a": "1-99", "pool_b": "2-13"},
-    {"pool_a": "1-99", "pool_b": "2-14"},
-    {"pool_a": "1-99", "pool_b": "2-14"},
-    {"pool_a": "1-99", "pool_b": "2-15"}
+    {
+      "pool_a": "2-10",
+      "pool_b": "1-2",
+      "min_value": 1,
+      "max_value": 5
+    },
+    {
+      "pool_a": "2-12",
+      "pool_b": "1-3",
+      "min_value": 1,
+      "max_value": 6
+    },
+    {
+      "pool_a": "2-14",
+      "pool_b": "1-4",
+      "min_value": 1,
+      "max_value": 7
+    },
+    {
+      "pool_a": "2-16",
+      "pool_b": "1-4",
+      "min_value": 1,
+      "max_value": 8
+    },
+    {
+      "pool_a": "2-18",
+      "pool_b": "1-5",
+      "min_value": 1,
+      "max_value": 9
+    },
+    {
+      "pool_a": "2-20",
+      "pool_b": "1-5",
+      "min_value": 1,
+      "max_value": 10
+    },
+    {
+      "pool_a": "2-24",
+      "pool_b": "1-6",
+      "min_value": 1,
+      "max_value": 10
+    },
+    {
+      "pool_a": "2-28",
+      "pool_b": "2-6",
+      "min_value": 1,
+      "max_value": 12
+    },
+    {
+      "pool_a": "2-30",
+      "pool_b": "2-7",
+      "min_value": 1,
+      "max_value": 12
+    },
+    {
+      "pool_a": "2-36",
+      "pool_b": "2-8",
+      "min_value": 1,
+      "max_value": 14
+    },
+    {
+      "pool_a": "2-40",
+      "pool_b": "2-9",
+      "min_value": 1,
+      "max_value": 15
+    },
+    {
+      "pool_a": "2-42",
+      "pool_b": "2-10",
+      "min_value": 1,
+      "max_value": 15
+    },
+    {
+      "pool_a": "2-48",
+      "pool_b": "3-10",
+      "min_value": 1,
+      "max_value": 16
+    },
+    {
+      "pool_a": "2-50",
+      "pool_b": "3-10",
+      "min_value": 1,
+      "max_value": 16
+    },
+    {
+      "pool_a": "2-54",
+      "pool_b": "3-11",
+      "min_value": 1,
+      "max_value": 18
+    },
+    {
+      "pool_a": "2-60",
+      "pool_b": "3-12",
+      "min_value": 2,
+      "max_value": 20
+    },
+    {
+      "pool_a": "2-63",
+      "pool_b": "3-13",
+      "min_value": 2,
+      "max_value": 20
+    },
+    {
+      "pool_a": "2-66",
+      "pool_b": "3-14",
+      "min_value": 2,
+      "max_value": 22
+    },
+    {
+      "pool_a": "2-72",
+      "pool_b": "4-14",
+      "min_value": 2,
+      "max_value": 22
+    },
+    {
+      "pool_a": "2-75",
+      "pool_b": "4-15",
+      "min_value": 2,
+      "max_value": 24
+    },
+    {
+      "pool_a": "2-80",
+      "pool_b": "4-16",
+      "min_value": 2,
+      "max_value": 25
+    },
+    {
+      "pool_a": "2-84",
+      "pool_b": "4-17",
+      "min_value": 2,
+      "max_value": 26
+    },
+    {
+      "pool_a": "2-90",
+      "pool_b": "4-18",
+      "min_value": 2,
+      "max_value": 28
+    },
+    {
+      "pool_a": "2-96",
+      "pool_b": "5-18",
+      "min_value": 2,
+      "max_value": 30
+    },
+    {
+      "pool_a": "2-100",
+      "pool_b": "5-19",
+      "min_value": 2,
+      "max_value": 30
+    },
+    {
+      "pool_a": "2-105",
+      "pool_b": "5-20",
+      "min_value": 3,
+      "max_value": 32
+    },
+    {
+      "pool_a": "2-108",
+      "pool_b": "5-21",
+      "min_value": 3,
+      "max_value": 32
+    },
+    {
+      "pool_a": "2-112",
+      "pool_b": "5-22",
+      "min_value": 3,
+      "max_value": 34
+    },
+    {
+      "pool_a": "2-120",
+      "pool_b": "5-23",
+      "min_value": 3,
+      "max_value": 36
+    },
+    {
+      "pool_a": "2-125",
+      "pool_b": "5-24",
+      "min_value": 3,
+      "max_value": 36
+    },
+    {
+      "pool_a": "2-128",
+      "pool_b": "6-24",
+      "min_value": 3,
+      "max_value": 38
+    },
+    {
+      "pool_a": "2-135",
+      "pool_b": "6-25",
+      "min_value": 3,
+      "max_value": 40
+    },
+    {
+      "pool_a": "2-140",
+      "pool_b": "6-26",
+      "min_value": 3,
+      "max_value": 40
+    },
+    {
+      "pool_a": "2-144",
+      "pool_b": "6-27",
+      "min_value": 3,
+      "max_value": 42
+    },
+    {
+      "pool_a": "2-150",
+      "pool_b": "6-28",
+      "min_value": 4,
+      "max_value": 42
+    },
+    {
+      "pool_a": "2-156",
+      "pool_b": "7-28",
+      "min_value": 4,
+      "max_value": 44
+    },
+    {
+      "pool_a": "2-160",
+      "pool_b": "7-30",
+      "min_value": 4,
+      "max_value": 44
+    },
+    {
+      "pool_a": "2-168",
+      "pool_b": "7-32",
+      "min_value": 4,
+      "max_value": 46
+    },
+    {
+      "pool_a": "2-175",
+      "pool_b": "7-33",
+      "min_value": 4,
+      "max_value": 46
+    },
+    {
+      "pool_a": "2-180",
+      "pool_b": "8-34",
+      "min_value": 4,
+      "max_value": 48
+    },
+    {
+      "pool_a": "2-186",
+      "pool_b": "8-35",
+      "min_value": 4,
+      "max_value": 48
+    },
+    {
+      "pool_a": "2-192",
+      "pool_b": "8-36",
+      "min_value": 4,
+      "max_value": 48
+    },
+    {
+      "pool_a": "2-196",
+      "pool_b": "8-38",
+      "min_value": 5,
+      "max_value": 49
+    },
+    {
+      "pool_a": "2-200",
+      "pool_b": "8-40",
+      "min_value": 5,
+      "max_value": 50
+    }
   ],
   "training": {
     "moltiplicazione": {"monsters": [1,2,3,4,5,6,7,8,9,10,11], "flying": [9,10,11]},
