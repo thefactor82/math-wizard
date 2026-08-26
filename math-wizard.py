@@ -864,7 +864,7 @@ class Game :
         self .initial_level =0
         self .difficulty_position =0
         self .dragging_difficulty =False
-        self .story_progress ={"moltiplicazione":{},"addizione":{},"sottrazione":{},"divisione":{}}
+        self .story_progress ={"moltiplicazione":0 ,"addizione":0 ,"sottrazione":0 ,"divisione":0 }
         self .story_completed ={"moltiplicazione":False ,"addizione":False ,"sottrazione":False ,"divisione":False }
         self .music_volume =50
         self .sfx_volume =50
@@ -950,20 +950,14 @@ class Game :
             story_progress =data .get ("storia_progresso",self .story_progress )
             if isinstance (story_progress ,dict ):
                 for op ,val in story_progress .items ():
-                    if isinstance (val ,int ):
-                        self .story_progress .setdefault (op ,{})["0"]=val 
-                    elif isinstance (val ,dict ):
-                        self .story_progress [op ]=val 
+                    if isinstance (val ,(int ,float )):
+                        self .story_progress [op ]=int (val )
             story_completed =data .get ("storia_completata",self .story_completed )
             if isinstance (story_completed ,dict ):
                 self .story_completed .update (story_completed )
             for op in self .story_completed :
-                if not self .story_completed [op ]:
-                    op_prog =self .story_progress .get (op ,{})
-                    for lv in op_prog .values ():
-                        if isinstance (lv ,int )and lv >=self .num_story_levels :
-                            self .story_completed [op ]=True 
-                            break 
+                if not self .story_completed [op ]and self .story_progress .get (op ,0 )>=self .num_story_levels :
+                    self .story_completed [op ]=True 
             if "fullscreen"in data :
                 self .fullscreen =bool (data ["fullscreen"])
             if "volume_musica"in data :
@@ -1202,8 +1196,7 @@ class Game :
     def max_initial_level (self ):
         if self .story_completed .get (self .config_story_operation ,False ):
             return self .num_story_levels -1 
-        op_prog =self .story_progress .get (self .config_story_operation ,{})
-        prog =max (0 ,op_prog .get (str (self .difficulty_position ),0 ))
+        prog =max (0 ,self .story_progress .get (self .config_story_operation ,0 ))
         return max (0 ,min (self .num_story_levels -1 ,prog ))
 
     def _update_difficulty_from_mouse (self ,mx ):
@@ -2020,10 +2013,9 @@ class Game :
                     else :
                         self .level +=1 
                         next_lv =self .level 
-                    op_prog =self .story_progress .setdefault (self .config_story_operation ,{})
-                    dp_key =str (self .difficulty_position )
-                    if next_lv >op_prog .get (dp_key ,0 ):
-                        op_prog [dp_key ]=next_lv 
+                    op =self .config_story_operation 
+                    if next_lv >self .story_progress .get (op ,0 ):
+                        self .story_progress [op ]=next_lv 
                         self .initial_level =min (self .initial_level ,self .max_initial_level ())
                         self .save_profile_config ()
                         if average <self .timeout_limit /2 :
@@ -3468,7 +3460,7 @@ class Game :
         bar_h =22
         for i ,(key ,label )in enumerate (ops ):
             y =260 +i *100
-            lv =self .num_story_levels if self .story_completed .get (key ,False )else max (0 ,self .story_progress .get (key ,{}).get (str (self .difficulty_position ),0 ))
+            lv =self .num_story_levels if self .story_completed .get (key ,False )else max (0 ,self .story_progress .get (key ,0 ))
             total =self .num_story_levels 
             pct =int (100 *lv /max (1 ,total ))
             lbl =self ._render_cached (self .font_small ,label ,WHITE )
