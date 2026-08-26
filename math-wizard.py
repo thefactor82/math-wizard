@@ -865,6 +865,7 @@ class Game :
         self .difficulty_position =0
         self .dragging_difficulty =False
         self .story_progress ={"moltiplicazione":0 ,"addizione":0 ,"sottrazione":0 ,"divisione":0 }
+        self .story_completed ={"moltiplicazione":False ,"addizione":False ,"sottrazione":False ,"divisione":False }
         self .music_volume =50
         self .sfx_volume =50
 
@@ -913,6 +914,7 @@ class Game :
         "livello_iniziale":self .initial_level ,
         "difficolta_posizione":self .difficulty_position ,
         "storia_progresso":self .story_progress ,
+        "storia_completata":self .story_completed ,
         "fullscreen":self .fullscreen ,
         "volume_musica":self .music_volume ,
         "volume_effetti":self .sfx_volume ,
@@ -948,6 +950,9 @@ class Game :
             story_progress =data .get ("storia_progresso",self .story_progress )
             if isinstance (story_progress ,dict ):
                 self .story_progress .update (story_progress )
+            story_completed =data .get ("storia_completata",self .story_completed )
+            if isinstance (story_completed ,dict ):
+                self .story_completed .update (story_completed )
             if "fullscreen"in data :
                 self .fullscreen =bool (data ["fullscreen"])
             if "volume_musica"in data :
@@ -1184,6 +1189,8 @@ class Game :
         return max (0 ,total -self .num_story_levels )
 
     def max_initial_level (self ):
+        if self .story_completed .get (self .config_story_operation ,False ):
+            return self .num_story_levels -1 
         prog =max (0 ,self .story_progress .get (self .config_story_operation ,0 ))
         return max (0 ,min (self .num_story_levels -1 ,prog -self .difficulty_position ))
 
@@ -1997,6 +2004,7 @@ class Game :
                     average =sum (recent_times )/len (recent_times )if recent_times else 0 
                     if self .is_last_story_level ():
                         next_lv =self .num_story_levels 
+                        self .story_completed [self .config_story_operation ]=True 
                     else :
                         self .level +=1 
                         next_lv =self .level 
@@ -3447,8 +3455,8 @@ class Game :
         bar_h =22
         for i ,(key ,label )in enumerate (ops ):
             y =260 +i *100
-            lv =max (0 ,min (self .story_progress .get (key ,0 )-self .difficulty_position ,self .num_story_levels ))
-            total =self .num_story_levels
+            lv =self .num_story_levels if self .story_completed .get (key ,False )else max (0 ,min (self .story_progress .get (key ,0 )-self .difficulty_position ,self .num_story_levels ))
+            total =self .num_story_levels 
             pct =int (100 *lv /max (1 ,total ))
             lbl =self ._render_cached (self .font_small ,label ,WHITE )
             lbl_rect =lbl .get_rect (midright =(bar_x -15 ,y +bar_h //2 ))
