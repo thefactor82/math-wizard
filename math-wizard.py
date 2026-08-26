@@ -800,7 +800,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.3.31"
+        self .version ="1.3.32"
 
         self .profiles =[]
         self .current_profile =""
@@ -824,16 +824,16 @@ class Game :
         self .config_operation ="moltiplicazione"
         self .config_by_operation ={}
         self .config_by_operation ["moltiplicazione"]={
-        "pool_a":[n <16 for n in range (16 )],
-        "pool_b":[n <16 for n in range (16 )],
+        "pool_a":[True for _ in range (20 )],
+        "pool_b":[True for _ in range (20 )],
         "domande":10 ,
         "swap":True ,
         "timeout":DEFAULT_TIMEOUT ,
         }
         for op in ["addizione","sottrazione","divisione"]:
             self .config_by_operation [op ]={
-            "pool_a":[n <10 for n in range (100 )],
-            "pool_b":[n <10 for n in range (100 )],
+            "pool_a":[n <10 for n in range (200 )],
+            "pool_b":[n <10 for n in range (200 )],
             "domande":10 ,
             "swap":True ,
             "timeout":DEFAULT_TIMEOUT ,
@@ -919,7 +919,7 @@ class Game :
         if "moltiplicazione"in data and isinstance (data ["moltiplicazione"],dict ):
             for op in ["moltiplicazione","addizione","sottrazione","divisione"]:
                 if op in data and isinstance (data [op ],dict ):
-                    pool_len =16 if op =="moltiplicazione"else 100
+                    pool_len =20 if op =="moltiplicazione"else 200
                     if "pool_a"in data [op ]:
                         self .config_by_operation [op ]["pool_a"]=normalize_pool_list (data [op ]["pool_a"],pool_len )
                     if "pool_b"in data [op ]:
@@ -944,7 +944,7 @@ class Game :
             self .config_gender =data .get ("genere",self .config_gender )
             self .auto_timeout =data .get ("timeout",self .auto_timeout )
             for op in self .config_by_operation :
-                pool_len =16 if op =="moltiplicazione"else 100
+                pool_len =20 if op =="moltiplicazione"else 200
                 self .config_by_operation [op ]["pool_a"]=normalize_pool_list (data .get ("pool_a",self .config_by_operation [op ]["pool_a"]),pool_len )
                 self .config_by_operation [op ]["pool_b"]=normalize_pool_list (data .get ("pool_b",self .config_by_operation [op ]["pool_b"]),pool_len )
                 self .config_by_operation [op ]["domande"]=data .get ("domande",self .config_by_operation [op ]["domande"])
@@ -1131,7 +1131,7 @@ class Game :
             self .positive_difference =self .config .get ("differenza_positiva",True )
             self .integer_result =self .config .get ("risultato_intero",True )
             division =self .config_operation =="divisione"
-            pool_range =range (16 )if self .config_operation =="moltiplicazione"else range (100 )
+            pool_range =range (20 )if self .config_operation =="moltiplicazione"else range (200 )
             self .pool_a =[n for n in pool_range if self .config ["pool_a"][n ]]
             self .pool_b =[n for n in pool_range if self .config ["pool_b"][n ]]
             if not self .pool_a :
@@ -2242,13 +2242,13 @@ class Game :
         subtraction =self .config_operation =="sottrazione"
         division =self .config_operation =="divisione"
         multiplication =self .config_operation =="moltiplicazione"
-        cols_u =8
-        pool_items =16 if multiplication else 10
+        cols_u =10
+        pool_items =20
 
         def row_y (r ):
             base =[225 ,315 ,435 ,555 ,630 ,705 ,780 ,855 ,900 ]
             cell_h ,gap =45 ,10
-            subrows_pool =(pool_items +7 )//8
+            subrows_pool =(pool_items +9 )//10
             pool_extra =max (0 ,(subrows_pool -2 ))*(cell_h +gap )
             offset =0 
             if r >=2 :
@@ -2316,7 +2316,7 @@ class Game :
                 r =1 +ri 
                 y_base =row_y (r )
                 subrows =(pool_items +cols_u -1 )//cols_u 
-                cell_w ,cell_h =120 ,45 
+                cell_w ,cell_h =115 ,45 
                 gap =10 
                 grid_x =540 
                 for sr in range (subrows ):
@@ -3632,9 +3632,8 @@ class Game :
         def row_y (r ):
             base =[225 ,315 ,435 ,555 ,630 ,705 ,780 ,855 ,900 ]
             cell_h ,gap =45 ,10
-            multiplication =self .config_operation =="moltiplicazione"
-            pool_items =16 if multiplication else 10
-            subrows_pool =(pool_items +7 )//8
+            pool_items =20
+            subrows_pool =(pool_items +9 )//10
             pool_extra =max (0 ,(subrows_pool -2 ))*(cell_h +gap )
             offset =0 
             if r >=2 :
@@ -3666,7 +3665,7 @@ class Game :
             # Row 1-2: Pool A / Pool B (8-col grid)
         labels =["Operando A","Operando B"]
         pools =[self .config ["pool_a"],self .config ["pool_b"]]
-        cols_u =8
+        cols_u =10
         multiplication =self .config_operation =="moltiplicazione"
         for ri in range (2 ):
             row =1 +ri 
@@ -3675,9 +3674,9 @@ class Game :
             rect =label .get_rect (midleft =(120 ,y_base +25 ))
             self .screen .blit (label ,rect )
 
-            items =16 if multiplication else 10
+            items =20
             subrows =(items +cols_u -1 )//cols_u 
-            cell_w ,cell_h =120 ,45 
+            cell_w ,cell_h =115 ,45 
             gap =10 
             grid_x =540 
             for sr in range (subrows ):
@@ -3692,7 +3691,7 @@ class Game :
                         txt =str (idx )
                     else :
                         start =idx *10
-                        end =min (start +9 ,99 )
+                        end =min (start +9 ,199 )
                         selected =any (pools [ri ][start :start +10 ])
                         txt =f"{start }-{end }"
                     cell_rect =pygame .Rect (sx ,sy ,cell_w ,cell_h )
