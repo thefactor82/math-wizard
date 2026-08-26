@@ -1276,6 +1276,48 @@
       "pool_b": "8-40",
       "min_value": 5,
       "max_value": 50
+    },
+    {
+      "pool_a": "2-200",
+      "pool_b": "8-42",
+      "min_value": 5,
+      "max_value": 50
+    },
+    {
+      "pool_a": "2-200",
+      "pool_b": "9-42",
+      "min_value": 5,
+      "max_value": 50
+    },
+    {
+      "pool_a": "2-200",
+      "pool_b": "9-44",
+      "min_value": 5,
+      "max_value": 50
+    },
+    {
+      "pool_a": "2-200",
+      "pool_b": "10-44",
+      "min_value": 5,
+      "max_value": 50
+    },
+    {
+      "pool_a": "2-200",
+      "pool_b": "10-46",
+      "min_value": 5,
+      "max_value": 50
+    },
+    {
+      "pool_a": "2-200",
+      "pool_b": "10-48",
+      "min_value": 5,
+      "max_value": 50
+    },
+    {
+      "pool_a": "2-200",
+      "pool_b": "10-50",
+      "min_value": 5,
+      "max_value": 50
     }
   ],
   "training": {

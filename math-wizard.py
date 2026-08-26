@@ -947,6 +947,7 @@ class Game :
             self .auto_timeout =data .get ("auto_timeout",self .auto_timeout )
             self .initial_level =data .get ("livello_iniziale",self .initial_level )
             self .difficulty_position =data .get ("difficolta_posizione",self .difficulty_position )
+            self .difficulty_position =max (self .min_difficulty_position () ,min (self .max_difficulty_position () ,self .difficulty_position ))
             story_progress =data .get ("storia_progresso",self .story_progress )
             if isinstance (story_progress ,dict ):
                 for op ,val in story_progress .items ():
@@ -1193,6 +1194,11 @@ class Game :
         total =len (LEVELS .get (self .config_story_operation ,[]))
         return max (0 ,total -self .num_story_levels )
 
+    def min_difficulty_position (self ):
+        if self .config_story_operation =="divisione":
+            return 6 
+        return 0 
+
     def max_initial_level (self ):
         if self .story_completed .get (self .config_story_operation ,False ):
             return self .num_story_levels -1 
@@ -1203,10 +1209,11 @@ class Game :
         if not hasattr (self ,'diff_bar_rect'):
             return
         bar =self .diff_bar_rect
-        max_dp =max (1 ,self .max_difficulty_position ())
+        min_dp =self .min_difficulty_position ()
+        max_dp =max (min_dp +1 ,self .max_difficulty_position ())
         ratio =(mx -bar .x )/max (1 ,bar .w )
-        new_pos =round (ratio *max_dp )
-        new_pos =max (0 ,min (max_dp ,new_pos ))
+        new_pos =round (min_dp +ratio *(max_dp -min_dp ))
+        new_pos =max (min_dp ,min (max_dp ,new_pos ))
         if new_pos !=self .difficulty_position :
             self .difficulty_position =new_pos
             self .initial_level =min (self .initial_level ,self .max_initial_level ())
@@ -1919,7 +1926,8 @@ class Game :
                         ops =["moltiplicazione","addizione","sottrazione","divisione"]
                         idx =(ops .index (self .config_story_operation )+1 )%4
                         self .config_story_operation =ops [idx ]
-                        self .difficulty_position =min (self .difficulty_position ,self .max_difficulty_position ())
+                        min_dp =self .min_difficulty_position ()
+                        self .difficulty_position =max (min_dp ,min (self .difficulty_position ,self .max_difficulty_position ()))
                         self .initial_level =min (self .initial_level ,self .max_initial_level ())
                     elif self .options_cursor ==1 :
                         self .difficulty_position =min (self .max_difficulty_position (),self .difficulty_position +1 )
@@ -1934,10 +1942,11 @@ class Game :
                         ops =["moltiplicazione","addizione","sottrazione","divisione"]
                         idx =(ops .index (self .config_story_operation )-1 )%4
                         self .config_story_operation =ops [idx ]
-                        self .difficulty_position =min (self .difficulty_position ,self .max_difficulty_position ())
+                        min_dp =self .min_difficulty_position ()
+                        self .difficulty_position =max (min_dp ,min (self .difficulty_position ,self .max_difficulty_position ()))
                         self .initial_level =min (self .initial_level ,self .max_initial_level ())
                     elif self .options_cursor ==1 :
-                        self .difficulty_position =max (0 ,self .difficulty_position -1 )
+                        self .difficulty_position =max (self .min_difficulty_position (),self .difficulty_position -1 )
                         self .initial_level =min (self .initial_level ,self .max_initial_level ())
                     elif self .options_cursor ==2 :
                         self .initial_level =max (0 ,self .initial_level -1 )
@@ -2199,7 +2208,8 @@ class Game :
                         if btn .collidepoint (mx ,my ):
                             self .options_cursor =0
                             self .config_story_operation =ops [i ]
-                            self .difficulty_position =min (self .difficulty_position ,self .max_difficulty_position ())
+                            min_dp =self .min_difficulty_position ()
+                            self .difficulty_position =max (min_dp ,min (self .difficulty_position ,self .max_difficulty_position ()))
                             self .initial_level =min (self .initial_level ,self .max_initial_level ())
                             self .save_profile_config ()
                             break
@@ -2207,7 +2217,7 @@ class Game :
                 if hasattr (self ,'diff_bar_rect'):
                     if hasattr (self ,'diff_left_rect')and self .diff_left_rect .collidepoint (mx ,my ):
                         self .options_cursor =1
-                        self .difficulty_position =max (0 ,self .difficulty_position -1 )
+                        self .difficulty_position =max (self .min_difficulty_position (),self .difficulty_position -1 )
                         self .initial_level =min (self .initial_level ,self .max_initial_level ())
                         self .save_profile_config ()
                     elif hasattr (self ,'diff_right_rect')and self .diff_right_rect .collidepoint (mx ,my ):
@@ -3593,17 +3603,16 @@ class Game :
         self .screen .blit (arr_l ,arr_l .get_rect (center =dl_rect .center ))
         self .screen .blit (arr_r ,arr_r .get_rect (center =dr_rect .center ))
         pygame .draw .rect (self .screen ,(50 ,50 ,60 ),(bar_x +arrow_l ,bar_y ,bar_w ,bar_h ),border_radius =6 )
-        max_dp =max (1 ,self .max_difficulty_position ())
-        if max_dp >0 :
-            ratio =self .difficulty_position /max_dp
-            ind_w =max (16 ,bar_w //max (8 ,max_dp +2 ))
-            ind_x =bar_x +arrow_l +int (ratio *(bar_w -ind_w ))
-            ind_rect =pygame .Rect (ind_x ,bar_y -6 ,ind_w ,bar_h +12 )
-            self .diff_indicator_rect =ind_rect
-            pygame .draw .rect (self .screen ,(120 ,160 ,220 ),ind_rect ,border_radius =6 )
-            pygame .draw .rect (self .screen ,(180 ,210 ,255 ),ind_rect ,1 ,border_radius =6 )
-        else :
-            self .diff_indicator_rect =None
+        min_dp =self .min_difficulty_position ()
+        max_dp =max (min_dp +1 ,self .max_difficulty_position ())
+        dp_range =max (1 ,max_dp -min_dp )
+        ratio =(self .difficulty_position -min_dp )/dp_range 
+        ind_w =max (16 ,bar_w //max (8 ,dp_range +2 ))
+        ind_x =bar_x +arrow_l +int (ratio *(bar_w -ind_w ))
+        ind_rect =pygame .Rect (ind_x ,bar_y -6 ,ind_w ,bar_h +12 )
+        self .diff_indicator_rect =ind_rect
+        pygame .draw .rect (self .screen ,(120 ,160 ,220 ),ind_rect ,border_radius =6 )
+        pygame .draw .rect (self .screen ,(180 ,210 ,255 ),ind_rect ,1 ,border_radius =6 )
         dp =self .difficulty_position
         if dp <=5 :
             diff_label ="1a elementare"
