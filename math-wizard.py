@@ -953,6 +953,9 @@ class Game :
             story_completed =data .get ("storia_completata",self .story_completed )
             if isinstance (story_completed ,dict ):
                 self .story_completed .update (story_completed )
+            for op in self .story_completed :
+                if not self .story_completed [op ]and self .story_progress .get (op ,0 )>=self .num_story_levels :
+                    self .story_completed [op ]=True 
             if "fullscreen"in data :
                 self .fullscreen =bool (data ["fullscreen"])
             if "volume_musica"in data :
