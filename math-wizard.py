@@ -533,6 +533,18 @@ class Game :
         elif action =="somma_massima_plus":
             self .config ["somma_massima"]=min (199 ,self .config ["somma_massima"]+1 )
             self .save_profile_config ()
+        elif action =="risultato_minimo_minus":
+            self .config ["risultato_minimo"]=max (0 ,self .config ["risultato_minimo"]-1 )
+            self .save_profile_config ()
+        elif action =="risultato_minimo_plus":
+            self .config ["risultato_minimo"]=min (199 ,self .config ["risultato_minimo"]+1 )
+            self .save_profile_config ()
+        elif action =="risultato_massimo_minus":
+            self .config ["risultato_massimo"]=max (0 ,self .config ["risultato_massimo"]-1 )
+            self .save_profile_config ()
+        elif action =="risultato_massimo_plus":
+            self .config ["risultato_massimo"]=min (199 ,self .config ["risultato_massimo"]+1 )
+            self .save_profile_config ()
         elif action =="riporto_minus":
             self .config ["riporto"]=max (0 ,self .config ["riporto"]-5 )
             self .save_profile_config ()
@@ -844,6 +856,9 @@ class Game :
         self .config_by_operation ["sottrazione"]["prestito"]=0 
         self .config_by_operation ["divisione"]["risultato_intero"]=True 
         self .config_by_operation ["divisione"]["swap"]=False 
+        for op in ["moltiplicazione","addizione","sottrazione","divisione"]:
+            self .config_by_operation[op]["risultato_minimo"] = 0
+            self .config_by_operation[op]["risultato_massimo"] = 199
         self .config =self .config_by_operation [self .config_operation ]
         self .auto_timeout =DEFAULT_TIMEOUT
         self .initial_level =0
@@ -1130,6 +1145,8 @@ class Game :
             self .max_sum =self .config .get ("somma_massima",10 )
             self .positive_difference =self .config .get ("differenza_positiva",True )
             self .integer_result =self .config .get ("risultato_intero",True )
+            if self .config_operation =="divisione":
+                self .integer_result =True 
             division =self .config_operation =="divisione"
             pool_range =range (20 )if self .config_operation =="moltiplicazione"else range (200 )
             self .pool_a =[n for n in pool_range if self .config ["pool_a"][n ]]
@@ -1139,7 +1156,7 @@ class Game :
             if not self .pool_b :
                 self .pool_b =[0 ]
             self .total_questions =self .config ["domande"]
-            self .swap_operandi =True if self .operation =="sottrazione"else self .config ["swap"]
+            self .swap_operandi =True if self .operation in ("sottrazione","divisione")else self .config ["swap"]
             training_cfg =LEVELS .get ("training",{}).get (self .config_operation ,{})
             self .training_monsters =training_cfg .get ("monsters",list (range (1 ,9 )))
             self .training_flying_monsters =training_cfg .get ("flying",[])
@@ -1655,6 +1672,8 @@ class Game :
             self .operation ,
             self .integer_result ,
             self .max_sum ,
+            min_value =self .config .get ("risultato_minimo",0 ),
+            max_value =self .config .get ("risultato_massimo",199 ),
             carry_prob =self .config .get ("riporto",0 )/100 if self .operation =="addizione"else None ,
             borrow_prob =self .config .get ("prestito",0 )/100 if self .operation =="sottrazione"else None ,
             positive_diff =self .positive_difference ,
@@ -2272,19 +2291,33 @@ class Game :
         def max_col_for_row (r ):
             if r in (1 ,2 ):
                 return cols_u -1 
+            if r ==3 :
+                return 1
+            if r ==4 and subtraction :
+                return 1
             return 0 
 
         def skip_sum (r ,step ):
-            if not addition and not subtraction and not division :
-                if step ==1 and r ==2 :
-                    return 5
-                if step ==-1 and r ==5 :
-                    return 2
-            elif division :
-                if step ==1 and r ==3 :
-                    return 5
-                if step ==-1 and r ==5 :
-                    return 3
+            target =r +step 
+            if target <=0 or target >=8 :
+                return r 
+            def has_content (row ):
+                if row in (1 ,2 ):
+                    return True 
+                if row ==3 and not multiplication :
+                    return True 
+                if row ==4 and (addition or subtraction or division ):
+                    return True 
+                if row >=5 :
+                    return True 
+                return False 
+            if has_content (target ):
+                return target 
+            nxt =target +step 
+            while 0<nxt <8 and not has_content (nxt ):
+                nxt +=step 
+            if 0<nxt <8 and has_content (nxt ):
+                return nxt 
             return r 
 
         if event .type ==pygame .MOUSEBUTTONDOWN :
@@ -2301,9 +2334,12 @@ class Game :
                 # Row 0: operation selector
             y0 =row_y (0 )
             if y0 -3 <=my <=y0 +54 :
+                grid_w =10 *115 +9 *10 
+                btn_w =290 
+                btn_step =(grid_w -btn_w )//3 
                 for i in range (4 ):
-                    sx =540 +i *308
-                    if sx <=mx <=sx +290 :
+                    sx =540 +i *btn_step 
+                    if sx <=mx <=sx +btn_w :
                         self .config_operation =ops [i ]
                         self .config =self .config_by_operation [self .config_operation ]
                         self .config_cursor_row =0 
@@ -2342,56 +2378,81 @@ class Game :
                                         pool [i ]=new_state 
                             return 
 
-                            # Row 3: somma massima (addizione) / differenza positiva (sottrazione)
+                            # Row 3: Risultato Minimo + Risultato Massimo (all operations)
             y3 =row_y (3 )
+            lw ,vw ,rw =45 ,60 ,45 
             if y3 -3 <=my <=y3 +54 :
-                if addition :
-                    lw =45 
-                    if 540 -3 <=mx <=540 +150 +3 :
-                        self .config_cursor_row =3 
+                sx_min =540
+                if sx_min -3 <=mx <=sx_min +lw +vw +rw +3 :
+                    self .config_cursor_row =3 
+                    self .config_cursor_col =0 
+                    if mx <sx_min +lw :
+                        self .config ["risultato_minimo"]=max (0 ,self .config ["risultato_minimo"]-1 )
+                        self ._opts_hold =("risultato_minimo_minus",pygame .time .get_ticks ())
+                        self ._opts_last_repeat =0
+                    elif mx >=sx_min +lw +vw :
+                        self .config ["risultato_minimo"]=min (199 ,self .config ["risultato_minimo"]+1 )
+                        self ._opts_hold =("risultato_minimo_plus",pygame .time .get_ticks ())
+                        self ._opts_last_repeat =0
+                    self .save_profile_config ()
+                    return 
+                sx_max =1400
+                if sx_max -3 <=mx <=sx_max +lw +vw +rw +3 :
+                    self .config_cursor_row =3 
+                    self .config_cursor_col =1 
+                    if mx <sx_max +lw :
+                        self .config ["risultato_massimo"]=max (0 ,self .config ["risultato_massimo"]-1 )
+                        self ._opts_hold =("risultato_massimo_minus",pygame .time .get_ticks ())
+                        self ._opts_last_repeat =0
+                    elif mx >=sx_max +lw +vw :
+                        self .config ["risultato_massimo"]=min (199 ,self .config ["risultato_massimo"]+1 )
+                        self ._opts_hold =("risultato_massimo_plus",pygame .time .get_ticks ())
+                        self ._opts_last_repeat =0
+                    self .save_profile_config ()
+                    return 
+
+                    # Row 4: Differenza positiva / Risultato intero / Riporto / Prestito
+            y4 =row_y (4 )
+            if y4 -3 <=my <=y4 +54 :
+                if subtraction :
+                    lw ,vw ,rw =45 ,60 ,45
+                    px =540
+                    if px -3 <=mx <=px +lw +vw +rw +3 :
+                        self .config_cursor_row =4 
                         self .config_cursor_col =0 
-                        if mx <540 +lw :
-                            self .config ["somma_massima"]=max (1 ,self .config ["somma_massima"]-1 )
-                            self ._opts_hold =("somma_massima_minus",pygame .time .get_ticks ())
+                        if mx <px +lw :
+                            self .config ["prestito"]=max (0 ,self .config ["prestito"]-5 )
+                            self ._opts_hold =("prestito_minus",pygame .time .get_ticks ())
                             self ._opts_last_repeat =0
-                        elif mx >=540 +lw +60 :
-                            self .config ["somma_massima"]=min (199 ,self .config ["somma_massima"]+1 )
-                            self ._opts_hold =("somma_massima_plus",pygame .time .get_ticks ())
+                        elif mx >=px +lw +vw :
+                            self .config ["prestito"]=min (100 ,self .config ["prestito"]+5 )
+                            self ._opts_hold =("prestito_plus",pygame .time .get_ticks ())
                             self ._opts_last_repeat =0
                         self .save_profile_config ()
                         return 
-                elif subtraction :
-                    if 537 <=mx <=822 and y3 -6 <=my <=y3 +60 :
-                        self .config_cursor_row =3
-                        self .config_cursor_col =0
-                        self .config ["differenza_positiva"]=not self .config ["differenza_positiva"]
-                        return
-                elif division :
-                    if 537 <=mx <=822 and y3 -6 <=my <=y3 +60 :
-                        self .config_cursor_row =3
-                        self .config_cursor_col =0
-                        self .config ["risultato_intero"]=not self .config ["risultato_intero"]
-                        return
-
-                        # Row 4: riporto / prestito
-            if addition or subtraction :
-                y4 =row_y (4 )
-                if y4 -3 <=my <=y4 +54 :
-                    lw =45
-                    if 540 -3 <=mx <=540 +150 +3 :
+                    if 1400 -3 <=mx <=1400 +279 +3 and y4 -6 <=my <=y4 +60 :
                         self .config_cursor_row =4
-                        self .config_cursor_col =0
-                        key ="riporto"if addition else "prestito"
-                        if mx <540 +lw :
-                            self .config [key]=max (0 ,self .config [key]-5 )
-                            self ._opts_hold =(f"{key}_minus",pygame .time .get_ticks ())
+                        self .config_cursor_col =1
+                        self .config ["differenza_positiva"]=not self .config ["differenza_positiva"]
+                        return 
+                elif division :
+                    pass
+                elif addition :
+                    lw ,vw ,rw =45 ,60 ,45
+                    rx =540
+                    if rx -3 <=mx <=rx +lw +vw +rw +3 :
+                        self .config_cursor_row =4 
+                        self .config_cursor_col =0 
+                        if mx <rx +lw :
+                            self .config ["riporto"]=max (0 ,self .config ["riporto"]-5 )
+                            self ._opts_hold =("riporto_minus",pygame .time .get_ticks ())
                             self ._opts_last_repeat =0
-                        elif mx >=540 +lw +60 :
-                            self .config [key]=min (100 ,self .config [key]+5 )
-                            self ._opts_hold =(f"{key}_plus",pygame .time .get_ticks ())
+                        elif mx >=rx +lw +vw :
+                            self .config ["riporto"]=min (100 ,self .config ["riporto"]+5 )
+                            self ._opts_hold =("riporto_plus",pygame .time .get_ticks ())
                             self ._opts_last_repeat =0
                         self .save_profile_config ()
-                        return
+                        return 
 
                         # Row 5: domande
             y5 =row_y (5 )
@@ -2414,7 +2475,7 @@ class Game :
                     # Row 6: swap
             y6 =row_y (6 )
             if y6 -6 <=my <=y6 +60 :
-                if 537 <=mx <=822 and not subtraction :
+                if 537 <=mx <=822 and not subtraction and not division :
                     self .config_cursor_row =6
                     self .config_cursor_col =0
                     self .config ["swap"]=not self .config ["swap"]
@@ -2514,29 +2575,31 @@ class Game :
                             new_state =not any (pool [start :start +10 ])
                             for i in range (start ,start +10 ):
                                 pool [i ]=new_state 
-            elif row ==3 and subtraction :
+            elif row ==4 and subtraction and col ==1 :
                 self .config ["differenza_positiva"]=not self .config ["differenza_positiva"]
-            elif row ==3 and division :
-                self .config ["risultato_intero"]=not self .config ["risultato_intero"]
-            elif row ==6 and not subtraction :
+            elif row ==6 and not subtraction and not division :
                 self .config ["swap"]=not self .config ["swap"]
         elif event .key in (pygame .K_PLUS ,pygame .K_EQUALS ,pygame .K_KP_PLUS ):
-            if row ==3 and addition :
-                self .config ["somma_massima"]=min (199 ,self .config ["somma_massima"]+1 )
+            if row ==3 and col ==0 :
+                self .config ["risultato_minimo"]=min (199 ,self .config ["risultato_minimo"]+1 )
+            elif row ==3 and col ==1 :
+                self .config ["risultato_massimo"]=min (199 ,self .config ["risultato_massimo"]+1 )
             elif row ==4 and addition :
                 self .config ["riporto"]=min (100 ,self .config ["riporto"]+5 )
-            elif row ==4 and subtraction :
+            elif row ==4 and subtraction and col ==0 :
                 self .config ["prestito"]=min (100 ,self .config ["prestito"]+5 )
             elif row ==5 :
                 self .config ["domande"]=min (99 ,self .config ["domande"]+1 )
             elif row ==7 :
                 self .config ["timeout"]=min (99 ,self .config ["timeout"]+1 )
         elif event .key in (pygame .K_MINUS ,pygame .K_KP_MINUS ):
-            if row ==3 and addition :
-                self .config ["somma_massima"]=max (1 ,self .config ["somma_massima"]-1 )
+            if row ==3 and col ==0 :
+                self .config ["risultato_minimo"]=max (0 ,self .config ["risultato_minimo"]-1 )
+            elif row ==3 and col ==1 :
+                self .config ["risultato_massimo"]=max (0 ,self .config ["risultato_massimo"]-1 )
             elif row ==4 and addition :
                 self .config ["riporto"]=max (0 ,self .config ["riporto"]-5 )
-            elif row ==4 and subtraction :
+            elif row ==4 and subtraction and col ==0 :
                 self .config ["prestito"]=max (0 ,self .config ["prestito"]-5 )
             elif row ==5 :
                 self .config ["domande"]=max (1 ,self .config ["domande"]-1 )
@@ -3649,17 +3712,20 @@ class Game :
         rect =label_op .get_rect (midleft =(120 ,y +25 ))
         self .screen .blit (label_op ,rect )
         opzioni_op =["Moltiplicazione","Addizione","Sottrazione","Divisione"]
+        grid_w =10 *115 +9 *10
+        btn_w =290
+        btn_step =(grid_w -btn_w )//3
         for i ,nome in enumerate (opzioni_op ):
-            sx =540 +i *308 
+            sx =540 +i *btn_step
             sel =i ==op_idx 
-            btn_rect =pygame .Rect (sx ,y ,290 ,62 )
+            btn_rect =pygame .Rect (sx ,y ,btn_w ,62 )
             hovered =btn_rect .collidepoint (mx ,my )
             bg_col =(100 ,150 ,220 )if sel and hovered else SEL_BLUE if sel else (80 ,80 ,90 )if hovered else (60 ,60 ,70 )
             pygame .draw .rect (self .screen ,bg_col ,btn_rect ,border_radius =6 )
             if hovered :
                 pygame .draw .rect (self .screen ,GOLD ,btn_rect ,2 ,border_radius =6 )
             txt =self ._render_cached (self .font_small ,nome ,WHITE )
-            rect_t =txt .get_rect (center =(sx +145 ,y +31 ))
+            rect_t =txt .get_rect (center =(sx +btn_w //2 ,y +31 ))
             self .screen .blit (txt ,rect_t )
 
             # Row 1-2: Pool A / Pool B (8-col grid)
@@ -3704,37 +3770,82 @@ class Game :
                     rt =t .get_rect (center =(sx +cell_w //2 ,sy +cell_h //2 ))
                     self .screen .blit (t ,rt )
 
-                    # Row 3: Somma massima / Differenza positiva
+                    # Row 3: Risultato Minimo + Risultato Massimo
         row =3 
         y =row_y (row )
-        if addition :
-            label_s =self ._render_cached (self .font_tiny ,"Somma massima",WHITE )
-            rect =label_s .get_rect (midleft =(120 ,y +25 ))
-            self .screen .blit (label_s ,rect )
-            sx =540 
-            lw ,vw ,rw =45 ,60 ,45 
-            minus_rect =pygame .Rect (sx ,y ,lw ,51 )
-            plus_rect =pygame .Rect (sx +lw +vw ,y ,rw ,51 )
-            hover_minus =minus_rect .collidepoint (mx ,my )
-            hover_plus =plus_rect .collidepoint (mx ,my )
-            pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_minus else (70 ,70 ,80 ),minus_rect ,border_radius =6 )
-            pygame .draw .rect (self .screen ,(40 ,40 ,50 ),(sx +lw ,y ,vw ,51 ))
-            pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_plus else (70 ,70 ,80 ),plus_rect ,border_radius =6 )
-            if hover_minus :
-                pygame .draw .rect (self .screen ,GOLD ,minus_rect ,2 ,border_radius =6 )
-            if hover_plus :
-                pygame .draw .rect (self .screen ,GOLD ,plus_rect ,2 ,border_radius =6 )
+        lw ,vw ,rw =45 ,60 ,45
+        label_rm =self ._render_cached (self .font_tiny ,"Risultato Minimo",WHITE )
+        rect =label_rm .get_rect (midleft =(120 ,y +25 ))
+        self .screen .blit (label_rm ,rect )
+        sx_min =540
+        minus_rect_min =pygame .Rect (sx_min ,y ,lw ,51 )
+        plus_rect_min =pygame .Rect (sx_min +lw +vw ,y ,rw ,51 )
+        hover_minus_min =minus_rect_min .collidepoint (mx ,my )
+        hover_plus_min =plus_rect_min .collidepoint (mx ,my )
+        pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_minus_min else (70 ,70 ,80 ),minus_rect_min ,border_radius =6 )
+        pygame .draw .rect (self .screen ,(40 ,40 ,50 ),(sx_min +lw ,y ,vw ,51 ))
+        pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_plus_min else (70 ,70 ,80 ),plus_rect_min ,border_radius =6 )
+        if hover_minus_min :
+            pygame .draw .rect (self .screen ,GOLD ,minus_rect_min ,2 ,border_radius =6 )
+        if hover_plus_min :
+            pygame .draw .rect (self .screen ,GOLD ,plus_rect_min ,2 ,border_radius =6 )
+        minus =self ._render_cached (self .font_tiny ,"-",WHITE )
+        plus =self ._render_cached (self .font_tiny ,"+",WHITE )
+        self .screen .blit (minus ,minus .get_rect (center =(sx_min +lw //2 ,y +25 )))
+        self .screen .blit (plus ,plus .get_rect (center =(sx_min +lw +vw +rw //2 ,y +25 )))
+        rm_surf =self ._render_cached (self .font_tiny ,str (self .config ["risultato_minimo"]),WHITE )
+        self .screen .blit (rm_surf ,rm_surf .get_rect (center =(sx_min +lw +vw //2 ,y +25 )))
+
+        label_rma =self ._render_cached (self .font_tiny ,"Risultato Massimo",WHITE )
+        rect =label_rma .get_rect (midleft =(1020 ,y +25 ))
+        self .screen .blit (label_rma ,rect )
+        sx_max =1400
+        minus_rect_max =pygame .Rect (sx_max ,y ,lw ,51 )
+        plus_rect_max =pygame .Rect (sx_max +lw +vw ,y ,rw ,51 )
+        hover_minus_max =minus_rect_max .collidepoint (mx ,my )
+        hover_plus_max =plus_rect_max .collidepoint (mx ,my )
+        pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_minus_max else (70 ,70 ,80 ),minus_rect_max ,border_radius =6 )
+        pygame .draw .rect (self .screen ,(40 ,40 ,50 ),(sx_max +lw ,y ,vw ,51 ))
+        pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_plus_max else (70 ,70 ,80 ),plus_rect_max ,border_radius =6 )
+        if hover_minus_max :
+            pygame .draw .rect (self .screen ,GOLD ,minus_rect_max ,2 ,border_radius =6 )
+        if hover_plus_max :
+            pygame .draw .rect (self .screen ,GOLD ,plus_rect_max ,2 ,border_radius =6 )
+        self .screen .blit (minus ,minus .get_rect (center =(sx_max +lw //2 ,y +25 )))
+        self .screen .blit (plus ,plus .get_rect (center =(sx_max +lw +vw +rw //2 ,y +25 )))
+        rma_surf =self ._render_cached (self .font_tiny ,str (self .config ["risultato_massimo"]),WHITE )
+        self .screen .blit (rma_surf ,rma_surf .get_rect (center =(sx_max +lw +vw //2 ,y +25 )))
+
+                    # Row 4: Differenza positiva / Risultato intero / Riporto / Prestito
+        row =4 
+        y =row_y (row )
+        if subtraction :
+            label_p =self ._render_cached (self .font_tiny ,"Prestito (%)",WHITE )
+            rect =label_p .get_rect (midleft =(120 ,y +25 ))
+            self .screen .blit (label_p ,rect )
+            lw ,vw ,rw =45 ,60 ,45
+            px =540
+            minus_rect_p =pygame .Rect (px ,y ,lw ,51 )
+            plus_rect_p =pygame .Rect (px +lw +vw ,y ,rw ,51 )
+            hover_minus_p =minus_rect_p .collidepoint (mx ,my )
+            hover_plus_p =plus_rect_p .collidepoint (mx ,my )
+            pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_minus_p else (70 ,70 ,80 ),minus_rect_p ,border_radius =6 )
+            pygame .draw .rect (self .screen ,(40 ,40 ,50 ),(px +lw ,y ,vw ,51 ))
+            pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hover_plus_p else (70 ,70 ,80 ),plus_rect_p ,border_radius =6 )
+            if hover_minus_p :
+                pygame .draw .rect (self .screen ,GOLD ,minus_rect_p ,2 ,border_radius =6 )
+            if hover_plus_p :
+                pygame .draw .rect (self .screen ,GOLD ,plus_rect_p ,2 ,border_radius =6 )
             minus =self ._render_cached (self .font_tiny ,"-",WHITE )
             plus =self ._render_cached (self .font_tiny ,"+",WHITE )
-            self .screen .blit (minus ,minus .get_rect (center =(sx +lw //2 ,y +25 )))
-            self .screen .blit (plus ,plus .get_rect (center =(sx +lw +vw +rw //2 ,y +25 )))
-            s_surf =self ._render_cached (self .font_tiny ,str (self .config ["somma_massima"]),WHITE )
-            self .screen .blit (s_surf ,s_surf .get_rect (center =(sx +lw +vw //2 ,y +25 )))
-        elif subtraction :
+            self .screen .blit (minus ,minus .get_rect (center =(px +lw //2 ,y +25 )))
+            self .screen .blit (plus ,plus .get_rect (center =(px +lw +vw +rw //2 ,y +25 )))
+            pre_surf =self ._render_cached (self .font_tiny ,str (self .config ["prestito"]),WHITE )
+            self .screen .blit (pre_surf ,pre_surf .get_rect (center =(px +lw +vw //2 ,y +25 )))
             label_d =self ._render_cached (self .font_tiny ,"Differenza positiva",WHITE )
-            rect =label_d .get_rect (midleft =(120 ,y +25 ))
+            rect =label_d .get_rect (midleft =(1020 ,y +25 ))
             self .screen .blit (label_d ,rect )
-            toggle_rect =pygame .Rect (540 ,y ,279 ,54 )
+            toggle_rect =pygame .Rect (1400 ,y ,279 ,54 )
             hover_toggle =toggle_rect .collidepoint (mx ,my )
             bg_d =(100 ,150 ,220 )if self .config ["differenza_positiva"]and hover_toggle else SEL_BLUE if self .config ["differenza_positiva"]else (80 ,80 ,90 )if hover_toggle else (60 ,60 ,70 )
             pygame .draw .rect (self .screen ,bg_d ,toggle_rect ,border_radius =9 )
@@ -3742,35 +3853,24 @@ class Game :
                 pygame .draw .rect (self .screen ,GOLD ,toggle_rect ,2 ,border_radius =9 )
             dp_txt ="ON"if self .config ["differenza_positiva"]else "OFF"
             dp_val =self ._render_cached (self .font_tiny ,dp_txt ,WHITE )
-            rect_dv =dp_val .get_rect (center =(679 ,y +27 ))
+            rect_dv =dp_val .get_rect (center =(1400 +279 //2 ,y +27 ))
             self .screen .blit (dp_val ,rect_dv )
         elif division :
+            locked_bg =(85 ,85 ,95 )
             label_r =self ._render_cached (self .font_tiny ,"Risultato intero",WHITE )
             rect =label_r .get_rect (midleft =(120 ,y +25 ))
             self .screen .blit (label_r ,rect )
             toggle_rect =pygame .Rect (540 ,y ,279 ,54 )
-            hover_toggle =toggle_rect .collidepoint (mx ,my )
-            bg_r =(100 ,150 ,220 )if self .config ["risultato_intero"]and hover_toggle else SEL_BLUE if self .config ["risultato_intero"]else (80 ,80 ,90 )if hover_toggle else (60 ,60 ,70 )
-            pygame .draw .rect (self .screen ,bg_r ,toggle_rect ,border_radius =9 )
-            if hover_toggle :
-                pygame .draw .rect (self .screen ,GOLD ,toggle_rect ,2 ,border_radius =9 )
-            ri_txt ="ON"if self .config ["risultato_intero"]else "OFF"
+            pygame .draw .rect (self .screen ,locked_bg ,toggle_rect ,border_radius =9 )
+            ri_txt ="ON (sempre)"
             ri_val =self ._render_cached (self .font_tiny ,ri_txt ,WHITE )
             rect_rv =ri_val .get_rect (center =(679 ,y +27 ))
             self .screen .blit (ri_val ,rect_rv )
-
-            # Row 4: Riporto / Prestito
-        if addition or subtraction :
-            row =4
-            y =row_y (row )
-            if addition :
-                label_rp =self ._render_cached (self .font_tiny ,"Riporto (%)",WHITE )
-            else :
-                label_rp =self ._render_cached (self .font_tiny ,"Prestito (%)",WHITE )
+        elif addition :
+            label_rp =self ._render_cached (self .font_tiny ,"Riporto (%)",WHITE )
             rect =label_rp .get_rect (midleft =(120 ,y +25 ))
             self .screen .blit (label_rp ,rect )
             rx =540
-            lw ,vw ,rw =45 ,60 ,45
             minus_rect =pygame .Rect (rx ,y ,lw ,51 )
             plus_rect =pygame .Rect (rx +lw +vw ,y ,rw ,51 )
             hover_minus =minus_rect .collidepoint (mx ,my )
@@ -3782,11 +3882,9 @@ class Game :
                 pygame .draw .rect (self .screen ,GOLD ,minus_rect ,2 ,border_radius =6 )
             if hover_plus :
                 pygame .draw .rect (self .screen ,GOLD ,plus_rect ,2 ,border_radius =6 )
-            minus =self ._render_cached (self .font_tiny ,"-",WHITE )
-            plus =self ._render_cached (self .font_tiny ,"+",WHITE )
             self .screen .blit (minus ,minus .get_rect (center =(rx +lw //2 ,y +25 )))
             self .screen .blit (plus ,plus .get_rect (center =(rx +lw +vw +rw //2 ,y +25 )))
-            rp_val =self .config .get ("riporto"if addition else "prestito",0 )
+            rp_val =self .config .get ("riporto",0 )
             rp_surf =self ._render_cached (self .font_tiny ,str (rp_val ),WHITE )
             self .screen .blit (rp_surf ,rp_surf .get_rect (center =(rx +lw +vw //2 ,y +25 )))
 
@@ -3819,16 +3917,21 @@ class Game :
         # Row 6: Commutazione
         row =6
         y =row_y (row )
-        swap_locked =subtraction
+        swap_locked =subtraction or division
+        locked_bg =(85 ,85 ,95 )
         toggle_rect =pygame .Rect (540 ,y ,279 ,54 )
         hover_toggle =toggle_rect .collidepoint (mx ,my )and not swap_locked
-        bg_swap =(100 ,150 ,220 )if (self .config ["swap"]and hover_toggle )else SEL_BLUE if self .config ["swap"]else (80 ,80 ,90 )if hover_toggle else (60 ,60 ,70 )if not swap_locked else (60 ,60 ,70 )
         if swap_locked :
-            bg_swap =(60 ,60 ,70 )
+            bg_swap =locked_bg 
+        else :
+            bg_swap =(100 ,150 ,220 )if (self .config ["swap"]and hover_toggle )else SEL_BLUE if self .config ["swap"]else (80 ,80 ,90 )if hover_toggle else (60 ,60 ,70 )
         pygame .draw .rect (self .screen ,bg_swap ,toggle_rect ,border_radius =9 )
         if hover_toggle :
             pygame .draw .rect (self .screen ,GOLD ,toggle_rect ,2 ,border_radius =9 )
-        sw_txt ="ON"if (self .config ["swap"]or swap_locked )else "OFF"
+        if swap_locked :
+            sw_txt ="ON (sempre)"
+        else :
+            sw_txt ="ON"if self .config ["swap"]else "OFF"
         swap_label =self ._render_cached (self .font_tiny ,"Commuta A/B",WHITE )
         rect_sl =swap_label .get_rect (midleft =(120 ,y +27 ))
         self .screen .blit (swap_label ,rect_sl )
