@@ -862,6 +862,7 @@ class Game :
         self .config =self .config_by_operation [self .config_operation ]
         self .auto_timeout =DEFAULT_TIMEOUT
         self .initial_level =0
+        self .difficulty_position_by_op ={"moltiplicazione":0 ,"addizione":0 ,"sottrazione":0 ,"divisione":0 }
         self .difficulty_position =0
         self .dragging_difficulty =False
         self .story_progress ={"moltiplicazione":0 ,"addizione":0 ,"sottrazione":0 ,"divisione":0 }
@@ -913,6 +914,7 @@ class Game :
         "auto_timeout":self .auto_timeout ,
         "livello_iniziale":self .initial_level ,
         "difficolta_posizione":self .difficulty_position ,
+        "difficolta_posizione_per_op":self .difficulty_position_by_op ,
         "storia_progresso":self .story_progress ,
         "storia_completata":self .story_completed ,
         "fullscreen":self .fullscreen ,
@@ -946,8 +948,12 @@ class Game :
             self .config_story_operation =data .get ("storia_operazione",self .config_story_operation )
             self .auto_timeout =data .get ("auto_timeout",self .auto_timeout )
             self .initial_level =data .get ("livello_iniziale",self .initial_level )
-            self .difficulty_position =data .get ("difficolta_posizione",self .difficulty_position )
-            self .difficulty_position =max (self .min_difficulty_position () ,min (self .max_difficulty_position () ,self .difficulty_position ))
+            dp_by_op =data .get ("difficolta_posizione_per_op",None )
+            if isinstance (dp_by_op ,dict ):
+                self .difficulty_position_by_op .update (dp_by_op )
+            else :
+                self .difficulty_position_by_op [self .config_story_operation ]=data .get ("difficolta_posizione",self .difficulty_position )
+            self .restore_difficulty_position ()
             story_progress =data .get ("storia_progresso",self .story_progress )
             if isinstance (story_progress ,dict ):
                 for op ,val in story_progress .items ():
@@ -1199,6 +1205,16 @@ class Game :
             return 6 
         return 0 
 
+    def set_difficulty_position (self ,value ):
+        min_dp =self .min_difficulty_position ()
+        max_dp =self .max_difficulty_position ()
+        self .difficulty_position =max (min_dp ,min (max_dp ,value ))
+        self .difficulty_position_by_op [self .config_story_operation ]=self .difficulty_position
+
+    def restore_difficulty_position (self ):
+        saved =self .difficulty_position_by_op .get (self .config_story_operation ,self .min_difficulty_position ())
+        self .set_difficulty_position (saved ) 
+
     def max_initial_level (self ):
         if self .story_completed .get (self .config_story_operation ,False ):
             return self .num_story_levels -1 
@@ -1210,12 +1226,12 @@ class Game :
             return
         bar =self .diff_bar_rect
         min_dp =self .min_difficulty_position ()
-        max_dp =max (min_dp +1 ,self .max_difficulty_position ())
+        max_dp =self .max_difficulty_position ()
+        dp_range =max (1 ,max_dp -min_dp )
         ratio =(mx -bar .x )/max (1 ,bar .w )
-        new_pos =round (min_dp +ratio *(max_dp -min_dp ))
-        new_pos =max (min_dp ,min (max_dp ,new_pos ))
+        new_pos =min_dp +round (ratio *dp_range )
         if new_pos !=self .difficulty_position :
-            self .difficulty_position =new_pos
+            self .set_difficulty_position (new_pos )
             self .initial_level =min (self .initial_level ,self .max_initial_level ())
             self .save_profile_config ()
 
@@ -1926,11 +1942,10 @@ class Game :
                         ops =["moltiplicazione","addizione","sottrazione","divisione"]
                         idx =(ops .index (self .config_story_operation )+1 )%4
                         self .config_story_operation =ops [idx ]
-                        min_dp =self .min_difficulty_position ()
-                        self .difficulty_position =max (min_dp ,min (self .difficulty_position ,self .max_difficulty_position ()))
+                        self .restore_difficulty_position ()
                         self .initial_level =min (self .initial_level ,self .max_initial_level ())
                     elif self .options_cursor ==1 :
-                        self .difficulty_position =min (self .max_difficulty_position (),self .difficulty_position +1 )
+                        self .set_difficulty_position (self .difficulty_position +1 )
                         self .initial_level =min (self .initial_level ,self .max_initial_level ())
                     elif self .options_cursor ==2 :
                         self .initial_level =min (self .max_initial_level (),self .initial_level +1 )
@@ -1942,11 +1957,10 @@ class Game :
                         ops =["moltiplicazione","addizione","sottrazione","divisione"]
                         idx =(ops .index (self .config_story_operation )-1 )%4
                         self .config_story_operation =ops [idx ]
-                        min_dp =self .min_difficulty_position ()
-                        self .difficulty_position =max (min_dp ,min (self .difficulty_position ,self .max_difficulty_position ()))
+                        self .restore_difficulty_position ()
                         self .initial_level =min (self .initial_level ,self .max_initial_level ())
                     elif self .options_cursor ==1 :
-                        self .difficulty_position =max (self .min_difficulty_position (),self .difficulty_position -1 )
+                        self .set_difficulty_position (self .difficulty_position -1 )
                         self .initial_level =min (self .initial_level ,self .max_initial_level ())
                     elif self .options_cursor ==2 :
                         self .initial_level =max (0 ,self .initial_level -1 )
@@ -2208,8 +2222,7 @@ class Game :
                         if btn .collidepoint (mx ,my ):
                             self .options_cursor =0
                             self .config_story_operation =ops [i ]
-                            min_dp =self .min_difficulty_position ()
-                            self .difficulty_position =max (min_dp ,min (self .difficulty_position ,self .max_difficulty_position ()))
+                            self .restore_difficulty_position ()
                             self .initial_level =min (self .initial_level ,self .max_initial_level ())
                             self .save_profile_config ()
                             break
@@ -2217,12 +2230,12 @@ class Game :
                 if hasattr (self ,'diff_bar_rect'):
                     if hasattr (self ,'diff_left_rect')and self .diff_left_rect .collidepoint (mx ,my ):
                         self .options_cursor =1
-                        self .difficulty_position =max (self .min_difficulty_position (),self .difficulty_position -1 )
+                        self .set_difficulty_position (self .difficulty_position -1 )
                         self .initial_level =min (self .initial_level ,self .max_initial_level ())
                         self .save_profile_config ()
                     elif hasattr (self ,'diff_right_rect')and self .diff_right_rect .collidepoint (mx ,my ):
                         self .options_cursor =1
-                        self .difficulty_position =min (self .max_difficulty_position (),self .difficulty_position +1 )
+                        self .set_difficulty_position (self .difficulty_position +1 )
                         self .initial_level =min (self .initial_level ,self .max_initial_level ())
                         self .save_profile_config ()
                     elif self .diff_bar_rect .collidepoint (mx ,my ):
