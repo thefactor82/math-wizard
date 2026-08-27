@@ -812,7 +812,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.3.33"
+        self .version ="1.3.35"
 
         self .profiles =[]
         self .current_profile =""
@@ -836,38 +836,38 @@ class Game :
         self .config_operation ="moltiplicazione"
         self .config_by_operation ={}
         self .config_by_operation ["moltiplicazione"]={
-        "pool_a":[True for _ in range (20 )],
-        "pool_b":[True for _ in range (20 )],
+        "pool_a":[n <10 for n in range (20 )],
+        "pool_b":[n <10 for n in range (20 )],
         "domande":10 ,
         "swap":True ,
-        "timeout":DEFAULT_TIMEOUT ,
+        "timeout":15 ,
         }
         for op in ["addizione","sottrazione","divisione"]:
             self .config_by_operation [op ]={
-            "pool_a":[n <10 for n in range (200 )],
-            "pool_b":[n <10 for n in range (200 )],
+            "pool_a":[n <100 for n in range (200 )],
+            "pool_b":[n <100 for n in range (200 )],
             "domande":10 ,
             "swap":True ,
-            "timeout":DEFAULT_TIMEOUT ,
+            "timeout":15 ,
             }
         self .config_by_operation ["addizione"]["somma_massima"]=10
-        self .config_by_operation ["addizione"]["riporto"]=0
+        self .config_by_operation ["addizione"]["riporto"]=50
         self .config_by_operation ["sottrazione"]["differenza_positiva"]=True
-        self .config_by_operation ["sottrazione"]["prestito"]=0 
+        self .config_by_operation ["sottrazione"]["prestito"]=50 
         self .config_by_operation ["divisione"]["risultato_intero"]=True 
         self .config_by_operation ["divisione"]["swap"]=False 
         for op in ["moltiplicazione","addizione","sottrazione","divisione"]:
             self .config_by_operation[op]["risultato_minimo"] = 0
-            self .config_by_operation[op]["risultato_massimo"] = 199
+            self .config_by_operation[op]["risultato_massimo"] = 100
         self .config =self .config_by_operation [self .config_operation ]
-        self .auto_timeout =DEFAULT_TIMEOUT
-        self .initial_level =0
-        self .difficulty_position_by_op ={"moltiplicazione":0 ,"addizione":0 ,"sottrazione":0 ,"divisione":0 }
+        self .auto_timeout =15 
+        self .initial_level =1 
+        self .difficulty_position_by_op ={"moltiplicazione":0 ,"addizione":0 ,"sottrazione":0 ,"divisione":6 }
         self .difficulty_position =0
         self .dragging_difficulty =False
         self .story_progress ={"moltiplicazione":0 ,"addizione":0 ,"sottrazione":0 ,"divisione":0 }
         self .story_completed ={"moltiplicazione":False ,"addizione":False ,"sottrazione":False ,"divisione":False }
-        self .music_volume =50
+        self .music_volume =20
         self .sfx_volume =50
 
     def save_profiles (self ):
@@ -3378,7 +3378,7 @@ class Game :
             self .screen .blit (txt ,rect )
 
         mus_y =voci_y [2 ]
-        mus_lbl =self ._render_cached (self .font_medium ,"Musica",WHITE )
+        mus_lbl =self ._render_cached (self .font_medium ,"Musica:",WHITE )
         mus_rect =mus_lbl .get_rect (midright =(CANVAS_WIDTH //2 -15 ,mus_y +25 ))
         self .screen .blit (mus_lbl ,mus_rect )
         lw ,vw ,rw =45 ,60 ,45
@@ -3400,10 +3400,13 @@ class Game :
         self .screen .blit (mus_val ,mus_val .get_rect (center =(sx_m +lw +vw //2 ,mus_y +25 )))
 
         sfx_y =voci_y [3 ]
-        sfx_lbl =self ._render_cached (self .font_medium ,"Effetti sonori",WHITE )
-        sfx_rect =sfx_lbl .get_rect (midright =(CANVAS_WIDTH //2 -15 ,sfx_y +25 ))
-        self .screen .blit (sfx_lbl ,sfx_rect )
-        sx_s =CANVAS_WIDTH //2 -15 +15
+        sfx_lbl =self ._render_cached (self .font_medium ,"Effetti sonori:",WHITE )
+        sfx_lbl_w =sfx_lbl .get_width ()
+        sfx_block_w =sfx_lbl_w +15 +lw +vw +rw 
+        sfx_block_x =CANVAS_WIDTH //2 -sfx_block_w //2
+        sfx_lbl_rect =sfx_lbl .get_rect (midleft =(sfx_block_x ,sfx_y +25 ))
+        self .screen .blit (sfx_lbl ,sfx_lbl_rect )
+        sx_s =sfx_block_x +sfx_lbl_w +15
         self .opt_sfx_minus =pygame .Rect (sx_s ,sfx_y +2 ,lw ,46 )
         self .opt_sfx_plus =pygame .Rect (sx_s +lw +vw ,sfx_y +2 ,rw ,46 )
         hover_sm =self .opt_sfx_minus .collidepoint (mx ,my )

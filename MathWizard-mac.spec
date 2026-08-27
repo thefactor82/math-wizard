@@ -6,11 +6,9 @@
 # architetture: l'architettura target arriva dalla variabile d'ambiente
 # TARGET_ARCH (arm64 | x86_64), altrimenti si usa quella della macchina di
 # build.
-# - grafica E data/ incorporati nel onefile (datas): fallback che funziona
-#   anche sotto App Translocation (dati accanto all'app inaccessibili).
-# - il workflow copia comunque data/ nella cartella che contiene
-#   MathWizard.app: il gioco (data_path) preferisce la cartella esterna,
-#   quindi i JSON restano modificabili quando l'app e' nella posizione reale.
+# - grafica, data/ e tutte le risorse incorporati nel onefile dentro il bundle:
+#   l'app e' completamente autosufficiente e funziona anche sotto App
+#   Translocation (dati accanto all'app inaccessibili).
 # - icona MathWizard.icns generata nel workflow da graphics/misc/icon.png
 
 import os
@@ -58,8 +56,8 @@ app = BUNDLE(
     icon='MathWizard.icns',
     bundle_identifier='com.thefactor82.mathwizard',
     info_plist={
-        'CFBundleShortVersionString': '1.0.25',
-        'CFBundleVersion': '1.0.25',
+        'CFBundleShortVersionString': '1.3.35',
+        'CFBundleVersion': '1.3.35',
         'NSHighResolutionCapable': True,
     },
 )

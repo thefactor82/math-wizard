@@ -4,7 +4,8 @@
 # Usata anche dal workflow .github/workflows/build-windows.yml.
 # - icona cercata in MathWizard.ico (radice repo, generata da graphics/misc/icon.png);
 #   se assente si costruisce senza icona.
-# - data/ copiata dal workflow accanto all'exe (data_path()).
+# - data/ e tutte le risorse (grafica, font, musica) incorporate nel onefile:
+#   l'exe e' completamente autosufficiente (resource_path/_MEIPASS).
 
 import os
 
@@ -18,7 +19,7 @@ a = Analysis(
     ['math-wizard.py'],
     pathex=[],
     binaries=[],
-    datas=[('graphics', 'graphics'), ('fonts', 'fonts'), ('music', 'music')],
+    datas=[('graphics', 'graphics'), ('data', 'data'), ('fonts', 'fonts'), ('music', 'music')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
