@@ -822,7 +822,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.3.36"
+        self .version ="1.3.37"
 
         self .profiles =[]
         self .current_profile =""
@@ -4378,7 +4378,11 @@ class Game :
         overlay .fill (BG_DARK )
         self .screen .blit (overlay ,(0 ,0 ))
 
-        self .draw_text_shadow (self .font_title ,f"LIVELLO {self .effective_level ()+1 } COMPLETATO",GOLD ,center =(CANVAS_WIDTH //2 ,120 ))
+        if self .mode =="auto":
+            numero_livello =self .level +1
+        else :
+            numero_livello =self .effective_level ()+1
+        self .draw_text_shadow (self .font_title ,f"LIVELLO {numero_livello } COMPLETATO",GOLD ,center =(CANVAS_WIDTH //2 ,120 ))
 
         tot =len (self .monster_times )
         correct_count =self .stats .get (self .level ,{}).get ("corrette",0 )
