@@ -822,7 +822,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.3.38"
+        self .version ="1.3.39"
 
         self .profiles =[]
         self .current_profile =""
@@ -1231,6 +1231,9 @@ class Game :
             return self .num_story_levels -1 
         prog =max (0 ,self .story_progress .get (self .config_story_operation ,0 ))
         return max (0 ,min (self .num_story_levels -1 ,prog ))
+
+    def _propose_initial_level (self ):
+        self .initial_level =self .max_initial_level ()
 
     def _update_difficulty_from_mouse (self ,mx ):
         if not hasattr (self ,'diff_bar_rect'):
@@ -1892,10 +1895,12 @@ class Game :
             elif self .state =="menu":
                 if event .key ==pygame .K_RETURN :
                     if self .menu_cursor ==0 :
+                        self ._propose_initial_level ()
                         self .state ="options_auto"
                     else :
                         self .show_config ()
                 elif event .key ==pygame .K_1 :
+                    self ._propose_initial_level ()
                     self .state ="options_auto"
                 elif event .key ==pygame .K_2 :
                     self .show_config ()
@@ -1962,7 +1967,7 @@ class Game :
                         idx =(ops .index (self .config_story_operation )+1 )%4
                         self .config_story_operation =ops [idx ]
                         self .restore_difficulty_position ()
-                        self .initial_level =min (self .initial_level ,self .max_initial_level ())
+                        self ._propose_initial_level ()
                     elif self .options_cursor ==1 :
                         self .set_difficulty_position (self .difficulty_position +1 )
                         self .initial_level =min (self .initial_level ,self .max_initial_level ())
@@ -1977,7 +1982,7 @@ class Game :
                         idx =(ops .index (self .config_story_operation )-1 )%4
                         self .config_story_operation =ops [idx ]
                         self .restore_difficulty_position ()
-                        self .initial_level =min (self .initial_level ,self .max_initial_level ())
+                        self ._propose_initial_level ()
                     elif self .options_cursor ==1 :
                         self .set_difficulty_position (self .difficulty_position -1 )
                         self .initial_level =min (self .initial_level ,self .max_initial_level ())
@@ -2106,6 +2111,7 @@ class Game :
                 for i ,hit in enumerate (getattr (self ,'menu_btn_rects',[ ])):
                     if hit .collidepoint (mx ,my ):
                         if i ==0 :
+                            self ._propose_initial_level ()
                             self .state ="options_auto"
                         else :
                             self .show_config ()
