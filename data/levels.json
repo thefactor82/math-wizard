@@ -1014,38 +1014,80 @@
   ],
   "divisione": [
     {
-      "pool_a": "2-10",
-      "pool_b": "1-2",
+      "pool_a": "1-9",
+      "pool_b": "1-3",
+      "min_value": 1,
+      "max_value": 4
+    },
+    {
+      "pool_a": "1-10",
+      "pool_b": "1-3",
       "min_value": 1,
       "max_value": 5
     },
     {
-      "pool_a": "2-12",
+      "pool_a": "1-12",
       "pool_b": "1-3",
       "min_value": 1,
       "max_value": 6
     },
     {
-      "pool_a": "2-14",
+      "pool_a": "1-14",
       "pool_b": "1-4",
       "min_value": 1,
       "max_value": 7
     },
     {
-      "pool_a": "2-16",
+      "pool_a": "1-16",
       "pool_b": "1-4",
       "min_value": 1,
       "max_value": 8
     },
     {
-      "pool_a": "2-18",
+      "pool_a": "1-18",
       "pool_b": "1-5",
       "min_value": 1,
       "max_value": 9
     },
     {
+      "pool_a": "1-20",
+      "pool_b": "1-5",
+      "min_value": 1,
+      "max_value": 10
+    },
+    {
       "pool_a": "2-20",
       "pool_b": "1-5",
+      "min_value": 1,
+      "max_value": 10
+    },
+    {
+      "pool_a": "2-20",
+      "pool_b": "1-6",
+      "min_value": 1,
+      "max_value": 10
+    },
+    {
+      "pool_a": "2-20",
+      "pool_b": "1-7",
+      "min_value": 1,
+      "max_value": 10
+    },
+    {
+      "pool_a": "2-20",
+      "pool_b": "1-8",
+      "min_value": 1,
+      "max_value": 10
+    },
+    {
+      "pool_a": "2-20",
+      "pool_b": "1-9",
+      "min_value": 1,
+      "max_value": 10
+    },    
+    {
+      "pool_a": "2-20",
+      "pool_b": "1-10",
       "min_value": 1,
       "max_value": 10
     },
@@ -1056,262 +1098,190 @@
       "max_value": 10
     },
     {
+      "pool_a": "2-24",
+      "pool_b": "2-6",
+      "min_value": 2,
+      "max_value": 10
+    },
+    {
+      "pool_a": "2-26",
+      "pool_b": "2-6",
+      "min_value": 2,
+      "max_value": 10
+    },
+    {
+      "pool_a": "2-26",
+      "pool_b": "2-6",
+      "min_value": 2,
+      "max_value": 12
+    },
+    {
       "pool_a": "2-28",
       "pool_b": "2-6",
-      "min_value": 1,
+      "min_value": 2,
+      "max_value": 12
+    },
+    {
+      "pool_a": "2-30",
+      "pool_b": "2-6",
+      "min_value": 2,
       "max_value": 12
     },
     {
       "pool_a": "2-30",
       "pool_b": "2-7",
-      "min_value": 1,
+      "min_value": 3,
+      "max_value": 12
+    },
+    {
+      "pool_a": "2-32",
+      "pool_b": "2-7",
+      "min_value": 3,
+      "max_value": 12
+    },
+    {
+      "pool_a": "2-34",
+      "pool_b": "2-7",
+      "min_value": 3,
       "max_value": 12
     },
     {
       "pool_a": "2-36",
       "pool_b": "2-8",
-      "min_value": 1,
-      "max_value": 14
+      "min_value": 3,
+      "max_value": 12
     },
     {
       "pool_a": "2-40",
       "pool_b": "2-9",
-      "min_value": 1,
-      "max_value": 15
+      "min_value": 3,
+      "max_value": 12
     },
     {
-      "pool_a": "2-42",
+      "pool_a": "2-40",
       "pool_b": "2-10",
-      "min_value": 1,
-      "max_value": 15
+      "min_value": 3,
+      "max_value": 12
     },
     {
-      "pool_a": "2-48",
+      "pool_a": "2-45",
       "pool_b": "3-10",
-      "min_value": 1,
-      "max_value": 16
+      "min_value": 3,
+      "max_value": 12
     },
     {
       "pool_a": "2-50",
       "pool_b": "3-10",
-      "min_value": 1,
-      "max_value": 16
+      "min_value": 3,
+      "max_value": 12
     },
     {
-      "pool_a": "2-54",
+      "pool_a": "2-55",
       "pool_b": "3-11",
-      "min_value": 1,
-      "max_value": 18
+      "min_value": 3,
+      "max_value": 12
     },
     {
       "pool_a": "2-60",
       "pool_b": "3-12",
-      "min_value": 2,
-      "max_value": 20
+      "min_value": 3,
+      "max_value": 12
     },
     {
-      "pool_a": "2-63",
-      "pool_b": "3-13",
-      "min_value": 2,
-      "max_value": 20
+      "pool_a": "2-65",
+      "pool_b": "3-12",
+      "min_value": 3,
+      "max_value": 12
     },
     {
-      "pool_a": "2-66",
+      "pool_a": "2-70",
       "pool_b": "3-14",
-      "min_value": 2,
-      "max_value": 22
+      "min_value": 3,
+      "max_value": 12
     },
     {
       "pool_a": "2-72",
       "pool_b": "4-14",
-      "min_value": 2,
-      "max_value": 22
+      "min_value": 3,
+      "max_value": 12
     },
     {
       "pool_a": "2-75",
       "pool_b": "4-15",
-      "min_value": 2,
-      "max_value": 24
+      "min_value": 3,
+      "max_value": 12
     },
     {
       "pool_a": "2-80",
-      "pool_b": "4-16",
-      "min_value": 2,
-      "max_value": 25
+      "pool_b": "4-15",
+      "min_value": 5,
+      "max_value": 12
     },
     {
-      "pool_a": "2-84",
-      "pool_b": "4-17",
-      "min_value": 2,
-      "max_value": 26
+      "pool_a": "2-85",
+      "pool_b": "4-15",
+      "min_value": 5,
+      "max_value": 14
     },
     {
       "pool_a": "2-90",
-      "pool_b": "4-18",
-      "min_value": 2,
-      "max_value": 28
-    },
-    {
-      "pool_a": "2-96",
-      "pool_b": "5-18",
-      "min_value": 2,
-      "max_value": 30
-    },
-    {
-      "pool_a": "2-100",
-      "pool_b": "5-19",
-      "min_value": 2,
-      "max_value": 30
-    },
-    {
-      "pool_a": "2-105",
-      "pool_b": "5-20",
-      "min_value": 3,
-      "max_value": 32
-    },
-    {
-      "pool_a": "2-108",
-      "pool_b": "5-21",
-      "min_value": 3,
-      "max_value": 32
-    },
-    {
-      "pool_a": "2-112",
-      "pool_b": "5-22",
-      "min_value": 3,
-      "max_value": 34
-    },
-    {
-      "pool_a": "2-120",
-      "pool_b": "5-23",
-      "min_value": 3,
-      "max_value": 36
-    },
-    {
-      "pool_a": "2-125",
-      "pool_b": "5-24",
-      "min_value": 3,
-      "max_value": 36
-    },
-    {
-      "pool_a": "2-128",
-      "pool_b": "6-24",
-      "min_value": 3,
-      "max_value": 38
-    },
-    {
-      "pool_a": "2-135",
-      "pool_b": "6-25",
-      "min_value": 3,
-      "max_value": 40
-    },
-    {
-      "pool_a": "2-140",
-      "pool_b": "6-26",
-      "min_value": 3,
-      "max_value": 40
-    },
-    {
-      "pool_a": "2-144",
-      "pool_b": "6-27",
-      "min_value": 3,
-      "max_value": 42
-    },
-    {
-      "pool_a": "2-150",
-      "pool_b": "6-28",
-      "min_value": 4,
-      "max_value": 42
-    },
-    {
-      "pool_a": "2-156",
-      "pool_b": "7-28",
-      "min_value": 4,
-      "max_value": 44
-    },
-    {
-      "pool_a": "2-160",
-      "pool_b": "7-30",
-      "min_value": 4,
-      "max_value": 44
-    },
-    {
-      "pool_a": "2-168",
-      "pool_b": "7-32",
-      "min_value": 4,
-      "max_value": 46
-    },
-    {
-      "pool_a": "2-175",
-      "pool_b": "7-33",
-      "min_value": 4,
-      "max_value": 46
-    },
-    {
-      "pool_a": "2-180",
-      "pool_b": "8-34",
-      "min_value": 4,
-      "max_value": 48
-    },
-    {
-      "pool_a": "2-186",
-      "pool_b": "8-35",
-      "min_value": 4,
-      "max_value": 48
-    },
-    {
-      "pool_a": "2-192",
-      "pool_b": "8-36",
-      "min_value": 4,
-      "max_value": 48
-    },
-    {
-      "pool_a": "2-196",
-      "pool_b": "8-38",
+      "pool_b": "4-15",
       "min_value": 5,
-      "max_value": 49
+      "max_value": 15
     },
     {
-      "pool_a": "2-200",
-      "pool_b": "8-40",
+      "pool_a": "5-95",
+      "pool_b": "4-15",
       "min_value": 5,
-      "max_value": 50
+      "max_value": 15
     },
     {
-      "pool_a": "2-200",
-      "pool_b": "8-42",
+      "pool_a": "10-100",
+      "pool_b": "5-15",
       "min_value": 5,
-      "max_value": 50
+      "max_value": 15
     },
     {
-      "pool_a": "2-200",
-      "pool_b": "9-42",
+      "pool_a": "20-110",
+      "pool_b": "5-15",
       "min_value": 5,
-      "max_value": 50
+      "max_value": 15
     },
     {
-      "pool_a": "2-200",
-      "pool_b": "9-44",
+      "pool_a": "25-120",
+      "pool_b": "5-15",
       "min_value": 5,
-      "max_value": 50
+      "max_value": 15
     },
     {
-      "pool_a": "2-200",
-      "pool_b": "10-44",
+      "pool_a": "30-130",
+      "pool_b": "5-16",
       "min_value": 5,
-      "max_value": 50
+      "max_value": 16
     },
     {
-      "pool_a": "2-200",
-      "pool_b": "10-46",
+      "pool_a": "35-140",
+      "pool_b": "5-16",
       "min_value": 5,
-      "max_value": 50
+      "max_value": 16
     },
     {
-      "pool_a": "2-200",
-      "pool_b": "10-50",
+      "pool_a": "40-150",
+      "pool_b": "5-16",
       "min_value": 5,
-      "max_value": 50
+      "max_value": 16
+    },
+    {
+      "pool_a": "45-150",
+      "pool_b": "6-16",
+      "min_value": 6,
+      "max_value": 16
+    },
+    {
+      "pool_a": "50-150",
+      "pool_b": "6-20",
+      "min_value": 6,
+      "max_value": 20
     }
   ],
   "training": {

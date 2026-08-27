@@ -822,7 +822,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.3.37"
+        self .version ="1.3.38"
 
         self .profiles =[]
         self .current_profile =""
@@ -1208,7 +1208,8 @@ class Game :
 
     def max_difficulty_position (self ):
         total =len (LEVELS .get (self .config_story_operation ,[]))
-        return max (0 ,total -self .num_story_levels )
+        skip =max (0 ,self .min_difficulty_position ()-1 )
+        return max (0 ,total -self .num_story_levels +skip )
 
     def min_difficulty_position (self ):
         if self .config_story_operation =="divisione":
