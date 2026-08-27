@@ -124,7 +124,7 @@
     "tipo": "testo",
     "bg": "cavern3",
     "testo": "Dopo un grande numero di Hop affrontati, finalmente NOMEPROFILOINUSO è arrivat-o-a- nelle profondità di una scintillante grotta...\n\nIl Re aveva ragione!\n\nUno splendido ciondolo è appoggiato sopra una roccia, al centro della caverna.\n\nNOMEPROFILOINUSO lo prende e si appresta a fare ritorno dal suo Re.",
-    "oggetto": "pendant.png"
+    "oggetto": "pendant"
   },
   {
     "tipo": "livello",
@@ -210,7 +210,7 @@
     "player_out": "sx",
     "player_entrance": "y",
     "monster_in": "dx",
-    "boss": "monster99",
+    "boss": "monster",
     "boss_in": "dx",
     "scenes": [
       {

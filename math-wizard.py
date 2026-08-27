@@ -322,6 +322,13 @@ for op in ["moltiplicazione","addizione","sottrazione","divisione"]:
     if op not in LEVELS or not LEVELS [op ]:
         LEVELS [op ]=[default_level ]
 
+STORY_ELEMENTS ={
+    "moltiplicazione":"water",
+    "addizione":"earth",
+    "sottrazione":"wind",
+    "divisione":"fire",
+}
+
 NUMPAD_DIGIT ={
 pygame .K_KP0 :0 ,pygame .K_KP_0 :0 ,
 pygame .K_KP1 :1 ,pygame .K_KP_1 :1 ,
@@ -639,6 +646,7 @@ class Game :
         self .previous_monster =None 
 
         self .boss_data =None 
+        self .boss_element ="water" 
 
         self .heart_red =safe_load_image (resource_path ("graphics/misc/lives.png"),(53 ,53 ))
         self .heart_grey =safe_load_image (resource_path ("graphics/misc/lives_lost.png"),(53 ,53 ))
@@ -687,14 +695,16 @@ class Game :
         return surf 
 
     def _get_boss_data (self ):
-        if self .boss_data is not None :
+        element =STORY_ELEMENTS .get (self .config_story_operation ,"water")
+        if self .boss_data is not None and self .boss_element ==element :
             return self .boss_data 
-        boss_path =resource_path ("graphics/monsters/monster99.png")
+        boss_path =resource_path ("graphics/monsters/monster_%s.png"%element )
         if os .path .exists (boss_path ):
             boss_walk =self .load_spritesheet (boss_path ,585 ,2 ,row =0 ,rows =2 ,cols =2 ,frame_offset =0 ,flip_x =False )
             boss_hit =self .load_spritesheet (boss_path ,585 ,1 ,row =1 ,rows =2 ,cols =2 ,frame_offset =0 ,flip_x =False )[0 ]
             boss_defeated =self .load_spritesheet (boss_path ,585 ,1 ,row =1 ,rows =2 ,cols =2 ,frame_offset =1 ,flip_x =False )[0 ]
             self .boss_data ={"walk":boss_walk ,"hit":boss_hit ,"defeated":boss_defeated }
+            self .boss_element =element 
         return self .boss_data 
 
     def _get_monster (self ,idx ):
@@ -812,7 +822,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
 
-        self .version ="1.3.35"
+        self .version ="1.3.36"
 
         self .profiles =[]
         self .current_profile =""
@@ -1361,11 +1371,19 @@ class Game :
             self .story_object_img =None 
             self .story_object_alpha =0 
             if obj_file :
-                obj_img =safe_load_image (resource_path (os .path .join ("graphics","misc",obj_file )))
-                ow ,oh =obj_img .get_size ()
-                if oh >450 :
-                    s =450 /oh 
-                    obj_img =pygame .transform .scale (obj_img ,(max (1 ,int (ow *s )),450 ))
+                if obj_file .startswith ("pendant"):
+                    element =STORY_ELEMENTS .get (self .config_story_operation ,"water")
+                    obj_file ="pendant_%s.png"%element 
+                    obj_img =safe_load_image (resource_path (os .path .join ("graphics","misc",obj_file )))
+                    ow ,oh =obj_img .get_size ()
+                    s =1.2
+                    obj_img =pygame .transform .scale (obj_img ,(max (1 ,int (ow *s )),max (1 ,int (oh *s ))))
+                else :
+                    obj_img =safe_load_image (resource_path (os .path .join ("graphics","misc",obj_file )))
+                    ow ,oh =obj_img .get_size ()
+                    if oh >450 :
+                        s =450 /oh 
+                        obj_img =pygame .transform .scale (obj_img ,(max (1 ,int (ow *s )),450 ))
                 self .story_object_img =obj_img 
             if self .story_first_step :
                 self .story_fade_alpha =255 
@@ -3484,8 +3502,9 @@ class Game :
         bar_x =430
         bar_w =420
         bar_h =22
+        row_gap =140
         for i ,(key ,label )in enumerate (ops ):
-            y =260 +i *100
+            y =240 +i *row_gap
             lv =self .num_story_levels if self .story_completed .get (key ,False )else max (0 ,self .story_progress .get (key ,0 ))
             total =self .num_story_levels 
             pct =int (100 *lv /max (1 ,total ))
@@ -3499,6 +3518,15 @@ class Game :
             pct_txt =self ._render_cached (self .font_small ,f"{pct }%",WHITE )
             pct_rect =pct_txt .get_rect (midleft =(bar_x +bar_w +15 ,y +bar_h //2 ))
             self .screen .blit (pct_txt ,pct_rect )
+            if self .story_completed .get (key ,False ):
+                element =STORY_ELEMENTS .get (key ,"water")
+                if not hasattr (self ,"_pendant_imgs"):
+                    self ._pendant_imgs ={}
+                if self ._pendant_imgs .get (element )is None :
+                    img =safe_load_image (resource_path (os .path .join ("graphics","misc","pendant_%s.png"%element )))
+                    self ._pendant_imgs [element ]=scale_to_fit (img ,(100 ,100 ))
+                pin =self ._pendant_imgs [element ]
+                self .screen .blit (pin ,pin .get_rect (midleft =(bar_x +bar_w +140 ,y +bar_h //2 )))
 
         back_txt =self ._render_cached (self .font_small ,"Indietro",WHITE )
         back_rect =back_txt .get_rect (center =(CANVAS_WIDTH //2 ,CANVAS_HEIGHT -30 ))
