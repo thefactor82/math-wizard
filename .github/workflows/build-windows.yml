@@ -60,8 +60,8 @@ jobs:
           $exe = Get-Item dist\MathWizard.exe -ErrorAction Stop
           if ($exe.Length -lt 1000000) { Write-Error "exe sospettosamente piccolo: $($exe.Length) bytes"; exit 1 }
           Write-Host "exe OK: $($exe.Length) bytes"
-          $listing = python -m PyInstaller.utils.cliutils.archive_viewer -l -b "dist\MathWizard.exe" 2>&1
-          foreach ($needle in @('data\story.json', 'data\levels.json', 'fonts', 'music')) {
+          $listing = (python -m PyInstaller.utils.cliutils.archive_viewer -l -b "dist\MathWizard.exe" 2>&1) -join "`n"
+          foreach ($needle in @('data\story.json', 'data\levels.json', 'fonts\DynaPuff.ttf', 'music\background.mp3')) {
             if ($listing -notmatch [regex]::Escape($needle)) { Write-Error "dato mancante dall'exe: $needle"; exit 1 }
           }
           Write-Host "data/risorse incorporati OK"
