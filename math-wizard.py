@@ -520,6 +520,8 @@ class Game :
         self .monster_y_offset =0 
         self .debug =False 
         self .debug_buf =""
+        self .positive_difference =True 
+        self .integer_result =True
         self .scene_phase =None 
         self .scene_data =None 
         self .scene_npcs =[]
@@ -949,7 +951,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if normalize_story_entry (e ) .get ("type")=="level")
 
-        self .version ="1.3.43"
+        self .version ="1.3.44"
 
         self .profiles =[]
         self .current_profile =""
@@ -1343,6 +1345,7 @@ class Game :
             self .operation =self .config_story_operation 
             self .config =self .config_by_operation .get (self .config_story_operation ,self .config )
             self .integer_result =op_cfg .get ("risultato_intero",True )
+            self .positive_difference =op_cfg .get ("differenza_positiva",True )
             if self .initial_level >0 :
                 self .state =GAME_STATE_LOADING
                 self .loading_start =pygame .time .get_ticks ()
