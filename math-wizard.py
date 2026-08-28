@@ -326,18 +326,19 @@ def is_answer_correct (risposta ,atteso ):
 
 def generate_addition_operands (pool_a ,pool_b ,reinforce_queue ,max_sum =None ):
     if reinforce_queue and random .random ()<0.4 :
-        return reinforce_queue .popleft ()
+        a ,b =reinforce_queue .popleft ()
+        return a ,b ,True
     a =random .choice (pool_a )
     b =random .choice (pool_b )
     if max_sum is None :
-        return a ,b 
+        return a ,b ,False
     for _ in range (50 ):
         if a +b <=max_sum :
-            return a ,b 
+            return a ,b ,False
         a =random .choice (pool_a )
         b =random .choice (pool_b )
     fallback_b =0 if 0 in pool_b else random .choice (pool_b )
-    return min (pool_a ,key =lambda x :abs (x -max_sum )),fallback_b
+    return min (pool_a ,key =lambda x :abs (x -max_sum )),fallback_b,False
 
 
 def needs_carry (a ,b ):
@@ -367,11 +368,13 @@ def select_operands (pool_a ,pool_b ,reinforce_queue ,operation ,integer_result 
         need_borrow =random .random ()<borrow_prob
     for _ in range (50 ):
         if operation =="divisione":
-            a ,b =generate_division_operands (pool_a ,pool_b ,reinforce_queue ,integer_result )
+            a ,b ,from_queue =generate_division_operands (pool_a ,pool_b ,reinforce_queue ,integer_result )
         elif operation =="addizione":
-            a ,b =generate_addition_operands (pool_a ,pool_b ,reinforce_queue ,max_sum )
+            a ,b ,from_queue =generate_addition_operands (pool_a ,pool_b ,reinforce_queue ,max_sum )
         else :
-            a ,b =generate_operands (pool_a ,pool_b ,reinforce_queue )
+            a ,b ,from_queue =generate_operands (pool_a ,pool_b ,reinforce_queue )
+        if from_queue :
+            return a ,b ,False,from_queue
         res =calculate_result (a ,b ,operation ,integer_result )
         if min_value is not None and res <min_value :
             continue
@@ -387,9 +390,9 @@ def select_operands (pool_a ,pool_b ,reinforce_queue ,operation ,integer_result 
             else :
                 if needs_borrow (a ,b )!=need_borrow or needs_borrow (b ,a )!=need_borrow :
                     continue
-        return a ,b ,False
+        return a ,b ,False,False
     a ,b =random .choice (pool_a ),random .choice (pool_b )
-    return a ,b ,True
+    return a ,b ,True,False
 
 LEVELS ={}
 for src in (data_path ,resource_path ):
@@ -443,43 +446,46 @@ pygame .K_KP9 :9 ,pygame .K_KP_9 :9 ,
 
 def generate_operands (pool_a ,pool_b ,reinforce_queue ):
     if reinforce_queue and random .random ()<0.4 :
-        return reinforce_queue .popleft ()
-    return random .choice (pool_a ),random .choice (pool_b )
+        a ,b =reinforce_queue .popleft ()
+        return a ,b ,True
+    return random .choice (pool_a ),random .choice (pool_b ),False
 
 def generate_division_operands (pool_a ,pool_b ,reinforce_queue ,integer_result =True ):
     valid_b =[b for b in pool_b if b !=0 ]
     if not valid_b :
-        return 1 ,1 
+        return 1 ,1 ,False
     if integer_result :
-        while reinforce_queue :
+        for _ in range (len (reinforce_queue )):
             a ,b =reinforce_queue .popleft ()
             if b !=0 and a >0 and a %b ==0 :
-                return a ,b 
+                return a ,b ,True
+            reinforce_queue .append ((a ,b ))
         for _ in range (50 ):
             b =random .choice (valid_b )
             valid_a =[a for a in pool_a if a >0 and a %b ==0 ]
             if valid_a :
-                return random .choice (valid_a ),b 
+                return random .choice (valid_a ),b ,False
         b =random .choice (valid_b )
-        return b ,b 
+        return b ,b ,False
 
-    while reinforce_queue :
+    for _ in range (len (reinforce_queue )):
         a ,b =reinforce_queue .popleft ()
         if b !=0 and finite_decimal_places (a ,b )is not None :
-            return a ,b 
+            return a ,b ,True
+        reinforce_queue .append ((a ,b ))
 
     for _ in range (100 ):
         b =random .choice (valid_b )
         a =random .choice (pool_a )
         if finite_decimal_places (a ,b )is not None :
             if a %b !=0 or pool_b .count (b )==1 :
-                return a ,b 
+                return a ,b ,False
     for _ in range (50 ):
         b =random .choice (valid_b )
         a =random .choice (pool_a )
         if finite_decimal_places (a ,b )is not None :
-            return a ,b 
-    return random .choice (pool_a ),random .choice (valid_b )
+            return a ,b ,False
+    return random .choice (pool_a ),random .choice (valid_b ),False
 
 class Game :
     def __init__ (self ):
@@ -951,7 +957,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if normalize_story_entry (e ) .get ("type")=="level")
 
-        self .version ="1.3.44"
+        self .version ="1.3.45"
 
         self .profiles =[]
         self .current_profile =""
@@ -1171,6 +1177,9 @@ class Game :
         self .a =0
         self .b =0
         self ._operands_fallback =False 
+        self ._from_queue =False 
+        self ._prev_from_queue =False 
+        self ._no_queue_next =False 
         self .prev_a =-1 
         self .prev_b =-1 
         self .expected_result =0 
@@ -1796,12 +1805,12 @@ class Game :
             lv =self .effective_level ()
             lv_data =self .levels [lv ]
             for _ in range (20 ):
-                a ,b ,fb =select_operands (lv_data ["pool_a"],lv_data ["pool_b"],deque (),self .operation ,self .integer_result ,min_value =lv_data .get ("min_value"),max_value =lv_data .get ("max_value"),carry_prob =lv_data .get ("carry"),borrow_prob =lv_data .get ("borrow"))
+                a ,b ,fb ,from_queue =select_operands (lv_data ["pool_a"],lv_data ["pool_b"],deque (),self .operation ,self .integer_result ,min_value =lv_data .get ("min_value"),max_value =lv_data .get ("max_value"),carry_prob =lv_data .get ("carry"),borrow_prob =lv_data .get ("borrow"))
                 if (a ,b )!=prev :
                     return a ,b ,fb
         else :
             for _ in range (20 ):
-                a ,b ,fb =select_operands (self .pool_a ,self .pool_b ,deque (),self .operation ,self .integer_result ,self .max_sum )
+                a ,b ,fb ,from_queue =select_operands (self .pool_a ,self .pool_b ,deque (),self .operation ,self .integer_result ,self .max_sum )
                 if (a ,b )!=prev :
                     return a ,b ,fb
         return a ,b ,fb 
@@ -1820,12 +1829,19 @@ class Game :
             lv =self .effective_level ()
             lv_data =self .levels [lv ]
             self .operation =self .config_story_operation 
-            self .a ,self .b =select_operands (lv_data ["pool_a"],lv_data ["pool_b"],self .reinforcement_queue ,self .operation ,self .integer_result ,min_value =lv_data .get ("min_value"),max_value =lv_data .get ("max_value"),carry_prob =lv_data .get ("carry"),borrow_prob =lv_data .get ("borrow"))
+            allow_queue =not self ._no_queue_next and not self ._prev_from_queue
+            self ._no_queue_next =False
+            self .a ,self .b ,self ._operands_fallback ,self ._from_queue =select_operands (lv_data ["pool_a"],lv_data ["pool_b"],self .reinforcement_queue if allow_queue else deque (),self .operation ,self .integer_result ,min_value =lv_data .get ("min_value"),max_value =lv_data .get ("max_value"),carry_prob =lv_data .get ("carry"),borrow_prob =lv_data .get ("borrow"))
+            self ._prev_from_queue =self ._from_queue
             if self .operation =="sottrazione"and self .a <self .b :
                 self .a ,self .b =self .b ,self .a 
-            if (self .a ,self .b )==(self .prev_a ,self .prev_b ):
+            if not self ._from_queue and (self .a ,self .b )==(self .prev_a ,self .prev_b ):
                 if self .operation =="divisione":
                     self .a ,self .b ,self ._operands_fallback =self ._new_distinct_pair ()
+                elif self .operation =="sottrazione"and self .positive_difference :
+                    self .a ,self .b ,self ._operands_fallback =self ._new_distinct_pair ()
+                    if self .a <self .b :
+                        self .a ,self .b =self .b ,self .a 
                 else :
                     self .a ,self .b =self .b ,self .a 
             self .expected_result =calculate_result (self .a ,self .b ,self .operation ,self .integer_result )
@@ -1875,7 +1891,10 @@ class Game :
             lv =self .effective_level ()
             lv_data =self .levels [lv ]
             self .operation =self .config_story_operation 
-            self .a ,self .b ,self ._operands_fallback =select_operands (lv_data ["pool_a"],lv_data ["pool_b"],self .reinforcement_queue ,self .operation ,self .integer_result ,min_value =lv_data .get ("min_value"),max_value =lv_data .get ("max_value"),carry_prob =lv_data .get ("carry"),borrow_prob =lv_data .get ("borrow"))
+            allow_queue =not self ._no_queue_next and not self ._prev_from_queue
+            self ._no_queue_next =False
+            self .a ,self .b ,self ._operands_fallback ,self ._from_queue =select_operands (lv_data ["pool_a"],lv_data ["pool_b"],self .reinforcement_queue if allow_queue else deque (),self .operation ,self .integer_result ,min_value =lv_data .get ("min_value"),max_value =lv_data .get ("max_value"),carry_prob =lv_data .get ("carry"),borrow_prob =lv_data .get ("borrow"))
+            self ._prev_from_queue =self ._from_queue
             if self .operation =="sottrazione"and self .a <self .b :
                 self .a ,self .b =self .b ,self .a 
             self .questions_asked +=1
@@ -1886,10 +1905,12 @@ class Game :
                 self .player_exit_x =112 
                 self .state =GAME_STATE_PLAYER_EXIT
                 return 
-            self .a ,self .b ,self ._operands_fallback =select_operands (
+            allow_queue =not self ._no_queue_next and not self ._prev_from_queue
+            self ._no_queue_next =False
+            self .a ,self .b ,self ._operands_fallback ,self ._from_queue =select_operands (
             self .pool_a ,
             self .pool_b ,
-            self .reinforcement_queue ,
+            self .reinforcement_queue if allow_queue else deque () ,
             self .operation ,
             self .integer_result ,
             self .max_sum ,
@@ -1899,14 +1920,15 @@ class Game :
             borrow_prob =self .config .get ("prestito",0 )/100 if self .operation =="sottrazione"else None ,
             positive_diff =self .positive_difference ,
             )
-            if self .swap_operandi and random .random ()<0.5 :
+            self ._prev_from_queue =self ._from_queue
+            if self .swap_operandi and random .random ()<0.5 and not self ._from_queue :
                 if self .operation !="divisione"or not self .integer_result :
                     self .a ,self .b =self .b ,self .a 
             if self .operation =="sottrazione"and self .positive_difference and self .a <self .b :
                 self .a ,self .b =self .b ,self .a 
             self .questions_asked +=1 
 
-        if (self .a ,self .b )==(self .prev_a ,self .prev_b ):
+        if not self ._from_queue and (self .a ,self .b )==(self .prev_a ,self .prev_b ):
             if self .operation =="divisione":
                 self .a ,self .b ,self ._operands_fallback =self ._new_distinct_pair ()
             elif self .a ==self .b :
@@ -1921,8 +1943,10 @@ class Game :
                     self .b =random .choice (pool_a if self .mode =="auto"else self .pool_a )
             else :
                 self .a ,self .b =self .b ,self .a 
-                if self .mode =="fixed"and self .operation =="sottrazione"and self .positive_difference and self .a <self .b :
-                    self .a ,self .b =self .b ,self .a 
+                if self .operation =="sottrazione"and self .positive_difference :
+                    self .a ,self .b ,self ._operands_fallback =self ._new_distinct_pair ()
+                    if self .a <self .b :
+                        self .a ,self .b =self .b ,self .a 
 
         self .expected_result =calculate_result (self .a ,self .b ,self .operation ,self .integer_result )
         if self .mode =="auto":
@@ -2874,6 +2898,7 @@ class Game :
                 self .zap_timer =12 
         else :
             self .is_correct =False 
+            self ._no_queue_next =True 
             self .stats [level ]["sbagliate"]+=1 
             self .play_sfx ("hit")
             self .wrong_questions .append ((self .a ,self .b ,self .operation ,text_value ,self .expected_result ))
@@ -2943,6 +2968,7 @@ class Game :
         if self .boss_active and self .boss_phase =="fight":
             self .boss_pause_start =pygame .time .get_ticks ()
         self .wait_for_enter =True 
+        self ._no_queue_next =True 
         self .monster_hit =True 
         self .monster_fade_start =pygame .time .get_ticks ()
         self .monster_img =self .monster_hit_img 
