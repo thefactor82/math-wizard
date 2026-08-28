@@ -949,7 +949,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if normalize_story_entry (e ) .get ("type")=="level")
 
-        self .version ="1.3.41"
+        self .version ="1.3.42"
 
         self .profiles =[]
         self .current_profile =""
@@ -4468,30 +4468,31 @@ class Game :
             segno_debug =get_operation_symbol (self .operation )
             lines =[
             "DEBUG",
-            f"Modalita: {'Storia'if self .mode =='auto'else 'Allenamento'}",
+            f"Modalità: {'Storia'if self .mode =='auto'else 'Allenamento'}",
+            f"Livello storia: {self .level +1 }/{self .num_story_levels }  (effettivo: {self .effective_level ()+1 }/{len (self .levels )})"if self .mode =='auto'else "Livello: -",
+            f"Difficoltà: {self .difficulty_position }/{self .max_difficulty_position ()}"if self .mode =='auto'else "Difficoltà: -",
             f"Musica: {self .current_music }  {os .path .basename (self .music_files .get (self .current_music ,''))}  {max (0 ,(pygame .time .get_ticks ()-self ._music_start_tick )//1000 )}s",
+            f"Progresso mostro: {(self .boss_progress if (self .boss_active and self .boss_phase =='fight')else self .monster_progress ):.2f}"+(f"  Tempo: {(pygame .time .get_ticks ()-self .question_start )/1000 :.1f}s"if self .question_active else ""),
+            f"Boss: {'attivo'if self .boss_active else 'no'}"+(f"  fase: {self .boss_phase }  colpi: {self .boss_questions_asked }/{self .boss_total_questions }"if self .boss_active else ""),
             f"Domanda attiva: {self .question_active }",
             f"Feedback: {self .feedback }",
             f"Game over: {self .game_over }",
-            f"Lives: {self .lives }",
+            f"Vite: {self .lives }",
             f"Domande: {self .questions_asked }/{self .total_questions if self .mode =='fixed'else self .questions_per_level }",
+            f"Risposte consecutive: {self .consecutive_correct }",
             f"Tempo medio: {sum (self .answer_times )/len (self .answer_times ):.1f}s"if self .answer_times else "Tempo medio: --",
             f"Timeout: {self .timeout_limit }s"+(f" (iniziale {self .initial_timeout_limit }s)"if self .mode =='auto'else ""),
-            f"Livello storia: {self .level +1 }/{self .num_story_levels }  (effettivo: {self .effective_level ()+1 }/{len (self .levels )})"if self .mode =='auto'else "Livello: -",
-            f"Difficoltà: {self .difficulty_position }/{self .max_difficulty_position ()}"if self .mode =='auto'else "Difficoltà: -",
             f"Operandi: {self .a } {segno_debug } {self .b }",
-            f"Riporto: {int (self .levels [self .effective_level ()].get ('carry',0 )*100 )if self .mode =='auto'else self .config .get ('riporto',0 )}%" +(f"  has:{needs_carry (self .a ,self .b )}"if self .operation =='addizione'else ""),
-            f"Prestito: {int (self .levels [self .effective_level ()].get ('borrow',0 )*100 )if self .mode =='auto'else self .config .get ('prestito',0 )}%" +(f"  has:{needs_borrow (self .a ,self .b )}"if self .operation =='sottrazione'else ""),
-            f"Fallback: {'SI'if getattr (self ,'_operands_fallback',False )else 'NO'}",
-            f"Prev: {self .prev_a } {segno_debug } {self .prev_b }",
+            f"Operandi precedenti: {self .prev_a } {segno_debug } {self .prev_b }",
             f"Risultato: {self .expected_result }",
+            f"Risultato positivo/intero: {self .positive_difference if self .operation =='sottrazione'else self .integer_result if self .operation =='divisione'else 'N/A'}",
+            (f"Riporto: {int (self .levels [self .effective_level ()].get ('carry',0 )*100 )if self .mode =='auto'else self .config .get ('riporto',0 )}%" +(f"  has:{needs_carry (self .a ,self .b )}"if self .operation =='addizione'else "")if self .operation =='addizione'else "Riporto: N/A"),
+            (f"Prestito: {int (self .levels [self .effective_level ()].get ('borrow',0 )*100 )if self .mode =='auto'else self .config .get ('prestito',0 )}%" +(f"  has:{needs_borrow (self .a ,self .b )}"if self .operation =='sottrazione'else "")if self .operation =='sottrazione'else "Prestito: N/A"),
+            f"Fallback: {'SI'if getattr (self ,'_operands_fallback',False )else 'NO'}",
             f"Pool A: {format_pool_compact (self .levels [self .effective_level ()]['pool_a'])if self .mode =='auto'else format_pool_compact (self .pool_a )}",
             f"Pool B: {format_pool_compact (self .levels [self .effective_level ()]['pool_b'])if self .mode =='auto'else format_pool_compact (self .pool_b )}",
             f"Min: {self .levels [self .effective_level ()].get ('min_value')if self .mode =='auto'else '-'}"+"   "+f"Max: {self .levels [self .effective_level ()].get ('max_value')if self .mode =='auto'else '-'}",
             f"Coda rinforzo: {list (self .reinforcement_queue )}",
-            f"Progresso mostro: {(self .boss_progress if (self .boss_active and self .boss_phase =='fight')else self .monster_progress ):.2f}"+(f"  Tempo: {(pygame .time .get_ticks ()-self .question_start )/1000 :.1f}s"if self .question_active else ""),
-            f"Consecutive: {self .consecutive_correct }",
-            f"Boss: {'attivo'if self .boss_active else 'no'}"+(f"  fase: {self .boss_phase }  colpi: {self .boss_questions_asked }/{self .boss_total_questions }"if self .boss_active else ""),
             ]
             bg =pygame .Surface ((500 ,len (lines )*24 +15 ))
             bg .set_alpha (200 )
