@@ -957,7 +957,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if normalize_story_entry (e ) .get ("type")=="level")
 
-        self .version ="1.3.45"
+        self .version ="1.3.46"
 
         self .profiles =[]
         self .current_profile =""
@@ -2056,7 +2056,7 @@ class Game :
                         if event .key ==pygame .K_ESCAPE :
                             self .profile_input_mode =False 
                             self .profile_input =""
-                        elif event .key ==pygame .K_RETURN and self .profile_input .strip ():
+                        elif event .key in (pygame .K_RETURN ,pygame .K_KP_ENTER )and self .profile_input .strip ():
                             self .profile_gender_mode =True 
                         elif event .key ==pygame .K_BACKSPACE :
                             self .profile_input =self .profile_input [:-1 ]
@@ -2238,27 +2238,7 @@ class Game :
                 elif event .key ==pygame .K_ESCAPE :
                     self .running =False 
             elif self .state ==GAME_STATE_LEVEL_COMPLETE:
-                if event .key in (pygame .K_RETURN ,pygame .K_KP_ENTER ):
-                    richieste =5 +self .level 
-                    recent_times =self .monster_times [-richieste :]
-                    average =sum (recent_times )/len (recent_times )if recent_times else 0 
-                    if self .is_last_story_level ():
-                        next_lv =self .num_story_levels 
-                        self .story_completed [self .config_story_operation ]=True 
-                    else :
-                        self .level +=1 
-                        next_lv =self .level 
-                    op =self .config_story_operation 
-                    if next_lv >self .story_progress .get (op ,0 ):
-                        self .story_progress [op ]=next_lv 
-                        self .set_initial_level (self .initial_level )
-                        self .save_profile_config ()
-                        if average <self .timeout_limit /2 :
-                            self .timeout_limit =max (3 ,self .timeout_limit -1 )
-                    self .return_to_game =True 
-                    self .player_exit_start =pygame .time .get_ticks ()
-                    self .player_exit_x =112 
-                    self .state =GAME_STATE_PLAYER_EXIT
+                self ._advance_level_complete ()
             elif self .state ==GAME_STATE_STORY:
                 if event .key in (pygame .K_RETURN ,pygame .K_KP_ENTER ,pygame .K_SPACE ):
                     if self .story_phase =="show":
@@ -2275,6 +2255,10 @@ class Game :
             if self .state ==GAME_STATE_GAME and self .scene_phase =="dialogue":
                 self .advance_scene_dialogue ()
                 return 
+            if self .state ==GAME_STATE_LEVEL_COMPLETE:
+                self ._advance_level_complete ()
+                return 
+
             if self .state ==GAME_STATE_STORY:
                 if self .story_phase =="show":
                     if self .story_characters_shown <len (self .story_text_full ):
@@ -4551,6 +4535,28 @@ class Game :
                 rect =surf .get_rect (topleft =(dx ,dy ))
                 self .screen .blit (surf ,rect )
                 dy +=24 
+
+    def _advance_level_complete (self ):
+        richieste =5 +self .level 
+        recent_times =self .monster_times [-richieste :]
+        average =sum (recent_times )/len (recent_times )if recent_times else 0 
+        if self .is_last_story_level ():
+            next_lv =self .num_story_levels 
+            self .story_completed [self .config_story_operation ]=True 
+        else :
+            self .level +=1 
+            next_lv =self .level 
+        op =self .config_story_operation 
+        if next_lv >self .story_progress .get (op ,0 ):
+            self .story_progress [op ]=next_lv 
+            self .set_initial_level (self .initial_level )
+            self .save_profile_config ()
+            if average <self .timeout_limit /2 :
+                self .timeout_limit =max (3 ,self .timeout_limit -1 )
+        self .return_to_game =True 
+        self .player_exit_start =pygame .time .get_ticks ()
+        self .player_exit_x =112 
+        self .state =GAME_STATE_PLAYER_EXIT
 
     def draw_level_complete (self ):
         self .screen .blit (self .game_bg ,(0 ,0 ))
