@@ -957,7 +957,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if normalize_story_entry (e ) .get ("type")=="level")
 
-        self .version ="1.3.46"
+        self .version ="1.3.47"
 
         self .profiles =[]
         self .current_profile =""
@@ -1294,6 +1294,7 @@ class Game :
         self .story_flying_monsters =[]
         self .story_fade_speed =8 
         self .story_next_bg =self .bg 
+        self .story_from_bg =None 
         self .story_fade_alpha =0 
         self .story_phase ="show"
         self .story_fade_color =(0 ,0 ,0 )
@@ -1478,6 +1479,7 @@ class Game :
                     self .switch_music ("level")
             bg_name =entry .get ("background",entry .get ("bg","game"))
             self .story_next_bg =self ._get_bg (bg_name )or self .bg 
+            self .story_from_bg =self .game_bg 
             self .game_bg =self .story_next_bg 
             self .player_in_dir =entry .get ("player_in","sx")
             self .player_out_dir =entry .get ("player_out","dx")
@@ -1521,6 +1523,7 @@ class Game :
             self .story_object_alpha =0 
             if self .story_fade_alpha >=255 :
                 self .game_bg =self .story_next_bg 
+                self .story_from_bg =None 
                 self ._prune_backgrounds ()
                 self .story_phase ="enter"
                 self .story_fade_alpha =255 
@@ -3113,6 +3116,7 @@ class Game :
                 if self .story_fade_alpha >=255 :
                     if self .story_is_level :
                         self .game_bg =self .story_next_bg 
+                        self .story_from_bg =None 
                         self ._prune_backgrounds ()
                         self .story_phase ="enter"
                         self .story_fade_alpha =255 
@@ -4594,7 +4598,9 @@ class Game :
 
     def draw_story (self ):
         entry =self .story_entries [self .story_idx ]if self .story_idx <len (self .story_entries )else {}
-        if self .story_next_bg is not None:
+        if self .story_phase =="exit"and self .story_is_level and self .story_from_bg is not None:
+            bg_surf =self .story_from_bg
+        elif self .story_next_bg is not None:
             bg_surf =self .story_next_bg
         elif self .story_is_level and self .story_phase =="exit":
             bg_surf =self .game_bg 
