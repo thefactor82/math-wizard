@@ -64,6 +64,99 @@ DARK =(20 ,20 ,30 )
 BG_DARK =(30 ,30 ,50 )
 SEL_BLUE =(60 ,130 ,200 )
 
+OPERATION_ALIASES ={
+    "moltiplicazione":"multiplication",
+    "multiplication":"multiplication",
+    "addizione":"addition",
+    "addition":"addition",
+    "sottrazione":"subtraction",
+    "subtraction":"subtraction",
+    "divisione":"division",
+    "division":"division",
+}
+OPERATION_LEGACY_NAMES ={
+    "multiplication":"moltiplicazione",
+    "addition":"addizione",
+    "subtraction":"sottrazione",
+    "division":"divisione",
+}
+
+
+def normalize_operation_name (value ):
+    if value is None :
+        return None 
+    key =str (value ).strip () .lower ()
+    return OPERATION_ALIASES .get (key ,key )
+
+
+def legacy_operation_name (value ):
+    normalized =normalize_operation_name (value )
+    return OPERATION_LEGACY_NAMES .get (normalized ,normalized )
+
+
+def operation_key_list ():
+    return ["multiplication","addition","subtraction","division"]
+
+GAME_STATE_SPLASH ="splash"
+GAME_STATE_PROFILE_SELECT ="profile_select"
+GAME_STATE_MENU ="menu"
+GAME_STATE_OPTIONS ="options"
+GAME_STATE_CONFIRM_DELETE ="confirm_delete"
+GAME_STATE_PROGRESS ="progress"
+GAME_STATE_OPTIONS_AUTO ="options_auto"
+GAME_STATE_CONFIG_FIXED ="config_fixed"
+GAME_STATE_GAME ="game"
+GAME_STATE_GAME_OVER ="gameover"
+GAME_STATE_LEVEL_COMPLETE ="level_complete"
+GAME_STATE_PLAYER_EXIT ="player_exit"
+GAME_STATE_STORY ="story"
+GAME_STATE_LOADING ="loading"
+
+
+def normalize_game_state (value ):
+    if value is None :
+        return None 
+    if isinstance (value ,str ):
+        return value .strip () .lower ()
+    return value 
+
+SCENE_PHASE_ENTER ="enter"
+SCENE_PHASE_DIALOGUE ="dialogue"
+SCENE_PHASE_EXIT ="exit"
+
+
+def normalize_scene_phase (value ):
+    if value is None :
+        return None 
+    if isinstance (value ,str ):
+        return value .strip () .lower ()
+    return value 
+
+
+def normalize_story_entry (entry ):
+    if not isinstance (entry ,dict ):
+        return {"type":"text","text":str (entry )}
+    normalized =dict (entry )
+    if "type"in normalized and normalized ["type"]in ("livello","level"):
+        normalized ["type"]="level"
+    if "type"in normalized and normalized ["type"]in ("scena","scene"):
+        normalized ["type"]="scene"
+    if "type"in normalized and normalized ["type"]in ("testo","text"):
+        normalized ["type"]="text"
+    return normalized 
+
+
+def story_level_index_for_initial_level (story_entries ,initial_level ):
+    level_indices =[]
+    for idx ,entry in enumerate (story_entries ):
+        if normalize_story_entry (entry ) .get ("type")=="level":
+            level_indices .append (idx )
+    if not level_indices :
+        return 0
+    target =max (0 ,min (int (initial_level ),len (level_indices )-1 ))
+    return level_indices [target ]
+
+
 def parse_pool (val ):
     if isinstance (val ,list ):
         return val 
@@ -304,7 +397,13 @@ for src in (data_path ,resource_path ):
     if os .path .exists (levels_path ):
         data =load_json_file (levels_path )
         if isinstance (data ,dict ):
-            LEVELS =data 
+            normalized_levels ={}
+            for raw_op ,entries in data .items ():
+                op_key =legacy_operation_name (raw_op )
+                if not isinstance (entries ,list ):
+                    continue 
+                normalized_levels [op_key ]=entries 
+            LEVELS =normalized_levels 
             for op in LEVELS :
                 if not isinstance (LEVELS [op ],list ):
                     continue 
@@ -403,7 +502,7 @@ class Game :
         self .clock =pygame .time .Clock ()
         self .running =True 
         self ._text_cache ={}
-        self .state ="splash"
+        self .state =GAME_STATE_SPLASH
         self .splash_start =pygame .time .get_ticks ()
         self .splash_skip =False 
         self .player_exit_retry =False 
@@ -753,7 +852,8 @@ class Game :
         return (w ,h )
 
     def _enter_fullscreen (self ):
-        pass
+        self .fullscreen =True 
+        self ._apply_display_mode ()
 
     def _apply_display_mode (self ):
         if self .fullscreen :
@@ -766,10 +866,23 @@ class Game :
         self ._update_fit ()
 
     def _resize_display (self ,size ):
-        pass
+        if not size or len (size )!=2 :
+            return 
+        target_w ,target_h =int (size [0 ]),int (size [1 ])
+        self ._display =pygame .display .set_mode ((target_w ,target_h ))
+        self ._monitor_w ,self ._monitor_h =self ._display .get_size ()
+        self .screen =pygame .Surface ((CANVAS_WIDTH ,CANVAS_HEIGHT ))
+        self ._overlay =pygame .Surface ((CANVAS_WIDTH ,CANVAS_HEIGHT ))
+        self ._update_fit ()
 
     def _reconvert_alpha_surfaces (self ):
-        pass
+        for attr in ("bg","bg_menu","bg_options","game_bg","story_next_bg"):
+            surf =getattr (self ,attr ,None )
+            if isinstance (surf ,pygame .Surface ):
+                setattr (self ,attr ,surf .convert_alpha ())
+        for key ,surf in list (self .backgrounds .items ()):
+            if isinstance (surf ,pygame .Surface ):
+                self .backgrounds [key ]=surf .convert_alpha ()
 
     def _update_fit (self ):
         dw ,dh =self ._display .get_size ()
@@ -796,6 +909,20 @@ class Game :
         mx ,my =pygame .mouse .get_pos ()
         return self ._scale_to_canvas (mx ,my )
 
+    def set_state (self ,state ,reset_scene =False ):
+        self .state =normalize_game_state (state )
+        if reset_scene :
+            self .scene_phase =None 
+            self .scene_data =None 
+            self .scene_npcs =[]
+            self .scene_on_complete =None 
+
+    def set_scene_phase (self ,phase ,reset_dialogue =False ):
+        self .scene_phase =normalize_scene_phase (phase )
+        if reset_dialogue :
+            self .scene_dialogue_idx =0 
+            self .scene_dialogue_start =0 
+
     def setup_profiles (self ):
         os .makedirs (PROFILES_DIR ,exist_ok =True )
         idx_file =os .path .join (PROFILES_DIR ,"profiles.json")
@@ -820,9 +947,9 @@ class Game :
                 if self .story_entries :
                     break 
         self .story_idx =0 
-        self .num_story_levels =sum (1 for e in self .story_entries if e .get ("tipo")=="livello")
+        self .num_story_levels =sum (1 for e in self .story_entries if normalize_story_entry (e ) .get ("type")=="level")
 
-        self .version ="1.3.40"
+        self .version ="1.3.41"
 
         self .profiles =[]
         self .current_profile =""
@@ -887,7 +1014,7 @@ class Game :
     def delete_current_profile (self ):
         nome =sanitize_profile_name (self .current_profile )
         if not nome or nome not in self .profiles :
-            self .state ="options"
+            self .state =GAME_STATE_OPTIONS
             return 
         prof_dir =os .path .join (PROFILES_DIR ,nome )
         if os .path .isdir (prof_dir ):
@@ -896,7 +1023,7 @@ class Game :
         self .current_profile =""
         self .profile_cursor =0 
         self .save_profiles ()
-        self .state ="profile_select"
+        self .state =GAME_STATE_PROFILE_SELECT
 
     def check_for_update (self ):
         try :
@@ -919,20 +1046,22 @@ class Game :
         os .makedirs (prof_dir ,exist_ok =True )
         path =os .path .join (prof_dir ,"config.json")
         data ={
-        "genere":self .config_gender ,
-        "storia_operazione":self .config_story_operation ,
+        "gender":self .config_gender ,
+        "story_operation":legacy_operation_name (self .config_story_operation ),
         "auto_timeout":self .auto_timeout ,
-        "livello_iniziale":self .initial_level ,
-        "difficolta_posizione":self .difficulty_position ,
-        "difficolta_posizione_per_op":self .difficulty_position_by_op ,
-        "storia_progresso":self .story_progress ,
-        "storia_completata":self .story_completed ,
+        "initial_level":self .initial_level ,
+        "difficulty_position":self .difficulty_position ,
+        "difficulty_position_by_op":self .difficulty_position_by_op ,
+        "story_progress":self .story_progress ,
+        "story_completed":self .story_completed ,
         "fullscreen":self .fullscreen ,
-        "volume_musica":self .music_volume ,
-        "volume_effetti":self .sfx_volume ,
+        "music_volume":self .music_volume ,
+        "effects_volume":self .sfx_volume ,
         }
         for op in ["moltiplicazione","addizione","sottrazione","divisione"]:
+            canonical =normalize_operation_name (op )
             data [op ]=dict (self .config_by_operation [op ])
+            data [canonical ]=dict (self .config_by_operation [op ])
         save_json_file (path ,data )
 
     def load_profile_config (self ,nome ):
@@ -945,31 +1074,37 @@ class Game :
         data =load_json_file (path )
         if not isinstance (data ,dict ):
             return 
-        if "moltiplicazione"in data and isinstance (data ["moltiplicazione"],dict ):
+        if any (key in data for key in ["moltiplicazione","addizione","sottrazione","divisione","multiplication","addition","subtraction","division"]):
             for op in ["moltiplicazione","addizione","sottrazione","divisione"]:
-                if op in data and isinstance (data [op ],dict ):
-                    pool_len =20 if op =="moltiplicazione"else 200
-                    if "pool_a"in data [op ]:
-                        self .config_by_operation [op ]["pool_a"]=normalize_pool_list (data [op ]["pool_a"],pool_len )
-                    if "pool_b"in data [op ]:
-                        self .config_by_operation [op ]["pool_b"]=normalize_pool_list (data [op ]["pool_b"],pool_len )
-                    self .config_by_operation [op ].update ({k :v for k ,v in data [op ].items ()if k not in ("pool_a","pool_b")})
-            self .config_gender =data .get ("genere",self .config_gender )
-            self .config_story_operation =data .get ("storia_operazione",self .config_story_operation )
+                candidates =[]
+                for key in [op ,normalize_operation_name (op )]:
+                    if key in data and isinstance (data [key ],dict ):
+                        candidates .append (key )
+                if not candidates :
+                    continue 
+                raw =data [candidates [0 ]]
+                pool_len =20 if op =="moltiplicazione"else 200
+                if "pool_a"in raw :
+                    self .config_by_operation [op ]["pool_a"]=normalize_pool_list (raw ["pool_a"],pool_len )
+                if "pool_b"in raw :
+                    self .config_by_operation [op ]["pool_b"]=normalize_pool_list (raw ["pool_b"],pool_len )
+                self .config_by_operation [op ].update ({k :v for k ,v in raw .items ()if k not in ("pool_a","pool_b")})
+            self .config_gender =data .get ("gender",data .get ("genere",self .config_gender ))
+            self .config_story_operation =legacy_operation_name (data .get ("story_operation",data .get ("storia_operazione",self .config_story_operation )))
             self .auto_timeout =data .get ("auto_timeout",self .auto_timeout )
-            self .initial_level =data .get ("livello_iniziale",self .initial_level )
-            dp_by_op =data .get ("difficolta_posizione_per_op",None )
+            self .initial_level =data .get ("initial_level",data .get ("livello_iniziale",self .initial_level ))
+            dp_by_op =data .get ("difficulty_position_by_op",data .get ("difficolta_posizione_per_op",None ))
             if isinstance (dp_by_op ,dict ):
                 self .difficulty_position_by_op .update (dp_by_op )
             else :
-                self .difficulty_position_by_op [self .config_story_operation ]=data .get ("difficolta_posizione",self .difficulty_position )
+                self .difficulty_position_by_op [self .config_story_operation ]=data .get ("difficulty_position",data .get ("difficolta_posizione",self .difficulty_position ))
             self .restore_difficulty_position ()
-            story_progress =data .get ("storia_progresso",self .story_progress )
+            story_progress =data .get ("story_progress",data .get ("storia_progresso",self .story_progress ))
             if isinstance (story_progress ,dict ):
                 for op ,val in story_progress .items ():
                     if isinstance (val ,(int ,float )):
                         self .story_progress [op ]=int (val )
-            story_completed =data .get ("storia_completata",self .story_completed )
+            story_completed =data .get ("story_completed",data .get ("storia_completata",self .story_completed ))
             if isinstance (story_completed ,dict ):
                 self .story_completed .update (story_completed )
             for op in self .story_completed :
@@ -977,6 +1112,10 @@ class Game :
                     self .story_completed [op ]=True 
             if "fullscreen"in data :
                 self .fullscreen =bool (data ["fullscreen"])
+            if "music_volume"in data :
+                self .music_volume =max (0 ,min (100 ,int (data ["music_volume"])))
+            if "effects_volume"in data :
+                self .sfx_volume =max (0 ,min (100 ,int (data ["effects_volume"])))
             if "volume_musica"in data :
                 self .music_volume =max (0 ,min (100 ,int (data ["volume_musica"])))
             if "volume_effetti"in data :
@@ -1105,14 +1244,14 @@ class Game :
         self .stats ={}
 
     def show_config (self ):
-        self .state ="config_fixed"
+        self .set_state (GAME_STATE_CONFIG_FIXED ,reset_scene =True )
         self .config =self .config_by_operation [self .config_operation ]
         self .config_cursor_row =0 
         self .config_cursor_col =0 
         self .config_cursor_subrow =0 
 
     def start_game (self ):
-        self .state ="game"
+        self .set_state (GAME_STATE_GAME ,reset_scene =True )
         self .game_over =False 
         self .lives =WIZARD_LIVES 
         self .timeout_limit =self .auto_timeout if self .mode =="auto"else self .config ["timeout"]
@@ -1194,12 +1333,12 @@ class Game :
             self .config =self .config_by_operation .get (self .config_story_operation ,self .config )
             self .integer_result =op_cfg .get ("risultato_intero",True )
             if self .initial_level >0 :
-                self .state ="loading"
+                self .state =GAME_STATE_LOADING
                 self .loading_start =pygame .time .get_ticks ()
             else :
                 self .show_story ()
         else :
-            self .state ="loading"
+            self .state =GAME_STATE_LOADING
             self .loading_start =pygame .time .get_ticks ()
             self .loading_training =True
 
@@ -1290,24 +1429,25 @@ class Game :
 
     def show_story (self ):
         if self .story_idx >=len (self .story_entries ):
-            self .state ="gameover"
+            self .set_state (GAME_STATE_GAME_OVER ,reset_scene =True )
             return 
-        entry =self .story_entries [self .story_idx ]
+        entry =normalize_story_entry (self .story_entries [self .story_idx ])
         if not isinstance (entry ,dict ):
-            entry ={"tipo":"testo","testo":str (entry )}
-        entry_type =entry .get ("tipo","testo")
-        if entry_type in ("livello","scena"):
-            self .state ="story"
+            entry ={"type":"text","text":str (entry )}
+        entry_type =entry .get ("type","text")
+        if entry_type in ("level","scene"):
+            self .set_state (GAME_STATE_STORY ,reset_scene =True )
             self .story_is_level =True 
-            self .level_is_scene =(entry_type =="scena")
+            self .level_is_scene =(entry_type =="scene")
             if not self .level_is_scene :
                 self .story_monsters =entry .get ("monsters",list (range (1 ,9 )))
                 self .story_flying_monsters =entry .get ("flying",[])
                 self ._ensure_monsters (self .story_monsters )
                 if self .current_music !="level":
                     self .switch_music ("level")
-            bg_name =entry .get ("bg","game")
+            bg_name =entry .get ("background",entry .get ("bg","game"))
             self .story_next_bg =self ._get_bg (bg_name )or self .bg 
+            self .game_bg =self .story_next_bg 
             self .player_in_dir =entry .get ("player_in","sx")
             self .player_out_dir =entry .get ("player_out","dx")
             self .player_entrance =entry .get ("player_entrance","y")=="y"
@@ -1360,18 +1500,18 @@ class Game :
                 self .story_phase ="exit"
                 self .story_fade_speed =8 
         else :
-            self .state ="story"
-            text_bg_name =entry .get ("bg","game")
+            self .set_state (GAME_STATE_STORY ,reset_scene =True )
+            text_bg_name =entry .get ("background",entry .get ("bg","game"))
             self .story_next_bg =self ._get_bg (text_bg_name )or self .bg 
             self .game_bg =self .story_next_bg 
             self ._prune_backgrounds ()
-            raw_text =entry .get ("testo","")
+            raw_text =entry .get ("text","")
             raw_text =raw_text .replace ("NOMEPROFILOINUSO",self .current_profile )
             m =self .config_gender =="M"
             self .story_text_full =re .sub (r'-([^-]+)-([^-]+)-',lambda g :g .group (1 )if m else g .group (2 ),raw_text )
             self .story_characters_shown =0 
             self .story_typing_frame =0 
-            obj_file =entry .get ("oggetto")
+            obj_file =entry .get ("object")
             self .story_object_img =None 
             self .story_object_alpha =0 
             if obj_file :
@@ -1484,7 +1624,7 @@ class Game :
 
     def start_scene (self ,scene ,on_complete ):
         self .load_npc_scene (scene )
-        self .scene_phase ="enter"
+        self .scene_phase =SCENE_PHASE_ENTER
         self .scene_start =pygame .time .get_ticks ()
         self .scene_dialogue_idx =0 
         self .scene_dialogue_start =0 
@@ -1494,25 +1634,27 @@ class Game :
         self .scene_data =None 
         self .scene_phase =None 
         self .scene_npcs =[n for n in self .scene_npcs if not n ["has_out"]]
-        on_complete =self .scene_on_complete 
+        on_complete =normalize_game_state (self .scene_on_complete )
         self .scene_on_complete =None 
         if on_complete =="question":
             self .new_question ()
-        elif on_complete =="level_complete":
+        elif on_complete ==GAME_STATE_LEVEL_COMPLETE:
             self .save_session ()
-            self .state ="level_complete"
-        elif on_complete =="scena_end":
-            self .end_scena ()
+            self .set_state (GAME_STATE_LEVEL_COMPLETE ,reset_scene =True )
+        elif on_complete in ("scene_end","scena_end"):
+            self .end_scene ()
 
-    def end_scena (self ):
+    def end_scene (self ):
         if self .player_out_dir in ("sx","dx"):
             self .return_to_game =True 
             self .player_exit_start =pygame .time .get_ticks ()
             self .player_exit_x =112 
-            self .state ="player_exit"
+            self .set_state (GAME_STATE_PLAYER_EXIT ,reset_scene =True )
         else :
             self .story_idx +=1 
             self .show_story ()
+
+    end_scena =end_scene
 
     def scene_chars_shown (self ):
         if self .scene_dialogue_start ==0 :
@@ -1706,7 +1848,7 @@ class Game :
                     self .start_scene (self .level_scene_after ,"level_complete")
                     return 
                 self .save_session ()
-                self .state ="level_complete"
+                self .state =GAME_STATE_LEVEL_COMPLETE
                 return 
             lv =self .effective_level ()
             lv_data =self .levels [lv ]
@@ -1720,7 +1862,7 @@ class Game :
                 self .save_session ()
                 self .player_exit_start =pygame .time .get_ticks ()
                 self .player_exit_x =112 
-                self .state ="player_exit"
+                self .state =GAME_STATE_PLAYER_EXIT
                 return 
             self .a ,self .b ,self ._operands_fallback =select_operands (
             self .pool_a ,
@@ -1816,7 +1958,7 @@ class Game :
         if event .type ==pygame .VIDEORESIZE and not self .fullscreen :
             self ._resize_display ((event .w ,event .h ))
             return 
-        if self .state =="splash":
+        if self .state ==GAME_STATE_SPLASH:
             if event .type in (pygame .KEYDOWN ,pygame .MOUSEBUTTONDOWN )and not self .splash_skip :
                 self .splash_skip =True 
                 self .splash_start =pygame .time .get_ticks ()
@@ -1827,7 +1969,7 @@ class Game :
                 if self .debug_buf =="debug":
                     self .debug =not self .debug 
                     self .debug_buf =""
-            if self .state =="profile_select":
+            if self .state ==GAME_STATE_PROFILE_SELECT:
                 if self .profile_input_mode :
                     if self .profile_gender_mode :
                         if event .key ==pygame .K_ESCAPE :
@@ -1847,7 +1989,7 @@ class Game :
                             self .profile_input =""
                             self .profile_input_mode =False 
                             self .profile_gender_mode =False 
-                            self .state ="menu"
+                            self .state =GAME_STATE_MENU
                         elif event .key ==pygame .K_m :
                             self .reset_profile_config ()
                             self .config_gender ="M"
@@ -1863,7 +2005,7 @@ class Game :
                             self .profile_input =""
                             self .profile_input_mode =False 
                             self .profile_gender_mode =False 
-                            self .state ="menu"
+                            self .state =GAME_STATE_MENU
                     else :
                         if event .key ==pygame .K_ESCAPE :
                             self .profile_input_mode =False 
@@ -1883,55 +2025,55 @@ class Game :
                         self ._apply_display_mode ()
                         self .setup_cursor ()
                         self .save_profiles ()
-                        self .state ="menu"
+                        self .state =GAME_STATE_MENU
                     else :
                         self .profile_input_mode =True 
                         self .profile_input =""
                 elif event .key ==pygame .K_ESCAPE :
                     if self .profiles :
-                        self .state ="menu"
+                        self .state =GAME_STATE_MENU
                     else :
                         self .running =False 
-            elif self .state =="menu":
+            elif self .state ==GAME_STATE_MENU:
                 if event .key ==pygame .K_RETURN :
                     if self .menu_cursor ==0 :
                         self ._propose_initial_level ()
-                        self .state ="options_auto"
+                        self .state =GAME_STATE_OPTIONS_AUTO
                     else :
                         self .show_config ()
                 elif event .key ==pygame .K_1 :
                     self ._propose_initial_level ()
-                    self .state ="options_auto"
+                    self .state =GAME_STATE_OPTIONS_AUTO
                 elif event .key ==pygame .K_2 :
                     self .show_config ()
                 elif event .key ==pygame .K_o :
-                    self .state ="options"
+                    self .state =GAME_STATE_OPTIONS
                 elif event .key ==pygame .K_p :
                     if self .current_profile in self .profiles :
                         self .profile_cursor =self .profiles .index (self .current_profile )
                     else :
                         self .profile_cursor =0 
-                    self .state ="profile_select"
+                    self .state =GAME_STATE_PROFILE_SELECT
                 elif event .key ==pygame .K_ESCAPE :
                     self .running =False 
-            elif self .state =="options":
+            elif self .state ==GAME_STATE_OPTIONS:
                 if event .key in (pygame .K_1 ,pygame .K_RETURN ):
                     if self .options_cursor ==0 :
-                        self .state ="progressi"
+                        self .state =GAME_STATE_PROGRESS
                     elif self .options_cursor ==1 :
                         self .fullscreen =not self .fullscreen
                         self ._apply_display_mode ()
                         self .setup_cursor ()
                         self .save_profile_config ()
                     elif self .options_cursor ==4 :
-                        self .state ="confirm_delete"
+                        self .state =GAME_STATE_CONFIRM_DELETE
                 elif event .key ==pygame .K_2 :
                     self .fullscreen =not self .fullscreen
                     self ._apply_display_mode ()
                     self .setup_cursor ()
                     self .save_profile_config ()
                 elif event .key ==pygame .K_5 :
-                    self .state ="confirm_delete"
+                    self .state =GAME_STATE_CONFIRM_DELETE
                 elif event .key in (pygame .K_PLUS ,pygame .K_EQUALS ,pygame .K_KP_PLUS ):
                     if self .options_cursor ==3 :
                         self .sfx_volume =min (100 ,self .sfx_volume +5 )
@@ -1947,16 +2089,16 @@ class Game :
                         pygame .mixer .music .set_volume (self .music_volume /100 )
                     self .save_profile_config ()
                 elif event .key ==pygame .K_ESCAPE :
-                    self .state ="menu"
-            elif self .state =="confirm_delete":
+                    self .state =GAME_STATE_MENU
+            elif self .state ==GAME_STATE_CONFIRM_DELETE:
                 if event .key ==pygame .K_s :
                     self .delete_current_profile ()
                 elif event .key in (pygame .K_n ,pygame .K_ESCAPE ):
-                    self .state ="options"
-            elif self .state =="progressi":
+                    self .state =GAME_STATE_OPTIONS
+            elif self .state ==GAME_STATE_PROGRESS:
                 if event .key ==pygame .K_ESCAPE :
-                    self .state ="options"
-            elif self .state =="options_auto":
+                    self .state =GAME_STATE_OPTIONS
+            elif self .state ==GAME_STATE_OPTIONS_AUTO:
                 if event .key in (pygame .K_UP ,pygame .K_w ):
                     self .options_cursor =(self .options_cursor -1 )%4
                 elif event .key in (pygame .K_DOWN ,pygame .K_s ):
@@ -1996,15 +2138,15 @@ class Game :
                     self .mode ="auto"
                     self .start_game ()
                 elif event .key ==pygame .K_ESCAPE :
-                    self .state ="menu"
-            elif self .state =="config_fixed":
+                    self .state =GAME_STATE_MENU
+            elif self .state ==GAME_STATE_CONFIG_FIXED:
                 self .handle_config (event )
-            elif self .state =="game":
+            elif self .state ==GAME_STATE_GAME:
                 if self .scene_phase =="dialogue":
                     if event .key in (pygame .K_RETURN ,pygame .K_KP_ENTER ,pygame .K_SPACE ):
                         self .advance_scene_dialogue ()
                     elif event .key ==pygame .K_ESCAPE :
-                        self .state ="menu"
+                        self .state =GAME_STATE_MENU
                     return 
                 if self .game_over :
                     if event .key ==pygame .K_r :
@@ -2012,18 +2154,18 @@ class Game :
                         return 
                     elif event .key ==pygame .K_m :
                         self .save_session ()
-                        self .state ="menu"
+                        self .state =GAME_STATE_MENU
                         return 
                     elif event .key ==pygame .K_ESCAPE :
                         self .save_session ()
-                        self .state ="menu"
+                        self .state =GAME_STATE_MENU
                         return 
                 if event .key ==pygame .K_ESCAPE :
-                    self .state ="menu"
+                    self .state =GAME_STATE_MENU
                 elif self .wait_for_enter and event .key in (pygame .K_RETURN ,pygame .K_KP_ENTER ):
                     if self .game_over :
                         self .save_session ()
-                        self .state ="gameover"
+                        self .state =GAME_STATE_GAME_OVER
                     else :
                         self .new_question ()
                 elif self .question_active :
@@ -2042,14 +2184,14 @@ class Game :
                         self .input_utente +=event .unicode 
                     elif event .unicode =="-"and not self .input_utente :
                         self .input_utente +=event .unicode 
-            elif self .state =="gameover":
+            elif self .state ==GAME_STATE_GAME_OVER:
                 if event .key ==pygame .K_r :
                     self .start_game ()
                 elif event .key ==pygame .K_m :
-                    self .state ="menu"
+                    self .state =GAME_STATE_MENU
                 elif event .key ==pygame .K_ESCAPE :
                     self .running =False 
-            elif self .state =="level_complete":
+            elif self .state ==GAME_STATE_LEVEL_COMPLETE:
                 if event .key in (pygame .K_RETURN ,pygame .K_KP_ENTER ):
                     richieste =5 +self .level 
                     recent_times =self .monster_times [-richieste :]
@@ -2070,8 +2212,8 @@ class Game :
                     self .return_to_game =True 
                     self .player_exit_start =pygame .time .get_ticks ()
                     self .player_exit_x =112 
-                    self .state ="player_exit"
-            elif self .state =="story":
+                    self .state =GAME_STATE_PLAYER_EXIT
+            elif self .state ==GAME_STATE_STORY:
                 if event .key in (pygame .K_RETURN ,pygame .K_KP_ENTER ,pygame .K_SPACE ):
                     if self .story_phase =="show":
                         if self .story_characters_shown <len (self .story_text_full ):
@@ -2084,10 +2226,10 @@ class Game :
 
         if event .type ==pygame .MOUSEBUTTONDOWN :
             mx ,my =self ._scale_to_canvas (*event .pos ) 
-            if self .state =="game"and self .scene_phase =="dialogue":
+            if self .state ==GAME_STATE_GAME and self .scene_phase =="dialogue":
                 self .advance_scene_dialogue ()
                 return 
-            if self .state =="story":
+            if self .state ==GAME_STATE_STORY:
                 if self .story_phase =="show":
                     if self .story_characters_shown <len (self .story_text_full ):
                         self .story_characters_shown =len (self .story_text_full )
@@ -2096,35 +2238,35 @@ class Game :
                     else :
                         self .story_fade_speed =3 
                         self .story_phase ="exit"
-            elif self .state =="gameover":
+            elif self .state ==GAME_STATE_GAME_OVER:
                 if hasattr (self ,'gameover_buttons'):
                     if self .gameover_buttons .get ("restart")and self .gameover_buttons ["restart"].collidepoint (mx ,my ):
                         self .player_exit_retry =True 
                         self .player_exit_start =pygame .time .get_ticks ()
                         self .player_exit_x =112 
-                        self .state ="player_exit"
+                        self .state =GAME_STATE_PLAYER_EXIT
                         return 
                     if self .gameover_buttons .get ("menu")and self .gameover_buttons ["menu"].collidepoint (mx ,my ):
-                        self .state ="menu"
+                        self .state =GAME_STATE_MENU
                         return 
-            if self .state =="menu":
+            if self .state ==GAME_STATE_MENU:
                 for i ,hit in enumerate (getattr (self ,'menu_btn_rects',[ ])):
                     if hit .collidepoint (mx ,my ):
                         if i ==0 :
                             self ._propose_initial_level ()
-                            self .state ="options_auto"
+                            self .state =GAME_STATE_OPTIONS_AUTO
                         else :
                             self .show_config ()
                         return 
                 if (mx -1852 )**2 +(my -67 )**2 <=(33 +15 )**2 :
-                    self .state ="options"
+                    self .state =GAME_STATE_OPTIONS
                     return 
                 if getattr (self ,'menu_profile_rect',None )and self .menu_profile_rect .collidepoint (mx ,my ):
                     if self .current_profile in self .profiles :
                         self .profile_cursor =self .profiles .index (self .current_profile )
                     else :
                         self .profile_cursor =0 
-                    self .state ="profile_select"
+                    self .state =GAME_STATE_PROFILE_SELECT
                     return 
                 if getattr (self ,'coffee_menu_rect',None )and self .coffee_menu_rect .collidepoint (mx ,my ):
                     try :
@@ -2135,7 +2277,7 @@ class Game :
                     self .running =False 
                 if getattr (self ,'update_link_rect',None )and self .update_link_rect .collidepoint (mx ,my ):
                     webbrowser .open ("https://github.com/thefactor82/math-wizard/releases")
-            elif self .state =="profile_select":
+            elif self .state ==GAME_STATE_PROFILE_SELECT:
                 if not self .profile_input_mode :
                     voci =self .profiles +["Nuovo profilo"]
                     for i ,voce in enumerate (voci ):
@@ -2150,7 +2292,7 @@ class Game :
                                 self ._apply_display_mode ()
                                 self .setup_cursor ()
                                 self .save_profiles ()
-                                self .state ="menu"
+                                self .state =GAME_STATE_MENU
                             else :
                                 self .profile_input_mode =True 
                                 self .profile_input =""
@@ -2178,20 +2320,20 @@ class Game :
                             self .profile_input =""
                             self .profile_input_mode =False 
                             self .profile_gender_mode =False 
-                            self .state ="menu"
+                            self .state =GAME_STATE_MENU
                             break 
-            elif self .state =="options":
+            elif self .state ==GAME_STATE_OPTIONS:
                 for idx ,hit in getattr (self ,'options_btn_rects',[ ]):
                     if hit .collidepoint (mx ,my ):
                         if idx ==0 :
-                            self .state ="progressi"
+                            self .state =GAME_STATE_PROGRESS
                         elif idx ==1 :
                             self .fullscreen =not self .fullscreen
                             self ._apply_display_mode ()
                             self .setup_cursor ()
                             self .save_profile_config ()
                         elif idx ==4 :
-                            self .state ="confirm_delete"
+                            self .state =GAME_STATE_CONFIRM_DELETE
                         return
                 if getattr (self ,'opt_mus_minus',None )and self .opt_mus_minus .collidepoint (mx ,my ):
                     self .music_volume =max (0 ,self .music_volume -5 )
@@ -2220,24 +2362,24 @@ class Game :
                     self ._opts_last_repeat =0
                     return
                 if getattr (self ,'options_back_rect',None )and self .options_back_rect .collidepoint (mx ,my ):
-                    self .state ="menu"
+                    self .state =GAME_STATE_MENU
                     return 
                 if self .repo_link_rect and self .repo_link_rect .collidepoint (mx ,my ):
                     webbrowser .open ("https://github.com/thefactor82/math-wizard")
                 elif getattr (self ,'coffee_options_rect',None )and self .coffee_options_rect .collidepoint (mx ,my ):
                     webbrowser .open ("https://ko-fi.com/thefactor82")
-            elif self .state =="confirm_delete":
+            elif self .state ==GAME_STATE_CONFIRM_DELETE:
                 if getattr (self ,'confirm_yes_rect',None )and self .confirm_yes_rect .collidepoint (mx ,my ):
                     self .delete_current_profile ()
                     return 
                 if getattr (self ,'confirm_no_rect',None )and self .confirm_no_rect .collidepoint (mx ,my ):
-                    self .state ="options"
+                    self .state =GAME_STATE_OPTIONS
                     return 
-            elif self .state =="progressi":
-                if getattr (self ,'progressi_back_rect',None )and self .progressi_back_rect .collidepoint (mx ,my ):
-                    self .state ="options"
+            elif self .state ==GAME_STATE_PROGRESS:
+                if getattr (self ,'progress_back_rect',None )and self .progress_back_rect .collidepoint (mx ,my ):
+                    self .state =GAME_STATE_OPTIONS
                     return
-            elif self .state =="options_auto":
+            elif self .state ==GAME_STATE_OPTIONS_AUTO:
                 sx =540
                 lw ,vw ,rw =45 ,60 ,45
                 # Operazione
@@ -2299,7 +2441,7 @@ class Game :
                     self .save_profile_config ()
                     self .mode ="auto"
                     self .start_game ()
-            elif self .state =="config_fixed":
+            elif self .state ==GAME_STATE_CONFIG_FIXED:
                 try :
                     self .handle_config (event )
                 except Exception as e :
@@ -2308,7 +2450,7 @@ class Game :
                     traceback .print_exc ()
         if event .type ==pygame .MOUSEMOTION and self .dragging_difficulty :
             mx ,my =self ._scale_to_canvas (*event .pos )
-            if self .state =="options_auto":
+            if self .state ==GAME_STATE_OPTIONS_AUTO:
                 self ._update_difficulty_from_mouse (mx )
         if event .type ==pygame .MOUSEBUTTONUP :
             self .dragging_difficulty =False
@@ -2563,7 +2705,7 @@ class Game :
             return 
 
         if event .key ==pygame .K_ESCAPE :
-            self .state ="menu"
+            self .state =GAME_STATE_MENU
             return 
         if event .key ==pygame .K_RETURN :
             self .save_profile_config ()
@@ -2836,7 +2978,7 @@ class Game :
             except pygame .error :
                 pass
             self ._music_start_tick =pygame .time .get_ticks ()
-        if getattr (self ,'_opts_hold',None )and self .state in ("options","options_auto","config_fixed"):
+        if getattr (self ,'_opts_hold',None )and self .state in (GAME_STATE_OPTIONS,GAME_STATE_OPTIONS_AUTO,GAME_STATE_CONFIG_FIXED):
             action ,start =self ._opts_hold
             now =pygame .time .get_ticks ()
             if now -start >=400 :
@@ -2845,7 +2987,7 @@ class Game :
                 if now -self ._opts_last_repeat >=100 :
                     self ._opts_last_repeat =now
                     self ._apply_hold_action (action )
-        if self .current_music =="level"and self .state not in ("game","story","player_exit","level_complete","loading","gameover","level_complete")and self .music_crossfade_target is None :
+        if self .current_music =="level"and self .state not in (GAME_STATE_GAME,GAME_STATE_STORY,GAME_STATE_PLAYER_EXIT,GAME_STATE_LEVEL_COMPLETE,GAME_STATE_LOADING,GAME_STATE_GAME_OVER,GAME_STATE_LEVEL_COMPLETE)and self .music_crossfade_target is None :
             self .switch_music ("background")
         if self .zap_timer >0 :
             self .zap_timer -=1 
@@ -2853,20 +2995,20 @@ class Game :
                 self .zap_reverse =False 
         if self .hit_timer >0 :
             self .hit_timer -=1 
-        if self .state =="splash":
+        if self .state ==GAME_STATE_SPLASH:
             elapsed =pygame .time .get_ticks ()-self .splash_start 
             if (self .splash_skip and elapsed >=500 )or elapsed >=5000 :
                 self .logo =None
-                self .state ="profile_select"
+                self .state =GAME_STATE_PROFILE_SELECT
                 if self .music_loaded and not pygame .mixer .music .get_busy ():
                     pygame .mixer .music .set_volume (0 )
                     pygame .mixer .music .play (-1 )
                     self .music_fade_start =pygame .time .get_ticks ()
                     self ._music_start_tick =pygame .time .get_ticks ()
             return 
-        if self .state =="gameover":
+        if self .state ==GAME_STATE_GAME_OVER:
             return 
-        if self .state =="player_exit":
+        if self .state ==GAME_STATE_PLAYER_EXIT:
             elapsed =pygame .time .get_ticks ()-self .player_exit_start 
             if elapsed >=4000 :
                 if self .player_exit_retry :
@@ -2890,7 +3032,7 @@ class Game :
                     self .zap_timer =0 
                     self .zap_reverse =False 
                     self .monster_hit =False 
-                    self .state ="game"
+                    self .state =GAME_STATE_GAME
                     self .start_level ()
                 elif self .mode =="auto"and self .return_to_game :
                     self .return_to_game =False 
@@ -2900,39 +3042,29 @@ class Game :
                     else :
                         self .start_level ()
                 else :
-                    self .state ="gameover"
+                    self .state =GAME_STATE_GAME_OVER
             return 
-        if self .state =="loading":
+        if self .state ==GAME_STATE_LOADING:
             if pygame .time .get_ticks ()-self .loading_start >=4000 :
                 if getattr (self ,'loading_training',False ):
                     self .loading_training =False
-                    self .state ="game"
+                    self .state =GAME_STATE_GAME
                     self .start_level ()
                 else :
-                    cnt =0
-                    skip_to =None
-                    for i ,e in enumerate (self .story_entries ):
-                        if e .get ("tipo")=="livello":
-                            if cnt ==self .initial_level :
-                                skip_to =i
-                                break
-                            cnt +=1
-                    if skip_to is not None :
-                        while skip_to >0 and self .story_entries [skip_to -1 ].get ("tipo")=="scena":
-                            skip_to -=1
-                        self .story_idx =skip_to
+                    skip_to =story_level_index_for_initial_level (self .story_entries ,self .initial_level )
+                    self .story_idx =skip_to
                     self .story_fade_alpha =255
                     self .show_story ()
             return
-        if self .state =="level_complete":
+        if self .state ==GAME_STATE_LEVEL_COMPLETE:
             return 
-        if self .state =="story":
+        if self .state ==GAME_STATE_STORY:
             if self .story_phase =="enter":
                 self .story_fade_alpha =max (0 ,self .story_fade_alpha -self .story_fade_speed )
                 if self .story_fade_alpha ==0 :
                     if self .story_is_level :
                         self .story_is_level =False 
-                        self .state ="game"
+                        self .state =GAME_STATE_GAME
                         self .start_level ()
                         return 
                     self .story_phase ="show"
@@ -2955,17 +3087,8 @@ class Game :
                         self .story_fade_speed =8 
                     else :
                         if self .initial_level >0 :
-                            cnt =0 
-                            skip_to =None 
-                            for i ,e in enumerate (self .story_entries ):
-                                if e ["tipo"]=="livello":
-                                    if cnt ==self .initial_level :
-                                        skip_to =i 
-                                        break 
-                                    cnt +=1 
-                            if skip_to is not None and skip_to >self .story_idx :
-                                while skip_to >0 and self .story_entries [skip_to -1 ].get ("tipo")=="scena":
-                                    skip_to -=1 
+                            skip_to =story_level_index_for_initial_level (self .story_entries ,self .initial_level )
+                            if skip_to >self .story_idx :
                                 self .story_idx =skip_to 
                             else :
                                 self .story_idx +=1 
@@ -3076,7 +3199,7 @@ class Game :
                     if self .feedback is not None and pygame .time .get_ticks ()-self .feedback_timer >1500 :
                         if self .game_over :
                             self .save_session ()
-                            self .state ="gameover"
+                            self .state =GAME_STATE_GAME_OVER
                         else :
                             self .new_question ()
             return 
@@ -3092,10 +3215,10 @@ class Game :
                     self .boss_active =False 
                     self .boss_phase =None 
                     if self .level_scene_after :
-                        self .start_scene (self .level_scene_after ,"level_complete")
+                        self .start_scene (self .level_scene_after ,GAME_STATE_LEVEL_COMPLETE)
                         return 
                     self .save_session ()
-                    self .state ="level_complete"
+                    self .state =GAME_STATE_LEVEL_COMPLETE
             return 
 
         if self .question_active :
@@ -3115,44 +3238,44 @@ class Game :
             if self .feedback is not None and pygame .time .get_ticks ()-self .feedback_timer >1500 :
                 if self .game_over :
                     self .save_session ()
-                    self .state ="gameover"
+                    self .state =GAME_STATE_GAME_OVER
                 else :
                     self .new_question ()
 
     def draw (self ):
-        if self .state =="splash":
+        if self .state ==GAME_STATE_SPLASH:
             self .draw_splash ()
-        elif self .state =="profile_select":
+        elif self .state ==GAME_STATE_PROFILE_SELECT:
             self .screen .blit (self .bg_menu ,(0 ,0 ))
             self .draw_profile ()
-        elif self .state =="game":
+        elif self .state ==GAME_STATE_GAME:
             self .draw_game ()
-        elif self .state =="player_exit":
+        elif self .state ==GAME_STATE_PLAYER_EXIT:
             self .draw_player_exit ()
-        elif self .state =="level_complete":
+        elif self .state ==GAME_STATE_LEVEL_COMPLETE:
             self .draw_level_complete ()
-        elif self .state =="story":
+        elif self .state ==GAME_STATE_STORY:
             self .draw_story ()
-        elif self .state =="loading":
+        elif self .state ==GAME_STATE_LOADING:
             self .draw_loading ()
         else :
-            if self .state in ("options","options_auto","config_fixed","confirm_delete","progressi"):
+            if self .state in (GAME_STATE_OPTIONS,GAME_STATE_OPTIONS_AUTO,GAME_STATE_CONFIG_FIXED,GAME_STATE_CONFIRM_DELETE,GAME_STATE_PROGRESS):
                 self .screen .blit (self .bg_options ,(0 ,0 ))
             else :
                 self .screen .blit (self .bg_menu ,(0 ,0 ))
-            if self .state =="menu":
+            if self .state ==GAME_STATE_MENU:
                 self .draw_menu ()
-            elif self .state =="options":
+            elif self .state ==GAME_STATE_OPTIONS:
                 self .draw_options ()
-            elif self .state =="confirm_delete":
+            elif self .state ==GAME_STATE_CONFIRM_DELETE:
                 self .draw_confirm_delete ()
-            elif self .state =="options_auto":
+            elif self .state ==GAME_STATE_OPTIONS_AUTO:
                 self .draw_auto_options ()
-            elif self .state =="config_fixed":
+            elif self .state ==GAME_STATE_CONFIG_FIXED:
                 self .draw_config ()
-            elif self .state =="progressi":
-                self .draw_progressi ()
-            elif self .state in ("game","gameover"):
+            elif self .state ==GAME_STATE_PROGRESS:
+                self .draw_progress ()
+            elif self .state in (GAME_STATE_GAME,GAME_STATE_GAME_OVER):
                 self .draw_gameover ()
 
         self ._display .fill ((0 ,0 ,0 ))
@@ -3489,7 +3612,7 @@ class Game :
             back_txt =self ._render_cached (self .font_small ,"Indietro",GOLD )
         self .screen .blit (back_txt ,back_rect )
 
-    def draw_progressi (self ):
+    def draw_progress (self ):
         mx ,my =self ._mouse_pos ()
         overlay =self ._overlay
         overlay .set_alpha (200 )
@@ -3537,10 +3660,12 @@ class Game :
 
         back_txt =self ._render_cached (self .font_small ,"Indietro",WHITE )
         back_rect =back_txt .get_rect (center =(CANVAS_WIDTH //2 ,CANVAS_HEIGHT -30 ))
-        self .progressi_back_rect =back_rect .inflate (30 ,15 )
-        if self .progressi_back_rect .collidepoint (mx ,my ):
+        self .progress_back_rect =back_rect .inflate (30 ,15 )
+        if self .progress_back_rect .collidepoint (mx ,my ):
             back_txt =self ._render_cached (self .font_small ,"Indietro",GOLD )
         self .screen .blit (back_txt ,back_rect )
+
+    draw_progressi =draw_progress
 
     def draw_confirm_delete (self ):
         mx ,my =self ._mouse_pos ()
@@ -4414,11 +4539,13 @@ class Game :
 
     def draw_story (self ):
         entry =self .story_entries [self .story_idx ]if self .story_idx <len (self .story_entries )else {}
-        if self .story_is_level and self .story_phase =="exit":
+        if self .story_next_bg is not None:
+            bg_surf =self .story_next_bg
+        elif self .story_is_level and self .story_phase =="exit":
             bg_surf =self .game_bg 
         else :
-            bg_name =entry .get ("bg","game")
-            bg_surf =self .backgrounds .get (bg_name ,self .bg )
+            bg_name =entry .get ("background",entry .get ("bg","game"))
+            bg_surf =self ._get_bg (bg_name )or self .bg
         self .screen .blit (bg_surf ,(0 ,0 ))
         overlay =self ._overlay
         overlay .set_alpha (180 )

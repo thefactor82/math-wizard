@@ -1,53 +1,77 @@
 [
   {
-    "tipo": "testo",
-    "bg": "forest1",
-    "testo": "NOMEPROFILOINUSO vive nel regno di Math, un posto pacifico e tranquillo, dove le giornate scorrono serene.\n\nMa come in ogni regno succede, anche a Math ci sono alcuni problemi...\n\nGli Hop, dei simpatici mostriciattoli, passano le loro dispettose giornate ad importunare gli abitanti di Math con le loro...\n\nOperazioni!"
+    "type": "text",
+    "text": "NOMEPROFILOINUSO vive nel regno di Math, un posto pacifico e tranquillo, dove le giornate scorrono serene.\n\nMa come in ogni regno succede, anche a Math ci sono alcuni problemi...\n\nGli Hop, dei simpatici mostriciattoli, passano le loro dispettose giornate ad importunare gli abitanti di Math con le loro...\n\nOperazioni!",
+    "background": "forest1"
   },
   {
-    "tipo": "testo",
-    "bg": "home",
-    "testo": "NOMEPROFILOINUSO si è appena svegliat-o-a- per quella che è un'importantissima giornata...\n\nIl Re ha espressamente chiesto di vederl-o-a-!\n\nNOMEPROFILOINUSO non vede l'ora di arrivare al castello, ma dovrà affrontare un lungo sentiero, e probabilmente parecchi Hop che verranno a disturbarl-o-a-..."
+    "type": "text",
+    "text": "NOMEPROFILOINUSO si è appena svegliat-o-a- per quella che è un'importantissima giornata...\n\nIl Re ha espressamente chiesto di vederl-o-a-!\n\nNOMEPROFILOINUSO non vede l'ora di arrivare al castello, ma dovrà affrontare un lungo sentiero, e probabilmente parecchi Hop che verranno a disturbarl-o-a-...",
+    "background": "home"
   },
   {
-    "tipo": "livello",
-    "bg": "home",
-    "monsters": [1,2,8],
+    "monsters": [
+      1,
+      2,
+      8
+    ],
     "player_in": "sx",
     "player_out": "dx",
     "player_entrance": "n",
-    "monster_in": "dx"
+    "monster_in": "dx",
+    "type": "level",
+    "background": "home"
   },
   {
-    "tipo": "livello",
-    "bg": "forest2",
-    "monsters": [1,2,3,4,6,8],
+    "monsters": [
+      1,
+      2,
+      3,
+      4,
+      6,
+      8
+    ],
     "player_in": "sx",
     "player_out": "dx",
     "player_entrance": "y",
-    "monster_in": "dx"
+    "monster_in": "dx",
+    "type": "level",
+    "background": "forest2"
   },
   {
-    "tipo": "livello",
-    "bg": "grass2",
-    "monsters": [1,2,3,4,6,8],
+    "monsters": [
+      1,
+      2,
+      3,
+      4,
+      6,
+      8
+    ],
     "player_in": "sx",
     "player_out": "dx",
     "player_entrance": "y",
-    "monster_in": "dx"
+    "monster_in": "dx",
+    "type": "level",
+    "background": "grass2"
   },
   {
-    "tipo": "livello",
-    "bg": "village",
-    "monsters": [1,2,3,4,5,6,8],
+    "monsters": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      8
+    ],
     "player_in": "sx",
     "player_out": "dx",
     "player_entrance": "y",
-    "monster_in": "dx"
+    "monster_in": "dx",
+    "type": "level",
+    "background": "village"
   },
   {
-    "tipo": "scena",
-    "bg": "castle_entrance",
     "player_in": "sx",
     "player_out": "sx",
     "player_entrance": "y",
@@ -64,109 +88,241 @@
           }
         ],
         "dialogues": [
-          { "who": "player", "frame": 0, "text": "Eccomi, mio Re!" },
-          { "who": "re", "frame": 0, "text": "Benarrivat-o-a- al castello, NOMEPROFILOINUSO!" },
-          { "who": "re", "frame": 0, "text": "Spero che gli Hop non ti abbiano causato troppi problemi." },
-          { "who": "player", "frame": 0, "text": "Qualcuno, mio Re. E stanno diventando via via più fastidiosi..." },
-          { "who": "re", "frame": 0, "text": "Ed è proprio per questo che ti ho mandat-o-a- a chiamare!" },
-          { "who": "re", "frame": 0, "text": "I tuoi poteri magici potrebbero aiutarci a tenere a bada gli Hop!" },
-          { "who": "re", "frame": 0, "text": "Più avanti lungo il sentiero, troverai l'ingresso di una caverna..." },
-          { "who": "re", "frame": 0, "text": "Al fondo della caverna è custodito un magico ciondolo." },
-          { "who": "re", "frame": 0, "text": "Và! E recuperalo per il tuo Re!" },
-          { "who": "re", "frame": 0, "text": "Ma bada bene, gli Hop non te lo lasceranno prendere tanto facilmente..." },
-          { "who": "re", "frame": 0, "text": "Mi raccomando. Resta concentrat-o-a-!" },
-          { "who": "player", "frame": 0, "text": "A cosa servirà quel ciondolo?" },
-          { "who": "re", "frame": 0, "text": "Lo scoprirai a tempo debito, ora vai!" },
-          { "who": "player", "frame": 0, "text": "Farò del mio meglio, mio Re!" }
+          {
+            "who": "player",
+            "frame": 0,
+            "text": "Eccomi, mio Re!"
+          },
+          {
+            "who": "re",
+            "frame": 0,
+            "text": "Benarrivat-o-a- al castello, NOMEPROFILOINUSO!"
+          },
+          {
+            "who": "re",
+            "frame": 0,
+            "text": "Spero che gli Hop non ti abbiano causato troppi problemi."
+          },
+          {
+            "who": "player",
+            "frame": 0,
+            "text": "Qualcuno, mio Re. E stanno diventando via via più fastidiosi..."
+          },
+          {
+            "who": "re",
+            "frame": 0,
+            "text": "Ed è proprio per questo che ti ho mandat-o-a- a chiamare!"
+          },
+          {
+            "who": "re",
+            "frame": 0,
+            "text": "I tuoi poteri magici potrebbero aiutarci a tenere a bada gli Hop!"
+          },
+          {
+            "who": "re",
+            "frame": 0,
+            "text": "Più avanti lungo il sentiero, troverai l'ingresso di una caverna..."
+          },
+          {
+            "who": "re",
+            "frame": 0,
+            "text": "Al fondo della caverna è custodito un magico ciondolo."
+          },
+          {
+            "who": "re",
+            "frame": 0,
+            "text": "Và! E recuperalo per il tuo Re!"
+          },
+          {
+            "who": "re",
+            "frame": 0,
+            "text": "Ma bada bene, gli Hop non te lo lasceranno prendere tanto facilmente..."
+          },
+          {
+            "who": "re",
+            "frame": 0,
+            "text": "Mi raccomando. Resta concentrat-o-a-!"
+          },
+          {
+            "who": "player",
+            "frame": 0,
+            "text": "A cosa servirà quel ciondolo?"
+          },
+          {
+            "who": "re",
+            "frame": 0,
+            "text": "Lo scoprirai a tempo debito, ora vai!"
+          },
+          {
+            "who": "player",
+            "frame": 0,
+            "text": "Farò del mio meglio, mio Re!"
+          }
         ]
       }
-    ]
+    ],
+    "type": "scene",
+    "background": "castle_entrance"
   },
   {
-    "tipo": "livello",
-    "bg": "village",
-    "monsters": [1,2,3,4,5,6,8],
+    "monsters": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      8
+    ],
     "player_in": "dx",
     "player_out": "sx",
     "player_entrance": "y",
-    "monster_in": "sx"
+    "monster_in": "sx",
+    "type": "level",
+    "background": "village"
   },
   {
-    "tipo": "livello",
-    "bg": "grass2",
-    "monsters": [1,2,3,4,6,8],
+    "monsters": [
+      1,
+      2,
+      3,
+      4,
+      6,
+      8
+    ],
     "player_in": "dx",
     "player_out": "sx",
     "player_entrance": "y",
-    "monster_in": "sx"
+    "monster_in": "sx",
+    "type": "level",
+    "background": "grass2"
   },
   {
-    "tipo": "livello",
-    "bg": "cavern_entrance",
-    "monsters": [3,7,9,10,11],
-    "flying": [9,10,11],
+    "monsters": [
+      3,
+      7,
+      9,
+      10,
+      11
+    ],
+    "flying": [
+      9,
+      10,
+      11
+    ],
     "player_in": "dx",
     "player_out": "sx",
     "player_entrance": "y",
-    "monster_in": "sx"
+    "monster_in": "sx",
+    "type": "level",
+    "background": "cavern_entrance"
   },
   {
-    "tipo": "livello",
-    "bg": "cavern2",
-    "monsters": [3,7,9,10,11],
-    "flying": [9,10,11],
+    "monsters": [
+      3,
+      7,
+      9,
+      10,
+      11
+    ],
+    "flying": [
+      9,
+      10,
+      11
+    ],
     "player_in": "dx",
     "player_out": "sx",
     "player_entrance": "y",
-    "monster_in": "sx"
+    "monster_in": "sx",
+    "type": "level",
+    "background": "cavern2"
   },
   {
-    "tipo": "testo",
-    "bg": "cavern3",
-    "testo": "Dopo un grande numero di Hop affrontati, finalmente NOMEPROFILOINUSO è arrivat-o-a- nelle profondità di una scintillante grotta...\n\nIl Re aveva ragione!\n\nUno splendido ciondolo è appoggiato sopra una roccia, al centro della caverna.\n\nNOMEPROFILOINUSO lo prende e si appresta a fare ritorno dal suo Re.",
-    "oggetto": "pendant"
+    "type": "text",
+    "text": "Dopo un grande numero di Hop affrontati, finalmente NOMEPROFILOINUSO è arrivat-o-a- nelle profondità di una scintillante grotta...\n\nIl Re aveva ragione!\n\nUno splendido ciondolo è appoggiato sopra una roccia, al centro della caverna.\n\nNOMEPROFILOINUSO lo prende e si appresta a fare ritorno dal suo Re.",
+    "background": "cavern3",
+    "object": "pendant"
   },
   {
-    "tipo": "livello",
-    "bg": "cavern2",
-    "monsters": [3,7,9,10,11],
-    "flying": [9,10,11],
+    "monsters": [
+      3,
+      7,
+      9,
+      10,
+      11
+    ],
+    "flying": [
+      9,
+      10,
+      11
+    ],
     "player_in": "sx",
     "player_out": "dx",
     "player_entrance": "y",
-    "monster_in": "dx"
+    "monster_in": "dx",
+    "type": "level",
+    "background": "cavern2"
   },
   {
-    "tipo": "livello",
-    "bg": "cavern_entrance",
-    "monsters": [1,2,3,4,6,7,8],
+    "monsters": [
+      1,
+      2,
+      3,
+      4,
+      6,
+      7,
+      8
+    ],
     "player_in": "sx",
     "player_out": "dx",
     "player_entrance": "y",
-    "monster_in": "dx"
+    "monster_in": "dx",
+    "type": "level",
+    "background": "cavern_entrance"
   },
   {
-    "tipo": "livello",
-    "bg": "grass2",
-    "monsters": [1,2,3,4,6,8],
+    "monsters": [
+      1,
+      2,
+      3,
+      4,
+      6,
+      8
+    ],
     "player_in": "sx",
     "player_out": "dx",
     "player_entrance": "y",
-    "monster_in": "dx"
+    "monster_in": "dx",
+    "type": "level",
+    "background": "grass2"
   },
   {
-    "tipo": "livello",
-    "bg": "village",
-    "monsters": [1,2,3,4,5,6,8],
+    "monsters": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      8
+    ],
     "player_in": "sx",
     "player_out": "dx",
     "player_entrance": "y",
-    "monster_in": "dx"
+    "monster_in": "dx",
+    "type": "level",
+    "background": "village"
   },
   {
-    "tipo": "livello",
-    "bg": "castle_entrance",
-    "monsters": [1,2,3,4,5,6,8],
+    "monsters": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      8
+    ],
     "player_in": "sx",
     "player_out": "dx",
     "player_entrance": "y",
@@ -185,27 +341,67 @@
           }
         ],
         "dialogues": [
-          { "who": "re", "frame": 2, "text": "Aiuto NOMEPROFILOINUSO!" },
-          { "who": "re", "frame": 2, "text": "Gli Hop hanno invaso il mio castello!!!" }
+          {
+            "who": "re",
+            "frame": 2,
+            "text": "Aiuto NOMEPROFILOINUSO!"
+          },
+          {
+            "who": "re",
+            "frame": 2,
+            "text": "Gli Hop hanno invaso il mio castello!!!"
+          }
         ]
       }
-    ]
+    ],
+    "type": "level",
+    "background": "castle_entrance"
   },
   {
-    "tipo": "livello",
-    "bg": "castle1",
-    "monsters": [1,2,3,4,5,6,7,8,9,10,11],
-    "flying": [9,10,11],
+    "monsters": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+    ],
+    "flying": [
+      9,
+      10,
+      11
+    ],
     "player_in": "sx",
     "player_out": "dx",
     "player_entrance": "y",
-    "monster_in": "dx"
+    "monster_in": "dx",
+    "type": "level",
+    "background": "castle1"
   },
   {
-    "tipo": "livello",
-    "bg": "castle2",
-    "monsters": [1,2,3,4,5,6,7,8,9,10,11],
-    "flying": [9,10,11],
+    "monsters": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+    ],
+    "flying": [
+      9,
+      10,
+      11
+    ],
     "player_in": "sx",
     "player_out": "sx",
     "player_entrance": "y",
@@ -225,16 +421,50 @@
           }
         ],
         "dialogues": [
-          { "who": "re", "frame": 0, "text": "Ben fatto, NOMEPROFILOINUSO, davvero ben fatto!" },
-          { "who": "player", "frame": 0, "text": "Ho riportato il ciondolo che aveva chiesto, mio Re!" },
-          { "who": "re", "frame": 1, "text": "Non solo! Hai anche salvato il mio trono dall'arrivo di quell'Hop gigante!" },
-          { "who": "re", "frame": 1, "text": "(e decisamente sovrappeso...)" },
-          { "who": "player", "frame": 0, "text": "Grazie, mio Re! Posso adesso sapere a cosa servirà quel ciondolo?" },
-          { "who": "re", "frame": 2, "text": "Vuoi saperlo proprio adesso?" },
-          { "who": "player", "frame": 0, "text": "Beh, se possibile..." },
-          { "who": "re", "frame": 1, "text": "Temo che dovrai attendere la prossima avventura..." }
+          {
+            "who": "re",
+            "frame": 0,
+            "text": "Ben fatto, NOMEPROFILOINUSO, davvero ben fatto!"
+          },
+          {
+            "who": "player",
+            "frame": 0,
+            "text": "Ho riportato il ciondolo che aveva chiesto, mio Re!"
+          },
+          {
+            "who": "re",
+            "frame": 1,
+            "text": "Non solo! Hai anche salvato il mio trono dall'arrivo di quell'Hop gigante!"
+          },
+          {
+            "who": "re",
+            "frame": 1,
+            "text": "(e decisamente sovrappeso...)"
+          },
+          {
+            "who": "player",
+            "frame": 0,
+            "text": "Grazie, mio Re! Posso adesso sapere a cosa servirà quel ciondolo?"
+          },
+          {
+            "who": "re",
+            "frame": 2,
+            "text": "Vuoi saperlo proprio adesso?"
+          },
+          {
+            "who": "player",
+            "frame": 0,
+            "text": "Beh, se possibile..."
+          },
+          {
+            "who": "re",
+            "frame": 1,
+            "text": "Temo che dovrai attendere la prossima avventura..."
+          }
         ]
       }
-    ]
+    ],
+    "type": "level",
+    "background": "castle2"
   }
 ]
