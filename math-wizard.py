@@ -50,6 +50,7 @@ WIZARD_LIVES =3
 DEFAULT_TIMEOUT =12 
 CANVAS_WIDTH =1920 
 CANVAS_HEIGHT =1080 
+WINDOWED_SIZES ={"1920x1080":(1920 ,1080 ),"1280x720":(1280 ,720 )}
 FPS =60 
 FONT_PATH ="fonts/DynaPuff.ttf"
 
@@ -491,6 +492,7 @@ class Game :
     def __init__ (self ):
         pygame .init ()
         self .fullscreen =True 
+        self .window_mode ="1920x1080" 
         try :
             icon =pygame .image .load (resource_path ("graphics/misc/icon.png"))
             if not (icon .get_flags ()&pygame .SRCALPHA ):
@@ -868,10 +870,21 @@ class Game :
             self ._display =pygame .display .set_mode ((0 ,0 ),pygame .FULLSCREEN )
             self ._monitor_w ,self ._monitor_h =self ._display .get_size ()
         else :
-            self ._display =pygame .display .set_mode ((CANVAS_WIDTH ,CANVAS_HEIGHT ))
+            w ,h =WINDOWED_SIZES .get (self .window_mode ,(CANVAS_WIDTH ,CANVAS_HEIGHT ))
+            self ._display =pygame .display .set_mode ((w ,h ))
+            self ._monitor_w ,self ._monitor_h =self ._display .get_size ()
         self .screen =pygame .Surface ((CANVAS_WIDTH ,CANVAS_HEIGHT ))
         self ._overlay =pygame .Surface ((CANVAS_WIDTH ,CANVAS_HEIGHT ))
         self ._update_fit ()
+
+    def _cycle_display_mode (self ,full_cycle ):
+        if self .fullscreen :
+            return (False ,"1920x1080"if full_cycle else self .window_mode )
+        if not full_cycle :
+            return (True ,self .window_mode )
+        if self .window_mode =="1280x720" :
+            return (True ,self .window_mode )
+        return (False ,"1280x720")
 
     def _resize_display (self ,size ):
         if not size or len (size )!=2 :
@@ -957,7 +970,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if normalize_story_entry (e ) .get ("type")=="level")
 
-        self .version ="1.3.47"
+        self .version ="1.3.48"
 
         self .profiles =[]
         self .current_profile =""
@@ -1065,6 +1078,7 @@ class Game :
         "story_progress":self .story_progress ,
         "story_completed":self .story_completed ,
         "fullscreen":self .fullscreen ,
+        "window_mode":self .window_mode ,
         "music_volume":self .music_volume ,
         "effects_volume":self .sfx_volume ,
         }
@@ -1131,6 +1145,8 @@ class Game :
             self .restore_initial_level () 
             if "fullscreen"in data :
                 self .fullscreen =bool (data ["fullscreen"])
+            if "window_mode"in data and str (data ["window_mode"])in WINDOWED_SIZES :
+                self .window_mode =str (data ["window_mode"])
             if "music_volume"in data :
                 self .music_volume =max (0 ,min (100 ,int (data ["music_volume"])))
             if "effects_volume"in data :
@@ -1999,7 +2015,7 @@ class Game :
 
     def handle_input (self ,event ):
         if event .type ==pygame .KEYDOWN and event .key ==pygame .K_F11 :
-            self .fullscreen =not self .fullscreen 
+            self .fullscreen ,self .window_mode =self ._cycle_display_mode (False )
             self ._apply_display_mode ()
             self .setup_cursor ()
             self .save_profile_config ()
@@ -2110,14 +2126,14 @@ class Game :
                     if self .options_cursor ==0 :
                         self .state =GAME_STATE_PROGRESS
                     elif self .options_cursor ==1 :
-                        self .fullscreen =not self .fullscreen
+                        self .fullscreen ,self .window_mode =self ._cycle_display_mode (True )
                         self ._apply_display_mode ()
                         self .setup_cursor ()
                         self .save_profile_config ()
                     elif self .options_cursor ==4 :
                         self .state =GAME_STATE_CONFIRM_DELETE
                 elif event .key ==pygame .K_2 :
-                    self .fullscreen =not self .fullscreen
+                    self .fullscreen ,self .window_mode =self ._cycle_display_mode (True )
                     self ._apply_display_mode ()
                     self .setup_cursor ()
                     self .save_profile_config ()
@@ -2361,7 +2377,7 @@ class Game :
                         if idx ==0 :
                             self .state =GAME_STATE_PROGRESS
                         elif idx ==1 :
-                            self .fullscreen =not self .fullscreen
+                            self .fullscreen ,self .window_mode =self ._cycle_display_mode (True )
                             self ._apply_display_mode ()
                             self .setup_cursor ()
                             self .save_profile_config ()
@@ -3544,7 +3560,7 @@ class Game :
         rect =title .get_rect (center =(CANVAS_WIDTH //2 ,120 ))
         self .screen .blit (title ,rect )
 
-        voci =["Progressi","Schermo: " +("intero"if self .fullscreen else "finestra"),None ,None ,"Elimina profilo attuale"]
+        voci =["Progressi","Schermo: " +("intero"if self .fullscreen else ("finestra " +self .window_mode )),None ,None ,"Elimina profilo attuale"]
         voci_y =[300 ,390 ,480 ,570 ,660 ]
         self .options_btn_rects =[ ]
         for i ,voce in enumerate (voci ):
