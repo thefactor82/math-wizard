@@ -112,6 +112,7 @@ GAME_STATE_LEVEL_COMPLETE ="level_complete"
 GAME_STATE_PLAYER_EXIT ="player_exit"
 GAME_STATE_STORY ="story"
 GAME_STATE_LOADING ="loading"
+GAME_STATE_TUTORIAL_PROMPT ="tutorial_prompt"
 
 
 def normalize_game_state (value ):
@@ -970,7 +971,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if normalize_story_entry (e ) .get ("type")=="level")
 
-        self .version ="1.3.48"
+        self .version ="1.3.49"
 
         self .profiles =[]
         self .current_profile =""
@@ -1183,6 +1184,8 @@ class Game :
 
     def reset_game_state (self ):
         self .mode ="auto"
+        self .tutorial_active =False 
+        self ._mode_before_tutorial =self .mode
         self .pool_a =list (range (0 ,10 ))
         self .pool_b =list (range (0 ,10 ))
         self .total_questions =10 
@@ -1444,7 +1447,7 @@ class Game :
             self .switch_music ("level")
         if self .mode =="auto":
             lv =self .level
-            self .questions_per_level =random .randint (8 +lv ,15 +lv )
+            self .questions_per_level =1 if self .tutorial_active else random .randint (8 +lv ,15 +lv )
         self .questions_asked =0 
         self .answer_times =[]
         self .monster_times =[]
@@ -1689,8 +1692,13 @@ class Game :
         if on_complete =="question":
             self .new_question ()
         elif on_complete ==GAME_STATE_LEVEL_COMPLETE:
-            self .save_session ()
-            self .set_state (GAME_STATE_LEVEL_COMPLETE ,reset_scene =True )
+            if self .tutorial_active :
+                self .player_exit_start =pygame .time .get_ticks ()
+                self .player_exit_x =112 
+                self .set_state (GAME_STATE_PLAYER_EXIT ,reset_scene =True )
+            else :
+                self .save_session ()
+                self .set_state (GAME_STATE_LEVEL_COMPLETE ,reset_scene =True )
         elif on_complete in ("scene_end","scena_end"):
             self .end_scene ()
 
@@ -1864,7 +1872,7 @@ class Game :
                 else :
                     self .a ,self .b =self .b ,self .a 
             self .expected_result =calculate_result (self .a ,self .b ,self .operation ,self .integer_result )
-            self .boss_questions_asked +=1 
+            self .boss_questions_asked +=1
             self .question_active =True 
             self .input_utente =""
             self .wait_for_enter =False 
@@ -1887,7 +1895,7 @@ class Game :
 
         self .prev_a ,self .prev_b =self .a ,self .b 
         if self .mode =="auto":
-            if self .questions_asked >=self .questions_per_level :
+            if self .questions_asked >=self .questions_per_level or (self .tutorial_active and self ._tutorial_passed ):
                 if self .boss_active :
                     lv =self .level 
                     tempi_lv =self .stats .get (lv ,{}).get ("tempi",[])
@@ -1907,16 +1915,23 @@ class Game :
                 self .save_session ()
                 self .state =GAME_STATE_LEVEL_COMPLETE
                 return 
-            lv =self .effective_level ()
-            lv_data =self .levels [lv ]
-            self .operation =self .config_story_operation 
-            allow_queue =not self ._no_queue_next and not self ._prev_from_queue
-            self ._no_queue_next =False
-            self .a ,self .b ,self ._operands_fallback ,self ._from_queue =select_operands (lv_data ["pool_a"],lv_data ["pool_b"],self .reinforcement_queue if allow_queue else deque (),self .operation ,self .integer_result ,min_value =lv_data .get ("min_value"),max_value =lv_data .get ("max_value"),carry_prob =lv_data .get ("carry"),borrow_prob =lv_data .get ("borrow"))
-            self ._prev_from_queue =self ._from_queue
-            if self .operation =="sottrazione"and self .a <self .b :
-                self .a ,self .b =self .b ,self .a 
-            self .questions_asked +=1
+            if self .tutorial_active :
+                self .operation ="addizione"
+                self .a ,self .b =2 ,1
+                self ._from_queue =False 
+                self ._prev_from_queue =False 
+                self ._no_queue_next =False 
+            else :
+                lv =self .effective_level ()
+                lv_data =self .levels [lv ]
+                self .operation =self .config_story_operation 
+                allow_queue =not self ._no_queue_next and not self ._prev_from_queue
+                self ._no_queue_next =False
+                self .a ,self .b ,self ._operands_fallback ,self ._from_queue =select_operands (lv_data ["pool_a"],lv_data ["pool_b"],self .reinforcement_queue if allow_queue else deque (),self .operation ,self .integer_result ,min_value =lv_data .get ("min_value"),max_value =lv_data .get ("max_value"),carry_prob =lv_data .get ("carry"),borrow_prob =lv_data .get ("borrow"))
+                self ._prev_from_queue =self ._from_queue
+                if self .operation =="sottrazione"and self .a <self .b :
+                    self .a ,self .b =self .b ,self .a 
+                self .questions_asked +=1
         else :
             if self .questions_asked >=self .total_questions :
                 self .save_session ()
@@ -1947,7 +1962,7 @@ class Game :
                 self .a ,self .b =self .b ,self .a 
             self .questions_asked +=1 
 
-        if not self ._from_queue and (self .a ,self .b )==(self .prev_a ,self .prev_b ):
+        if not self .tutorial_active and not self ._from_queue and (self .a ,self .b )==(self .prev_a ,self .prev_b ):
             if self .operation =="divisione":
                 self .a ,self .b ,self ._operands_fallback =self ._new_distinct_pair ()
             elif self .a ==self .b :
@@ -2034,6 +2049,12 @@ class Game :
                 if self .debug_buf =="debug":
                     self .debug =not self .debug 
                     self .debug_buf =""
+            if self .state ==GAME_STATE_TUTORIAL_PROMPT:
+                if event .key in (pygame .K_s ,pygame .K_y ,pygame .K_RETURN ,pygame .K_KP_ENTER ):
+                    self .start_tutorial ()
+                elif event .key in (pygame .K_n ,pygame .K_ESCAPE ):
+                    self .state =GAME_STATE_MENU
+                return 
             if self .state ==GAME_STATE_PROFILE_SELECT:
                 if self .profile_input_mode :
                     if self .profile_gender_mode :
@@ -2054,7 +2075,7 @@ class Game :
                             self .profile_input =""
                             self .profile_input_mode =False 
                             self .profile_gender_mode =False 
-                            self .state =GAME_STATE_MENU
+                            self .state =GAME_STATE_TUTORIAL_PROMPT
                         elif event .key ==pygame .K_m :
                             self .reset_profile_config ()
                             self .config_gender ="M"
@@ -2070,7 +2091,7 @@ class Game :
                             self .profile_input =""
                             self .profile_input_mode =False 
                             self .profile_gender_mode =False 
-                            self .state =GAME_STATE_MENU
+                            self .state =GAME_STATE_TUTORIAL_PROMPT
                     else :
                         if event .key ==pygame .K_ESCAPE :
                             self .profile_input_mode =False 
@@ -2131,12 +2152,16 @@ class Game :
                         self .setup_cursor ()
                         self .save_profile_config ()
                     elif self .options_cursor ==4 :
+                        self .start_tutorial ()
+                    elif self .options_cursor ==5 :
                         self .state =GAME_STATE_CONFIRM_DELETE
                 elif event .key ==pygame .K_2 :
                     self .fullscreen ,self .window_mode =self ._cycle_display_mode (True )
                     self ._apply_display_mode ()
                     self .setup_cursor ()
                     self .save_profile_config ()
+                elif event .key ==pygame .K_4 :
+                    self .start_tutorial ()
                 elif event .key ==pygame .K_5 :
                     self .state =GAME_STATE_CONFIRM_DELETE
                 elif event .key in (pygame .K_PLUS ,pygame .K_EQUALS ,pygame .K_KP_PLUS ):
@@ -2211,22 +2236,31 @@ class Game :
                     if event .key in (pygame .K_RETURN ,pygame .K_KP_ENTER ,pygame .K_SPACE ):
                         self .advance_scene_dialogue ()
                     elif event .key ==pygame .K_ESCAPE :
-                        self .state =GAME_STATE_MENU
+                        self ._exit_to_menu ()
                     return 
                 if self .game_over :
                     if event .key ==pygame .K_r :
-                        self .start_game ()
+                        if self .tutorial_active :
+                            self .end_tutorial ()
+                        else :
+                            self .start_game ()
                         return 
                     elif event .key ==pygame .K_m :
-                        self .save_session ()
-                        self .state =GAME_STATE_MENU
+                        if self .tutorial_active :
+                            self .end_tutorial ()
+                        else :
+                            self .save_session ()
+                            self .state =GAME_STATE_MENU
                         return 
                     elif event .key ==pygame .K_ESCAPE :
-                        self .save_session ()
-                        self .state =GAME_STATE_MENU
+                        if self .tutorial_active :
+                            self .end_tutorial ()
+                        else :
+                            self .save_session ()
+                            self .state =GAME_STATE_MENU
                         return 
                 if event .key ==pygame .K_ESCAPE :
-                    self .state =GAME_STATE_MENU
+                    self ._exit_to_menu ()
                 elif self .wait_for_enter and event .key in (pygame .K_RETURN ,pygame .K_KP_ENTER ):
                     if self .game_over :
                         self .save_session ()
@@ -2250,7 +2284,9 @@ class Game :
                     elif event .unicode =="-"and not self .input_utente :
                         self .input_utente +=event .unicode 
             elif self .state ==GAME_STATE_GAME_OVER:
-                if event .key ==pygame .K_r :
+                if self .tutorial_active :
+                    self .end_tutorial ()
+                elif event .key ==pygame .K_r :
                     self .start_game ()
                 elif event .key ==pygame .K_m :
                     self .state =GAME_STATE_MENU
@@ -2271,6 +2307,12 @@ class Game :
 
         if event .type ==pygame .MOUSEBUTTONDOWN :
             mx ,my =self ._scale_to_canvas (*event .pos ) 
+            if self .state ==GAME_STATE_TUTORIAL_PROMPT:
+                if getattr (self ,'tutorial_si_rect',None )and self .tutorial_si_rect .collidepoint (mx ,my ):
+                    self .start_tutorial ()
+                elif getattr (self ,'tutorial_no_rect',None )and self .tutorial_no_rect .collidepoint (mx ,my ):
+                    self .state =GAME_STATE_MENU
+                return 
             if self .state ==GAME_STATE_GAME and self .scene_phase =="dialogue":
                 self .advance_scene_dialogue ()
                 return 
@@ -2288,6 +2330,9 @@ class Game :
                         self .story_fade_speed =3 
                         self .story_phase ="exit"
             elif self .state ==GAME_STATE_GAME_OVER:
+                if self .tutorial_active :
+                    self .end_tutorial ()
+                    return 
                 if hasattr (self ,'gameover_buttons'):
                     if self .gameover_buttons .get ("restart")and self .gameover_buttons ["restart"].collidepoint (mx ,my ):
                         self .player_exit_retry =True 
@@ -2369,7 +2414,7 @@ class Game :
                             self .profile_input =""
                             self .profile_input_mode =False 
                             self .profile_gender_mode =False 
-                            self .state =GAME_STATE_MENU
+                            self .state =GAME_STATE_TUTORIAL_PROMPT
                             break 
             elif self .state ==GAME_STATE_OPTIONS:
                 for idx ,hit in getattr (self ,'options_btn_rects',[ ]):
@@ -2382,6 +2427,8 @@ class Game :
                             self .setup_cursor ()
                             self .save_profile_config ()
                         elif idx ==4 :
+                            self .start_tutorial ()
+                        elif idx ==5 :
                             self .state =GAME_STATE_CONFIRM_DELETE
                         return
                 if getattr (self ,'opt_mus_minus',None )and self .opt_mus_minus .collidepoint (mx ,my ):
@@ -2888,6 +2935,8 @@ class Game :
 
         if risposta is not None and is_answer_correct (risposta ,self .expected_result ):
             self .is_correct =True 
+            if self .tutorial_active :
+                self ._tutorial_passed =True 
             self .stats [level ]["corrette"]+=1 
             self .play_sfx ("zap")
             if self .boss_active and self .boss_phase =="fight":
@@ -3062,6 +3111,10 @@ class Game :
         if self .state ==GAME_STATE_PLAYER_EXIT:
             elapsed =pygame .time .get_ticks ()-self .player_exit_start 
             if elapsed >=4000 :
+                if self .tutorial_active :
+                    self .save_session ()
+                    self .state =GAME_STATE_LEVEL_COMPLETE
+                    return 
                 if self .player_exit_retry :
                     self .player_exit_retry =False 
                     self .lives =WIZARD_LIVES 
@@ -3321,6 +3374,8 @@ class Game :
                 self .draw_options ()
             elif self .state ==GAME_STATE_CONFIRM_DELETE:
                 self .draw_confirm_delete ()
+            elif self .state ==GAME_STATE_TUTORIAL_PROMPT:
+                self .draw_tutorial_prompt ()
             elif self .state ==GAME_STATE_OPTIONS_AUTO:
                 self .draw_auto_options ()
             elif self .state ==GAME_STATE_CONFIG_FIXED:
@@ -3560,14 +3615,14 @@ class Game :
         rect =title .get_rect (center =(CANVAS_WIDTH //2 ,120 ))
         self .screen .blit (title ,rect )
 
-        voci =["Progressi","Schermo: " +("intero"if self .fullscreen else ("finestra " +self .window_mode )),None ,None ,"Elimina profilo attuale"]
-        voci_y =[300 ,390 ,480 ,570 ,660 ]
+        voci =["Progressi","Schermo: " +("intero"if self .fullscreen else ("finestra " +self .window_mode )),None ,None ,"Tutorial","Elimina profilo attuale"]
+        voci_y =[300 ,390 ,480 ,570 ,660 ,750 ]
         self .options_btn_rects =[ ]
         for i ,voce in enumerate (voci ):
             if voce is None :
                 continue
             y =voci_y [i ]
-            color =RED if i ==4 else WHITE
+            color =RED if i ==5 else WHITE
             txt =self ._render_cached (self .font_medium ,voce ,color )
             rect =txt .get_rect (center =(CANVAS_WIDTH //2 ,y +31 ))
             hit =rect .inflate (30 ,15 )
@@ -4506,7 +4561,7 @@ class Game :
             else :
                 self .heart_reward_active =False 
 
-        if self .scene_phase =="dialogue"and self .scene_npcs :
+        if self .scene_phase =="dialogue"and (self .scene_npcs or (self .scene_data and self .scene_data .get ("dialogues"))):
             self .draw_speech_bubble ()
 
         if self .debug :
@@ -4557,6 +4612,9 @@ class Game :
                 dy +=24 
 
     def _advance_level_complete (self ):
+        if self .tutorial_active :
+            self .end_tutorial ()
+            return 
         richieste =5 +self .level 
         recent_times =self .monster_times [-richieste :]
         average =sum (recent_times )/len (recent_times )if recent_times else 0 
@@ -4578,6 +4636,109 @@ class Game :
         self .player_exit_x =112 
         self .state =GAME_STATE_PLAYER_EXIT
 
+    def _restore_story (self ):
+        self .story_entries =[]
+        for src in (data_path ,resource_path ):
+            story_path =src ("data/story.json")
+            if os .path .exists (story_path ):
+                data =load_json_file (story_path )
+                if isinstance (data ,list ):
+                    self .story_entries =data 
+                if self .story_entries :
+                    break 
+        self .num_story_levels =sum (1 for e in self .story_entries if normalize_story_entry (e ) .get ("type")=="level")
+
+    def start_tutorial (self ):
+        entries =[]
+        for src in (data_path ,resource_path ):
+            path =src ("data/tutorial.json")
+            if os .path .exists (path ):
+                loaded =load_json_file (path )
+                if isinstance (loaded ,list )and loaded :
+                    entries =loaded 
+                    break 
+        if not entries :
+            self .state =GAME_STATE_MENU
+            return 
+        mode_before =self .mode 
+        self .reset_game_state ()
+        self ._mode_before_tutorial =mode_before 
+        self .tutorial_active =True 
+        self .mode ="auto"
+        self .level =0 
+        self .lives =WIZARD_LIVES 
+        self .game_over =False 
+        self .is_correct =0 
+        self .timeout_limit =self .auto_timeout 
+        self ._tutorial_passed =False 
+        self .stats ={}
+        self .answer_times =[]
+        self .wrong_questions =[]
+        self .current_block =[]
+        self .reinforcement_queue .clear ()
+        self .story_entries =entries 
+        self .num_story_levels =sum (1 for e in entries if normalize_story_entry (e ) .get ("type")=="level")
+        self .story_idx =0 
+        self .return_to_game =False 
+        self .player_exit_retry =False 
+        self .story_fade_alpha =255 
+        self .story_fade_color =(0 ,0 ,0 ) 
+        self .game_bg =self .bg 
+        self .show_story ()
+
+    def end_tutorial (self ):
+        self .tutorial_active =False 
+        self .mode =self ._mode_before_tutorial 
+        self .game_over =False 
+        self .reinforcement_queue .clear ()
+        self .current_block =[]
+        self .wrong_questions =[]
+        self .stats ={}
+        self .answer_times =[]
+        self ._tutorial_passed =False 
+        self ._restore_story ()
+        self .story_idx =0 
+        self .state =GAME_STATE_MENU
+
+    def _exit_to_menu (self ):
+        if self .tutorial_active :
+            self .end_tutorial ()
+        else :
+            self .state =GAME_STATE_MENU
+
+    def draw_tutorial_prompt (self ):
+        mx ,my =self ._mouse_pos ()
+        overlay =self ._overlay
+        overlay .set_alpha (200 )
+        overlay .fill (BG_DARK )
+        self .screen .blit (overlay ,(0 ,0 ))
+
+        title =self ._render_cached (self .font_large ,"TUTORIAL",GOLD )
+        rect =title .get_rect (center =(CANVAS_WIDTH //2 ,200 ))
+        self .screen .blit (title ,rect )
+
+        msg =self ._render_cached (self .font_medium ,"Vuoi seguire un breve tutorial?",WHITE )
+        rect =msg .get_rect (center =(CANVAS_WIDTH //2 ,400 ))
+        self .screen .blit (msg ,rect )
+
+        hint =self ._render_cached (self .font_small ,"(Sì = INVIO  ·  No = ESC)",GRAY )
+        rect =hint .get_rect (center =(CANVAS_WIDTH //2 ,500 ))
+        self .screen .blit (hint ,rect )
+
+        si_txt =self ._render_cached (self .font_medium ,"Sì",WHITE )
+        si_rect =si_txt .get_rect (center =(CANVAS_WIDTH //2 -250 ,650 ))
+        self .tutorial_si_rect =si_rect .inflate (60 ,26 )
+        if self .tutorial_si_rect .collidepoint (mx ,my ):
+            si_txt =self ._render_cached (self .font_medium ,"Sì",GOLD )
+        self .screen .blit (si_txt ,si_rect )
+
+        no_txt =self ._render_cached (self .font_medium ,"No",WHITE )
+        no_rect =no_txt .get_rect (center =(CANVAS_WIDTH //2 +250 ,650 ))
+        self .tutorial_no_rect =no_rect .inflate (60 ,26 )
+        if self .tutorial_no_rect .collidepoint (mx ,my ):
+            no_txt =self ._render_cached (self .font_medium ,"No",GOLD )
+        self .screen .blit (no_txt ,no_rect )
+
     def draw_level_complete (self ):
         self .screen .blit (self .game_bg ,(0 ,0 ))
         overlay =self ._overlay
@@ -4585,11 +4746,15 @@ class Game :
         overlay .fill (BG_DARK )
         self .screen .blit (overlay ,(0 ,0 ))
 
-        if self .mode =="auto":
-            numero_livello =self .level +1
+        if self .tutorial_active :
+            title_text ="TUTORIAL COMPLETATO"
         else :
-            numero_livello =self .effective_level ()+1
-        self .draw_text_shadow (self .font_title ,f"LIVELLO {numero_livello } COMPLETATO",GOLD ,center =(CANVAS_WIDTH //2 ,120 ))
+            if self .mode =="auto":
+                numero_livello =self .level +1
+            else :
+                numero_livello =self .effective_level ()+1
+            title_text =f"LIVELLO {numero_livello } COMPLETATO"
+        self .draw_text_shadow (self .font_title ,title_text ,GOLD ,center =(CANVAS_WIDTH //2 ,120 ))
 
         tot =len (self .monster_times )
         correct_count =self .stats .get (self .level ,{}).get ("corrette",0 )
@@ -4789,7 +4954,12 @@ class Game :
         y_btn =y_text +20 
         self .gameover_buttons ={}
         completato =not (self .lives <=0 or (self .boss_active and self .boss_phase =="fight"))
-        btns =[("MENU PRINCIPALE","menu")]if completato else [("RIPROVA","restart"),("MENU PRINCIPALE","menu")]
+        if self .tutorial_active :
+            btns =[("MENU PRINCIPALE","menu")]
+        elif completato :
+            btns =[("MENU PRINCIPALE","menu")]
+        else :
+            btns =[("RIPROVA","restart"),("MENU PRINCIPALE","menu")]
         btn_w =350 
         total_w =len (btns )*btn_w +(len (btns )-1 )*45 
         start_x =CANVAS_WIDTH //2 -total_w //2 
@@ -4844,7 +5014,7 @@ class Game :
         mx ,my =self ._mouse_pos ()
         y =max (y +30 ,CANVAS_HEIGHT -150 )
         self .gameover_buttons ={}
-        btns =[("RIPROVA","restart"),("MENU PRINCIPALE","menu")]
+        btns =[("MENU PRINCIPALE","menu")]if self .tutorial_active else [("RIPROVA","restart"),("MENU PRINCIPALE","menu")]
         btn_w =400 
         gap =45 
         total_w =len (btns )*btn_w +(len (btns )-1 )*gap 
@@ -4861,6 +5031,8 @@ class Game :
             self .gameover_buttons [action ]=btn_rect 
 
     def save_session (self ):
+        if self .tutorial_active :
+            return 
         total_correct =sum (v ["corrette"]for v in self .stats .values ())
         total_wrong =sum (v ["sbagliate"]for v in self .stats .values ())
         average_time =sum (self .answer_times )/len (self .answer_times )if self .answer_times else 0 

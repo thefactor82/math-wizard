@@ -1,0 +1,111 @@
+[
+  {
+    "monsters": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      8
+    ],
+    "player_in": "sx",
+    "player_out": "dx",
+    "player_entrance": "y",
+    "monster_in": "dx",
+    "scenes": [
+      {
+        "when": "before",
+        "dialogues": [
+          {
+            "who": "player",
+            "frame": 0,
+            "text": "Ciao! Benvenut-o-a- nel regno di Math!"
+          },
+          {
+            "who": "player",
+            "frame": 0,
+            "text": "Come scoprirai presto, i miei poteri magici derivano dalla matematica!"
+          },
+          {
+            "who": "player",
+            "frame": 0,
+            "text": "Per sconfiggere i nemici, dovrai dare risposta alle operazioni che ti vengono proposte!"
+          },
+          {
+            "who": "player",
+            "frame": 0,
+            "text": "Facciamo una prova molto semplice..."            
+          },
+          {
+            "who": "player",
+            "frame": 0,
+            "text": "Rispondi alla domanda che ti viene proposta digitando il risultato sulla tua tastiera, e premendo il tasto Invio!"
+          },
+          {
+            "who": "player",
+            "frame": 0,
+            "text": "Ecco che arriva l'Hop! Rispondi alla sua domanda per sconfiggerlo!"
+          }
+        ]
+      },
+      {
+        "when": "after",
+        "dialogues": [
+          {
+            "who": "player",
+            "frame": 0,
+            "text": "Ben fatto! Anche se questa era facile..."
+          },
+          {
+            "who": "player",
+            "frame": 0,
+            "text": "Durante il gioco arriveranno domande più difficili. Devi essere rapid-o-a- e concentrat-o-a-!"
+          },
+          {
+            "who": "player",
+            "frame": 0,
+            "text": "Ci sono due modalità di gioco: ALLENAMENTO e STORIA!"
+          },
+          {
+            "who": "player",
+            "frame": 0,
+            "text": "In ALLENAMENTO puoi scegliere su quale operazione concentrarti."
+          },
+          {
+            "who": "player",
+            "frame": 0,
+            "text": "Puoi selezionare gli intervalli di numeri proposti e alcuni parametri riguardanti il risultato e l'operazione in sé."
+          },
+          {
+            "who": "player",
+            "frame": 0,
+            "text": "In STORIA invece dovrai affrontare una serie di nemici sempre più forti, e dovrai rispondere a domande sempre più difficili!"
+          },
+          {
+            "who": "player",
+            "frame": 0,
+            "text": "Nella modalità Storia puoi selezionare il livello di difficoltà più adatto a te, spostando il selettore."
+          },
+          {
+            "who": "player",
+            "frame": 0,
+            "text": "L'indicatore della classe scolastica è solo parzialmente indicativo. Puoi cambiare il livello di difficoltà in qualsiasi momento."
+          },
+          {
+            "who": "player",
+            "frame": 0,
+            "text": "E per finire, ricorda di impostare il timeout (tempo massimo per rispondere) in linea con le tue capacità (e senza metterti ansia)!"
+          },
+          {
+            "who": "player",
+            "frame": 0,
+            "text": "Credo che tu sia pronto ad iniziare la tua avventura nel regno di Math! Buona fortuna!"
+          }
+        ]
+      }
+    ],
+    "type": "level",
+    "background": "forest4"
+  }
+]
