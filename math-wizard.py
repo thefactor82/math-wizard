@@ -503,7 +503,9 @@ class Game :
             pass 
         self ._display =pygame .display .set_mode ((0 ,0 ),pygame .FULLSCREEN )
         self ._monitor_w ,self ._monitor_h =self ._display .get_size ()
-        self .screen =pygame .Surface ((CANVAS_WIDTH ,CANVAS_HEIGHT ))
+        self .screen =self ._make_canvas ()
+        if self .screen .get_masks ()[3 ]!=0 :
+            print (f"MW_WARN canvas still has alpha bpp={self .screen .get_bitsize ()} masks={self .screen .get_masks ()}")
         self ._overlay =pygame .Surface ((CANVAS_WIDTH ,CANVAS_HEIGHT ))
         pygame .display .set_caption ("Math Wizard")
         self ._update_fit ()
@@ -529,7 +531,7 @@ class Game :
         self ._zap_after_dumped =False 
         if self ._debug_dump :
             self ._debug_log (f"debug active dump_dir={self ._dump_dir }")
-            self ._debug_log (f"screen size={self .screen .get_size ()} masks={self .screen .get_masks ()} bpp={self .screen .get_bitsize ()} flags={self .screen .get_flags ()}")
+            self ._debug_log (f"canvas size={self .screen .get_size ()} masks={self .screen .get_masks ()} bpp={self .screen .get_bitsize ()} flags={self .screen .get_flags ()}")
             self ._debug_log (f"display size={self ._display .get_size ()} masks={self ._display .get_masks ()} bpp={self ._display .get_bitsize ()} driver={pygame .display .get_driver ()}")
         self .state =GAME_STATE_SPLASH
         self .splash_start =pygame .time .get_ticks ()
@@ -882,6 +884,16 @@ class Game :
             w =int (h *CANVAS_WIDTH /CANVAS_HEIGHT )
         return (w ,h )
 
+    @staticmethod
+    def _make_canvas ():
+        surf =pygame .Surface ((CANVAS_WIDTH ,CANVAS_HEIGHT ))
+        if surf .get_masks ()[3 ]!=0 :
+            try :
+                surf =pygame .Surface ((CANVAS_WIDTH ,CANVAS_HEIGHT ),0 ,24 )
+            except (pygame .error ,ValueError )as e :
+                print (f"MW_INFO canvas no-alpha fallback failed: {e }")
+        return surf
+
     def _enter_fullscreen (self ):
         self .fullscreen =True 
         self ._apply_display_mode ()
@@ -894,7 +906,7 @@ class Game :
             w ,h =WINDOWED_SIZES .get (self .window_mode ,(CANVAS_WIDTH ,CANVAS_HEIGHT ))
             self ._display =pygame .display .set_mode ((w ,h ))
             self ._monitor_w ,self ._monitor_h =self ._display .get_size ()
-        self .screen =pygame .Surface ((CANVAS_WIDTH ,CANVAS_HEIGHT ))
+        self .screen =self ._make_canvas ()
         self ._overlay =pygame .Surface ((CANVAS_WIDTH ,CANVAS_HEIGHT ))
         self ._update_fit ()
 
@@ -913,7 +925,7 @@ class Game :
         target_w ,target_h =int (size [0 ]),int (size [1 ])
         self ._display =pygame .display .set_mode ((target_w ,target_h ))
         self ._monitor_w ,self ._monitor_h =self ._display .get_size ()
-        self .screen =pygame .Surface ((CANVAS_WIDTH ,CANVAS_HEIGHT ))
+        self .screen =self ._make_canvas ()
         self ._overlay =pygame .Surface ((CANVAS_WIDTH ,CANVAS_HEIGHT ))
         self ._update_fit ()
 
