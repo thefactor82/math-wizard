@@ -511,6 +511,21 @@ class Game :
         self .clock =pygame .time .Clock ()
         self .running =True 
         self ._text_cache ={}
+        self ._debug_dump =os .environ .get ("MW_DEBUG")=="1" or os .path .exists (os .path .join (os .path .expanduser ("~"),"mw_debug.txt"))
+        self ._dump_dir =os .path .join (os .path .expanduser ("~"),"mw_debug_out")
+        if self ._debug_dump :
+            os .makedirs (self ._dump_dir ,exist_ok =True )
+        self ._splash_dumped_early =False 
+        self ._splash_dumped_late =False 
+        self ._zap_dumped =False 
+        self ._zap_after_dumped =False 
+        if self ._debug_dump :
+            try :
+                print (f"MW_DEBUG screen={self .screen .get_size ()} masks={self .screen .get_masks ()} bpp={self .screen .get_bitsize ()}")
+                print (f"MW_DEBUG display={self ._display .get_size ()} masks={self ._display .get_masks ()} bpp={self ._display .get_bitsize ()}")
+                print (f"MW_DEBUG driver={pygame .display .get_driver ()}")
+            except (pygame .error ,AttributeError )as e :
+                print (f"MW_DEBUG format info failed: {e }")
         self .state =GAME_STATE_SPLASH
         self .splash_start =pygame .time .get_ticks ()
         self .splash_skip =False 
@@ -3415,10 +3430,24 @@ class Game :
         self .screen .blit (surf ,rect )
         return rect 
 
+    def _dump_snapshots (self ,tag ):
+        try :
+            pygame .image .save (self .screen ,os .path .join (self ._dump_dir ,f"debug_{tag }_canvas.png"))
+            pygame .image .save (self ._display ,os .path .join (self ._dump_dir ,f"debug_{tag }_window.png"))
+        except (pygame .error ,OSError ,AttributeError )as e :
+            print (f"MW_DEBUG save {tag } failed: {e }")
+
     def draw_splash (self ):
         if self .logo is None :
             return 
         elapsed =pygame .time .get_ticks ()-self .splash_start 
+        if self ._debug_dump :
+            if not self ._splash_dumped_early and elapsed >150 :
+                self ._splash_dumped_early =True 
+                self ._dump_snapshots ("splash_early")
+            elif not self ._splash_dumped_late and elapsed >2300 :
+                self ._splash_dumped_late =True 
+                self ._dump_snapshots ("splash_late")
         logo_rect =self .logo .get_rect (center =(CANVAS_WIDTH //2 ,CANVAS_HEIGHT //2 ))
         self .screen .blit (self .logo ,logo_rect )
 
@@ -4433,6 +4462,12 @@ class Game :
                 alpha =max (100 ,255 -abs (offset )*40 )
                 col =(255 ,255 ,int (255 *self .zap_timer /12 ))if abs (offset )<=2 else (100 ,100 ,255 )
                 pygame .draw .lines (self .screen ,col ,False ,points ,width )
+        if self ._debug_dump and self .zap_timer >0 and not self ._zap_dumped :
+            self ._zap_dumped =True 
+            self ._dump_snapshots ("zap")
+        elif self ._debug_dump and self ._zap_dumped and not self ._zap_after_dumped and self .zap_timer ==0 :
+            self ._zap_after_dumped =True 
+            self ._dump_snapshots ("zap_after")
 
         segno =get_operation_symbol (self .operation if hasattr (self ,'operation')else None )
         domanda_text =f"{self .a }  {segno }  {self .b }  =  ?"if self .scene_phase is None else ""
