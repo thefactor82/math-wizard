@@ -9,6 +9,8 @@ import webbrowser
 import shutil 
 import threading 
 import urllib .request 
+import platform 
+import time 
 from datetime import datetime 
 from collections import deque 
 from fractions import Fraction 
@@ -491,28 +493,7 @@ def generate_division_operands (pool_a ,pool_b ,reinforce_queue ,integer_result 
 
 class Game :
     def __init__ (self ):
-        pygame .init ()
-        self .fullscreen =True 
-        self .window_mode ="1920x1080" 
-        try :
-            icon =pygame .image .load (resource_path ("graphics/misc/icon.png"))
-            if not (icon .get_flags ()&pygame .SRCALPHA ):
-                icon =icon .convert_alpha ()
-            pygame .display .set_icon (icon )
-        except (pygame .error ,OSError ):
-            pass 
-        self ._display =pygame .display .set_mode ((0 ,0 ),pygame .FULLSCREEN )
-        self ._monitor_w ,self ._monitor_h =self ._display .get_size ()
-        self .screen =self ._make_canvas ()
-        if self .screen .get_masks ()[3 ]!=0 :
-            print (f"MW_WARN canvas still has alpha bpp={self .screen .get_bitsize ()} masks={self .screen .get_masks ()}")
-        self ._overlay =pygame .Surface ((CANVAS_WIDTH ,CANVAS_HEIGHT ))
-        pygame .display .set_caption ("Math Wizard")
-        self ._update_fit ()
-        self .setup_cursor ()
-        self .clock =pygame .time .Clock ()
-        self .running =True 
-        self ._text_cache ={}
+        self ._t0 =time .monotonic ()
         self ._debug_dump =os .environ .get ("MW_DEBUG")=="1" or os .path .exists (os .path .join (os .path .expanduser ("~"),"mw_debug.txt"))
         self ._dump_dir =os .path .join (os .path .expanduser ("~"),"mw_debug_out")
         if self ._debug_dump :
@@ -525,6 +506,34 @@ class Game :
                 except OSError :
                     self ._dump_dir =os .path .join (os .environ .get ("TMPDIR","/tmp"),"mw_debug_out")
                     os .makedirs (self ._dump_dir ,exist_ok =True )
+        self ._mark ("__init__ start (pre-pygame-init)")
+        pygame .init ()
+        self ._mark ("pygame.init() done")
+        self ._debug_log (f"platform machine={platform .machine ()} python={platform .python_version ()} pygame={pygame .version .ver } sdl={pygame .version .SDL } audio={pygame .mixer .get_init ()}")
+        self .fullscreen =True 
+        self .window_mode ="1920x1080" 
+        try :
+            icon =pygame .image .load (resource_path ("graphics/misc/icon.png"))
+            if not (icon .get_flags ()&pygame .SRCALPHA ):
+                icon =icon .convert_alpha ()
+            pygame .display .set_icon (icon )
+        except (pygame .error ,OSError ):
+            pass 
+        self ._mark ("icon done") 
+        self ._display =pygame .display .set_mode ((0 ,0 ),pygame .FULLSCREEN )
+        self ._mark ("set_mode(FULLSCREEN) done")
+        self ._monitor_w ,self ._monitor_h =self ._display .get_size ()
+        self .screen =self ._make_canvas ()
+        if self .screen .get_masks ()[3 ]!=0 :
+            print (f"MW_WARN canvas still has alpha bpp={self .screen .get_bitsize ()} masks={self .screen .get_masks ()}")
+        self ._overlay =pygame .Surface ((CANVAS_WIDTH ,CANVAS_HEIGHT ))
+        pygame .display .set_caption ("Math Wizard")
+        self ._update_fit ()
+        self .setup_cursor ()
+        self ._mark ("cursor done")
+        self .clock =pygame .time .Clock ()
+        self .running =True 
+        self ._text_cache ={}
         self ._splash_dumped_early =False
         self ._splash_dumped_late =False 
         self ._zap_dumped =False 
@@ -573,9 +582,12 @@ class Game :
         self .font_debug =pygame .font .Font (None ,22 )
         self .font_num =pygame .font .Font (resource_path (FONT_PATH ),42 )
         self .font_tiny =pygame .font .Font (resource_path (FONT_PATH ),26 )
+        self ._mark ("fonts done")
 
         self .load_resources ()
+        self ._mark ("load_resources done")
         self .setup_profiles ()
+        self ._mark ("setup_profiles done")
         self .music_loaded =False 
         self .music_files ={}
         for name in ("background",):
@@ -595,7 +607,9 @@ class Game :
                 self .music_loaded =True
             except pygame .error :
                 pass 
+        self ._mark ("music load done")
         self .reset_game_state ()
+        self ._mark ("reset_game_state done")
         self .update_available =False 
         self .update_link_rect =None 
         self .current_music ="background"
@@ -612,6 +626,7 @@ class Game :
                     self .sfx [name ]=pygame .mixer .Sound (sfx_path )
                 except pygame .error :
                     pass 
+        self ._mark ("__init__ done")
         threading .Thread (target =self .check_for_update ,daemon =True ).start ()
 
     def switch_music (self ,target ):
@@ -3455,6 +3470,10 @@ class Game :
             pass 
         print (f"MW_DEBUG {msg }")
 
+    def _mark (self ,label ):
+        if getattr (self ,"_debug_dump",False ):
+            self ._debug_log (f"startup [{int ((time .monotonic ()-getattr (self ,'_t0',time .monotonic ()))*1000 )}ms] {label }")
+
     def _dump_snapshots (self ,tag ):
         for kind ,surf in (("canvas",self .screen ),("window",self ._display )):
             path =os .path .join (self ._dump_dir ,f"debug_{tag }_{kind }.png")
@@ -5139,6 +5158,7 @@ class Game :
         return list (reversed (ultime [-6 :]))
 
     def run (self ):
+        self ._mark ("run() entered")
         animated_states =("splash","profile_select","game","story","player_exit","loading","options","options_auto","config_fixed")
         dumped_start =not self ._debug_dump 
         while self .running :
@@ -5154,6 +5174,9 @@ class Game :
                     self ._dump_snapshots ("start")
                 self .update ()
                 self .draw ()
+                if self ._debug_dump and not getattr (self ,"_first_frame_done",False ):
+                    self ._first_frame_done =True 
+                    self ._mark ("first frame drawn")
                 self .clock .tick (FPS )
             else :
                 pygame .time .delay (5 )
