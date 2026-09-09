@@ -514,18 +514,23 @@ class Game :
         self ._debug_dump =os .environ .get ("MW_DEBUG")=="1" or os .path .exists (os .path .join (os .path .expanduser ("~"),"mw_debug.txt"))
         self ._dump_dir =os .path .join (os .path .expanduser ("~"),"mw_debug_out")
         if self ._debug_dump :
-            os .makedirs (self ._dump_dir ,exist_ok =True )
-        self ._splash_dumped_early =False 
+            try :
+                os .makedirs (self ._dump_dir ,exist_ok =True )
+            except OSError :
+                self ._dump_dir =os .path .join (os .getcwd (),"mw_debug_out")
+                try :
+                    os .makedirs (self ._dump_dir ,exist_ok =True )
+                except OSError :
+                    self ._dump_dir =os .path .join (os .environ .get ("TMPDIR","/tmp"),"mw_debug_out")
+                    os .makedirs (self ._dump_dir ,exist_ok =True )
+        self ._splash_dumped_early =False
         self ._splash_dumped_late =False 
         self ._zap_dumped =False 
         self ._zap_after_dumped =False 
         if self ._debug_dump :
-            try :
-                print (f"MW_DEBUG screen={self .screen .get_size ()} masks={self .screen .get_masks ()} bpp={self .screen .get_bitsize ()}")
-                print (f"MW_DEBUG display={self ._display .get_size ()} masks={self ._display .get_masks ()} bpp={self ._display .get_bitsize ()}")
-                print (f"MW_DEBUG driver={pygame .display .get_driver ()}")
-            except (pygame .error ,AttributeError )as e :
-                print (f"MW_DEBUG format info failed: {e }")
+            self ._debug_log (f"debug active dump_dir={self ._dump_dir }")
+            self ._debug_log (f"screen size={self .screen .get_size ()} masks={self .screen .get_masks ()} bpp={self .screen .get_bitsize ()} flags={self .screen .get_flags ()}")
+            self ._debug_log (f"display size={self ._display .get_size ()} masks={self ._display .get_masks ()} bpp={self ._display .get_bitsize ()} driver={pygame .display .get_driver ()}")
         self .state =GAME_STATE_SPLASH
         self .splash_start =pygame .time .get_ticks ()
         self .splash_skip =False 
@@ -3430,12 +3435,22 @@ class Game :
         self .screen .blit (surf ,rect )
         return rect 
 
-    def _dump_snapshots (self ,tag ):
+    def _debug_log (self ,msg ):
         try :
-            pygame .image .save (self .screen ,os .path .join (self ._dump_dir ,f"debug_{tag }_canvas.png"))
-            pygame .image .save (self ._display ,os .path .join (self ._dump_dir ,f"debug_{tag }_window.png"))
-        except (pygame .error ,OSError ,AttributeError )as e :
-            print (f"MW_DEBUG save {tag } failed: {e }")
+            with open (os .path .join (self ._dump_dir ,"MW_DEBUG.log"),"a",encoding ="utf-8")as f :
+                f .write (msg +"\n")
+        except OSError :
+            pass 
+        print (f"MW_DEBUG {msg }")
+
+    def _dump_snapshots (self ,tag ):
+        for kind ,surf in (("canvas",self .screen ),("window",self ._display )):
+            path =os .path .join (self ._dump_dir ,f"debug_{tag }_{kind }.png")
+            try :
+                pygame .image .save (surf ,path )
+                self ._debug_log (f"saved {path }")
+            except (pygame .error ,OSError ,AttributeError )as e :
+                self ._debug_log (f"save {tag } {kind } failed: {e }")
 
     def draw_splash (self ):
         if self .logo is None :
@@ -5113,6 +5128,7 @@ class Game :
 
     def run (self ):
         animated_states =("splash","profile_select","game","story","player_exit","loading","options","options_auto","config_fixed")
+        dumped_start =not self ._debug_dump 
         while self .running :
             events =pygame .event .get ()
             for event in events :
@@ -5121,6 +5137,9 @@ class Game :
                 else :
                     self .handle_input (event )
             if events or self .state in animated_states or self .music_crossfade_target is not None or getattr (self ,'_opts_hold',None )is not None :
+                if self ._debug_dump and not dumped_start :
+                    dumped_start =True 
+                    self ._dump_snapshots ("start")
                 self .update ()
                 self .draw ()
                 self .clock .tick (FPS )
