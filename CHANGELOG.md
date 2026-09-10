@@ -1,6 +1,6 @@
 # Math Wizard — Release Notes
 
-Release note cumulative dalla v1.1.8 alla v1.3.49 (rilascio attuale).
+Release note cumulative dalla v1.1.8 alla v1.3.50 (rilascio attuale).
 
 ## 🚀 Novità
 
@@ -46,6 +46,7 @@ Riepilogo con il mouse (v1.3.46): il click del mouse avanza nella schermata di r
 Flash del livello successivo (v1.3.47): il background del livello che sta per iniziare non compare più prima della dissolvenza dal buio.
 Verifica della build Windows (v1.3.48): il controllo che i dati incorporati nell'exe fossero presenti applicava -notmatch a un array, fallendo sempre con un falso errore su data/story.json; ora l'unione in stringa restituisce un esito corretto.
 Dialoghi delle scene senza npc (v1.3.49): se una scena ha dialoghi ma nessun personaggio non giocante (come quelle del tutorial, in cui parla il player), la nuvola di dialogo non veniva disegnata e i dialoghi avanzavano soltanto su INVIO; ora la nuvola viene mostrata sopra il personaggio parlante.
+Rettangoli neri su macOS (v1.3.50): sulle build macOS la canvas veniva creata con un canale alpha (RGBA) e i blit con trasparenza (overlay, sprite, testo) ne corrompevano l'alpha, producendo quadrati neri semi-trasparenti sugli elementi dell'interfaccia (cuori, HUD, domanda, personaggio) e schermate completamente trasparenti nella splash; ora la canvas è forzata senza alpha (24bpp, come le build Windows), eliminando il difetto.
 
 ## ✨ Miglioramenti
 
@@ -58,6 +59,8 @@ Progressi per difficoltà (v1.3.33): il progresso della storia traccia solo il l
 
 Dati e build (v1.3.35): i file data/*.json vengono incorporati nelle build e la versione del bundle macOS è allineata.
 Refactor interno (v1.3.41): nomi di storia/stati/operazioni normalizzati in costanti inglesi, con test per gli helper di normalizzazione.
+Build macOS onedir-in-bundle (v1.3.50): il bundle passa da onefile-in-bundle a onedir-in-bundle, eliminando l'estrazione temporanea (_MEI*) a ogni avvio e rendendo l'avvio immediato anche su Apple Silicon (prima con ritardo di 10-15s); grafica, data/, fonts/ e music/ restano incorporati nel bundle. La verifica delle risorse nel workflow usa find all'interno del bundle anziché archive_viewer sull'EXE.
+Strumentazione debug (v1.3.50): con MW_DEBUG attivo, MW_DEBUG.log registra la timeline di avvio al millisecondo, le informazioni di piattaforma/SDL/audio, le frame più lente (>1s) con stato e durata, e gli snapshot anche al primissimo frame; il percorso della cartella di dump ora ripiega su cwd e TMPDIR se ~ non è scrivibile.
 
 ## 🎨 Grafica
 
