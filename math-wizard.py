@@ -5172,11 +5172,16 @@ class Game :
                 if self ._debug_dump and not dumped_start :
                     dumped_start =True 
                     self ._dump_snapshots ("start")
+                _f0 =time .monotonic ()
                 self .update ()
+                _f1 =time .monotonic ()
                 self .draw ()
+                _f2 =time .monotonic ()
                 if self ._debug_dump and not getattr (self ,"_first_frame_done",False ):
                     self ._first_frame_done =True 
                     self ._mark ("first frame drawn")
+                if self ._debug_dump and _f2 -_f0 >1.0 :
+                    self ._debug_log (f"SLOW FRAME state={self .state } update={( _f1 -_f0 )*1000 :.0f}ms draw={( _f2 -_f1 )*1000 :.0f}ms total={( _f2 -_f0 )*1000 :.0f}ms elapsed_since_start={( time .monotonic ()-self ._t0 ):.1f}s")
                 self .clock .tick (FPS )
             else :
                 pygame .time .delay (5 )
