@@ -1,6 +1,6 @@
 # Math Wizard — Release Notes
 
-Release note cumulative dalla v1.1.8 alla v1.3.50 (rilascio attuale).
+Release note cumulative dalla v1.1.8 alla v1.3.51 (rilascio attuale).
 
 ## 🚀 Novità
 
@@ -47,6 +47,7 @@ Flash del livello successivo (v1.3.47): il background del livello che sta per in
 Verifica della build Windows (v1.3.48): il controllo che i dati incorporati nell'exe fossero presenti applicava -notmatch a un array, fallendo sempre con un falso errore su data/story.json; ora l'unione in stringa restituisce un esito corretto.
 Dialoghi delle scene senza npc (v1.3.49): se una scena ha dialoghi ma nessun personaggio non giocante (come quelle del tutorial, in cui parla il player), la nuvola di dialogo non veniva disegnata e i dialoghi avanzavano soltanto su INVIO; ora la nuvola viene mostrata sopra il personaggio parlante.
 Rettangoli neri su macOS (v1.3.50): sulle build macOS la canvas veniva creata con un canale alpha (RGBA) e i blit con trasparenza (overlay, sprite, testo) ne corrompevano l'alpha, producendo quadrati neri semi-trasparenti sugli elementi dell'interfaccia (cuori, HUD, domanda, personaggio) e schermate completamente trasparenti nella splash; ora la canvas è forzata senza alpha (24bpp, come le build Windows), eliminando il difetto.
+Box di input del profilo (v1.3.51): nella schermata di creazione del nuovo profilo il campo del nome non era centrato rispetto allo schermo e si spostava di un pixel per lato ad ogni lampeggio del cursore (testo e cursore renderizzati insieme, con '|' largo 19px e lo spazio 13px); ora testo e cursore sono renderizzati separatamente come nel box di risposta dei livelli, il box resta ancorato al centro dello schermo e la larghezza riservata al cursore è costante, eliminando lo spostamento.
 
 ## ✨ Miglioramenti
 

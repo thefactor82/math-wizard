@@ -981,7 +981,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if normalize_story_entry (e ) .get ("type")=="level")
 
-        self .version ="1.3.50"
+        self .version ="1.3.51"
 
         self .profiles =[]
         self .current_profile =""
@@ -3492,14 +3492,25 @@ class Game :
                 rect =lbl .get_rect (center =(CANVAS_WIDTH //2 ,390 ))
                 self .screen .blit (lbl ,rect )
 
-                txt =self .profile_input +("|"if pygame .time .get_ticks ()%1000 <500 else " ")
-                surf =self ._render_cached (self .font_input ,txt ,WHITE )
-                box =surf .get_rect (center =(CANVAS_WIDTH //2 ,495 ))
-                bg =box .inflate (60 ,24 )
-                bg .width =max (bg .width ,300 )
-                pygame .draw .rect (self .screen ,(40 ,40 ,60 ),bg ,border_radius =12 )
-                pygame .draw .rect (self .screen ,(100 ,100 ,180 ),bg ,2 ,border_radius =12 )
-                self .screen .blit (surf ,box )
+                txt_only =self ._render_cached (self .font_input ,self .profile_input ,WHITE )
+                tw =txt_only .get_width ()
+                cursor_visible =pygame .time .get_ticks ()%1000 <500
+                cur_surf =self ._render_cached (self .font_input ,"|",WHITE )
+                cw =cur_surf .get_width ()
+                total_w =tw +cw
+                box_center_x =CANVAS_WIDTH //2
+                txt_x =box_center_x -total_w //2
+                input_rect =pygame .Rect (txt_x ,495 -txt_only .get_height ()//2 ,total_w ,txt_only .get_height ())
+                box_rect =input_rect .inflate (60 ,24 )
+                box_rect .width =max (box_rect .width ,300 )
+                box_rect .centerx =box_center_x
+                pygame .draw .rect (self .screen ,(40 ,40 ,60 ),box_rect ,border_radius =12 )
+                pygame .draw .rect (self .screen ,(100 ,100 ,180 ),box_rect ,2 ,border_radius =12 )
+                ombra =self ._render_cached (self .font_input ,self .profile_input ,(30 ,30 ,30 ))
+                self .screen .blit (ombra ,(txt_x +2 ,495 -txt_only .get_height ()//2 +2 ))
+                self .screen .blit (txt_only ,(txt_x ,495 -txt_only .get_height ()//2 ))
+                if cursor_visible :
+                    self .screen .blit (cur_surf ,(txt_x +tw ,495 -cur_surf .get_height ()//2 ))
 
                 if self .profile_input :
                     hint =self ._render_cached (self .font_small ,"",GRAY )
