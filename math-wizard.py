@@ -7,6 +7,7 @@ import re
 import math 
 import webbrowser 
 import shutil 
+import ssl 
 import threading 
 import urllib .request 
 from datetime import datetime 
@@ -981,7 +982,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if normalize_story_entry (e ) .get ("type")=="level")
 
-        self .version ="1.3.51"
+        self .version ="1.3.52"
 
         self .profiles =[]
         self .current_profile =""
@@ -1061,14 +1062,29 @@ class Game :
     def check_for_update (self ):
         try :
             req =urllib .request .Request ("https://api.github.com/repos/thefactor82/math-wizard/releases/latest",headers ={"User-Agent":"MathWizard"})
-            with urllib .request .urlopen (req ,timeout =10 )as resp :
-                data =json .loads (resp .read ().decode ("utf-8"))
+            data =self ._fetch_release (req )
             latest =parse_version (data .get ("tag_name","")or data .get ("name",""))
             current =parse_version (self .version )
             if latest and current and latest >current :
                 self .update_available =True 
-        except Exception :
+        except Exception as e :
+            print (f"MW update check failed: {e }")
+
+    def _fetch_release (self ,req ):
+        try :
+            import certifi 
+            ctx =ssl .create_default_context (cafile =certifi .where ())
+            with urllib .request .urlopen (req ,context =ctx ,timeout =10 )as resp :
+                return json .loads (resp .read ().decode ("utf-8"))
+        except ImportError :
             pass 
+        try :
+            with urllib .request .urlopen (req ,timeout =10 )as resp :
+                return json .loads (resp .read ().decode ("utf-8"))
+        except Exception :
+            ctx =ssl ._create_unverified_context ()
+            with urllib .request .urlopen (req ,context =ctx ,timeout =10 )as resp :
+                return json .loads (resp .read ().decode ("utf-8")) 
 
     def save_profile_config (self ,nome =None ):
         nome =nome or self .current_profile 
