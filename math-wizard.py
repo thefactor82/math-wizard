@@ -9,8 +9,6 @@ import webbrowser
 import shutil 
 import threading 
 import urllib .request 
-import platform 
-import time 
 from datetime import datetime 
 from collections import deque 
 from fractions import Fraction 
@@ -493,23 +491,7 @@ def generate_division_operands (pool_a ,pool_b ,reinforce_queue ,integer_result 
 
 class Game :
     def __init__ (self ):
-        self ._t0 =time .monotonic ()
-        self ._debug_dump =os .environ .get ("MW_DEBUG")=="1" or os .path .exists (os .path .join (os .path .expanduser ("~"),"mw_debug.txt"))
-        self ._dump_dir =os .path .join (os .path .expanduser ("~"),"mw_debug_out")
-        if self ._debug_dump :
-            try :
-                os .makedirs (self ._dump_dir ,exist_ok =True )
-            except OSError :
-                self ._dump_dir =os .path .join (os .getcwd (),"mw_debug_out")
-                try :
-                    os .makedirs (self ._dump_dir ,exist_ok =True )
-                except OSError :
-                    self ._dump_dir =os .path .join (os .environ .get ("TMPDIR","/tmp"),"mw_debug_out")
-                    os .makedirs (self ._dump_dir ,exist_ok =True )
-        self ._mark ("__init__ start (pre-pygame-init)")
         pygame .init ()
-        self ._mark ("pygame.init() done")
-        self ._debug_log (f"platform machine={platform .machine ()} python={platform .python_version ()} pygame={pygame .version .ver } sdl={pygame .version .SDL } audio={pygame .mixer .get_init ()}")
         self .fullscreen =True 
         self .window_mode ="1920x1080" 
         try :
@@ -519,29 +501,16 @@ class Game :
             pygame .display .set_icon (icon )
         except (pygame .error ,OSError ):
             pass 
-        self ._mark ("icon done") 
         self ._display =pygame .display .set_mode ((0 ,0 ),pygame .FULLSCREEN )
-        self ._mark ("set_mode(FULLSCREEN) done")
         self ._monitor_w ,self ._monitor_h =self ._display .get_size ()
         self .screen =self ._make_canvas ()
-        if self .screen .get_masks ()[3 ]!=0 :
-            print (f"MW_WARN canvas still has alpha bpp={self .screen .get_bitsize ()} masks={self .screen .get_masks ()}")
         self ._overlay =pygame .Surface ((CANVAS_WIDTH ,CANVAS_HEIGHT ))
         pygame .display .set_caption ("Math Wizard")
         self ._update_fit ()
         self .setup_cursor ()
-        self ._mark ("cursor done")
         self .clock =pygame .time .Clock ()
         self .running =True 
         self ._text_cache ={}
-        self ._splash_dumped_early =False
-        self ._splash_dumped_late =False 
-        self ._zap_dumped =False 
-        self ._zap_after_dumped =False 
-        if self ._debug_dump :
-            self ._debug_log (f"debug active dump_dir={self ._dump_dir }")
-            self ._debug_log (f"canvas size={self .screen .get_size ()} masks={self .screen .get_masks ()} bpp={self .screen .get_bitsize ()} flags={self .screen .get_flags ()}")
-            self ._debug_log (f"display size={self ._display .get_size ()} masks={self ._display .get_masks ()} bpp={self ._display .get_bitsize ()} driver={pygame .display .get_driver ()}")
         self .state =GAME_STATE_SPLASH
         self .splash_start =pygame .time .get_ticks ()
         self .splash_skip =False 
@@ -582,12 +551,9 @@ class Game :
         self .font_debug =pygame .font .Font (None ,22 )
         self .font_num =pygame .font .Font (resource_path (FONT_PATH ),42 )
         self .font_tiny =pygame .font .Font (resource_path (FONT_PATH ),26 )
-        self ._mark ("fonts done")
 
         self .load_resources ()
-        self ._mark ("load_resources done")
         self .setup_profiles ()
-        self ._mark ("setup_profiles done")
         self .music_loaded =False 
         self .music_files ={}
         for name in ("background",):
@@ -607,9 +573,7 @@ class Game :
                 self .music_loaded =True
             except pygame .error :
                 pass 
-        self ._mark ("music load done")
         self .reset_game_state ()
-        self ._mark ("reset_game_state done")
         self .update_available =False 
         self .update_link_rect =None 
         self .current_music ="background"
@@ -626,7 +590,6 @@ class Game :
                     self .sfx [name ]=pygame .mixer .Sound (sfx_path )
                 except pygame .error :
                     pass 
-        self ._mark ("__init__ done")
         threading .Thread (target =self .check_for_update ,daemon =True ).start ()
 
     def switch_music (self ,target ):
@@ -905,8 +868,8 @@ class Game :
         if surf .get_masks ()[3 ]!=0 :
             try :
                 surf =pygame .Surface ((CANVAS_WIDTH ,CANVAS_HEIGHT ),0 ,24 )
-            except (pygame .error ,ValueError )as e :
-                print (f"MW_INFO canvas no-alpha fallback failed: {e }")
+            except (pygame .error ,ValueError ):
+                pass 
         return surf
 
     def _enter_fullscreen (self ):
@@ -3462,38 +3425,10 @@ class Game :
         self .screen .blit (surf ,rect )
         return rect 
 
-    def _debug_log (self ,msg ):
-        try :
-            with open (os .path .join (self ._dump_dir ,"MW_DEBUG.log"),"a",encoding ="utf-8")as f :
-                f .write (msg +"\n")
-        except OSError :
-            pass 
-        print (f"MW_DEBUG {msg }")
-
-    def _mark (self ,label ):
-        if getattr (self ,"_debug_dump",False ):
-            self ._debug_log (f"startup [{int ((time .monotonic ()-getattr (self ,'_t0',time .monotonic ()))*1000 )}ms] {label }")
-
-    def _dump_snapshots (self ,tag ):
-        for kind ,surf in (("canvas",self .screen ),("window",self ._display )):
-            path =os .path .join (self ._dump_dir ,f"debug_{tag }_{kind }.png")
-            try :
-                pygame .image .save (surf ,path )
-                self ._debug_log (f"saved {path }")
-            except (pygame .error ,OSError ,AttributeError )as e :
-                self ._debug_log (f"save {tag } {kind } failed: {e }")
-
     def draw_splash (self ):
         if self .logo is None :
             return 
         elapsed =pygame .time .get_ticks ()-self .splash_start 
-        if self ._debug_dump :
-            if not self ._splash_dumped_early and elapsed >150 :
-                self ._splash_dumped_early =True 
-                self ._dump_snapshots ("splash_early")
-            elif not self ._splash_dumped_late and elapsed >2300 :
-                self ._splash_dumped_late =True 
-                self ._dump_snapshots ("splash_late")
         logo_rect =self .logo .get_rect (center =(CANVAS_WIDTH //2 ,CANVAS_HEIGHT //2 ))
         self .screen .blit (self .logo ,logo_rect )
 
@@ -4508,12 +4443,6 @@ class Game :
                 alpha =max (100 ,255 -abs (offset )*40 )
                 col =(255 ,255 ,int (255 *self .zap_timer /12 ))if abs (offset )<=2 else (100 ,100 ,255 )
                 pygame .draw .lines (self .screen ,col ,False ,points ,width )
-        if self ._debug_dump and self .zap_timer >0 and not self ._zap_dumped :
-            self ._zap_dumped =True 
-            self ._dump_snapshots ("zap")
-        elif self ._debug_dump and self ._zap_dumped and not self ._zap_after_dumped and self .zap_timer ==0 :
-            self ._zap_after_dumped =True 
-            self ._dump_snapshots ("zap_after")
 
         segno =get_operation_symbol (self .operation if hasattr (self ,'operation')else None )
         domanda_text =f"{self .a }  {segno }  {self .b }  =  ?"if self .scene_phase is None else ""
@@ -5158,9 +5087,7 @@ class Game :
         return list (reversed (ultime [-6 :]))
 
     def run (self ):
-        self ._mark ("run() entered")
         animated_states =("splash","profile_select","game","story","player_exit","loading","options","options_auto","config_fixed")
-        dumped_start =not self ._debug_dump 
         while self .running :
             events =pygame .event .get ()
             for event in events :
@@ -5169,19 +5096,8 @@ class Game :
                 else :
                     self .handle_input (event )
             if events or self .state in animated_states or self .music_crossfade_target is not None or getattr (self ,'_opts_hold',None )is not None :
-                if self ._debug_dump and not dumped_start :
-                    dumped_start =True 
-                    self ._dump_snapshots ("start")
-                _f0 =time .monotonic ()
                 self .update ()
-                _f1 =time .monotonic ()
                 self .draw ()
-                _f2 =time .monotonic ()
-                if self ._debug_dump and not getattr (self ,"_first_frame_done",False ):
-                    self ._first_frame_done =True 
-                    self ._mark ("first frame drawn")
-                if self ._debug_dump and _f2 -_f0 >1.0 :
-                    self ._debug_log (f"SLOW FRAME state={self .state } update={( _f1 -_f0 )*1000 :.0f}ms draw={( _f2 -_f1 )*1000 :.0f}ms total={( _f2 -_f0 )*1000 :.0f}ms elapsed_since_start={( time .monotonic ()-self ._t0 ):.1f}s")
                 self .clock .tick (FPS )
             else :
                 pygame .time .delay (5 )

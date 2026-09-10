@@ -60,7 +60,6 @@ Progressi per difficoltà (v1.3.33): il progresso della storia traccia solo il l
 Dati e build (v1.3.35): i file data/*.json vengono incorporati nelle build e la versione del bundle macOS è allineata.
 Refactor interno (v1.3.41): nomi di storia/stati/operazioni normalizzati in costanti inglesi, con test per gli helper di normalizzazione.
 Build macOS onedir-in-bundle (v1.3.50): il bundle passa da onefile-in-bundle a onedir-in-bundle, eliminando l'estrazione temporanea (_MEI*) a ogni avvio e rendendo l'avvio immediato anche su Apple Silicon (prima con ritardo di 10-15s); grafica, data/, fonts/ e music/ restano incorporati nel bundle. La verifica delle risorse nel workflow usa find all'interno del bundle anziché archive_viewer sull'EXE.
-Strumentazione debug (v1.3.50): con MW_DEBUG attivo, MW_DEBUG.log registra la timeline di avvio al millisecondo, le informazioni di piattaforma/SDL/audio, le frame più lente (>1s) con stato e durata, e gli snapshot anche al primissimo frame; il percorso della cartella di dump ora ripiega su cwd e TMPDIR se ~ non è scrivibile.
 
 ## 🎨 Grafica
 
