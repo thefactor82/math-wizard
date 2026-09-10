@@ -81,11 +81,10 @@ jobs:
       - name: Verifica bundle, architettura e dati incorporati
         run: |
           test -x dist/MathWizard.app/Contents/MacOS/MathWizard
-          python -m PyInstaller.utils.cliutils.archive_viewer -l -b dist/MathWizard.app/Contents/MacOS/MathWizard > /tmp/pyi_listing.txt
-          grep -q 'data/story.json' /tmp/pyi_listing.txt || { echo "manca data/story.json nel bundle"; exit 1; }
-          grep -q 'data/levels.json' /tmp/pyi_listing.txt || { echo "manca data/levels.json nel bundle"; exit 1; }
-          grep -q 'fonts' /tmp/pyi_listing.txt || { echo "mancano fonts nel bundle"; exit 1; }
-          grep -q 'music' /tmp/pyi_listing.txt || { echo "manca music nel bundle"; exit 1; }
+          find dist/MathWizard.app -path '*/data/story.json' | grep -q . || { echo "manca data/story.json nel bundle"; exit 1; }
+          find dist/MathWizard.app -path '*/data/levels.json' | grep -q . || { echo "manca data/levels.json nel bundle"; exit 1; }
+          find dist/MathWizard.app -type d -path '*/fonts' | grep -q . || { echo "mancano fonts nel bundle"; exit 1; }
+          find dist/MathWizard.app -type d -path '*/music' | grep -q . || { echo "manca music nel bundle"; exit 1; }
           codesign --verify --deep --strict dist/MathWizard.app
           file dist/MathWizard.app/Contents/MacOS/MathWizard
           echo "bundle OK (data/risorse incorporati)"
