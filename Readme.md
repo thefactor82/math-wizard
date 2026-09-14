@@ -17,6 +17,7 @@
   - [📊 Statistiche](#-statistiche)
   - [🐞 Debug](#-debug)
   - [🛠️ Dettagli tecnici](#️-dettagli-tecnici)
+  - [🚀 Come giorare](#-come-giocare)
   - [🚀 Come eseguire il gioco dal codice sorgente](#-come-eseguire-il-gioco-dal-codice-sorgente)
 
 ## ⚡ TL;DR
@@ -178,7 +179,7 @@ All'inizio pensavo di sviluppare un'app per smartphone, ma (per adesso) ho cambi
 
 Forse Math Wizard deve rimanere un gioco per PC. Perché usare una tastiera significa anche imparare a conoscere i tasti, digitare rapidamente e prendere confidenza con il computer. A swipare e tappare, ormai, sono già bravissimi tutti.
 
-Trasformare il gioco in un app per dispositivi mobili è particolarmente impegnativo, ed in questo momento non è la priorità.
+Trasformare il gioco in un app per dispositivi mobili è particolarmente impegnativo, ed in questo momento non è la priorità. Magari più avanti nel futuro...
 
 ---
 
@@ -233,19 +234,19 @@ Supporta le quattro operazioni fondamentali:
 - **Moltiplicazione** (con proprietà commutativa)
 - **Divisione** (con possibilità di permettere risultati sempre interi)
 
-Nella modalità **Storia** ogni operazione ha una propria progressione di livelli con pool di operandi configurabili (range o liste esplicite) tramite un file json, perfetto per chi necessita di alzare o abbassare il livello generale del gioco (utile per insegnanti e genitori che vogliono "preparare" il gioco ai propri bambini).
+Nella modalità **Storia** ogni operazione ha una propria progressione di livelli basata su un selettore di difficoltà che indica la classe scolastica. Il selettore può essere spostato su a vari step per permettere di aumentare o diminuire la difficoltà di partenza della storia, che poi proseguirà e crescerà autonomamente.
 
 ## ❤️ Sistema di vite e ricompense
 
 - Il giocatore parte con **3 vite** (rappresentate da cuori).
 - Una risposta sbagliata toglie una vita.
-- **30 risposte corrette consecutive** aggiungono una vita, con animazione del cuore che appare e sale.
+- **25 risposte corrette consecutive** aggiungono una vita.
 
 ## 📈 Sistema di progressione
 
 - In modalità **Storia** ogni livello ha un numero crescente di domande: `random(8 + livello, 15 + livello)`
 - Il **timeout** si riduce progressivamente: viene tagliato di 1s se la velocità media delle risposte nel livello appena giocato è inferiore alla metà del timeout impostato.
-- La progressione viene salvata per-operazione nei profili utente. La storia può essere iniziata nuovamente dal principio o proseguita dal penultimo livello raggiunto.
+- La progressione viene salvata per-operazione nei profili utente. La storia può essere iniziata nuovamente dal principio o proseguita dall'ultimo livello raggiunto.
 
 ## 👤 Profili utente
 
@@ -270,12 +271,18 @@ Un pannello di debug (attivabile digitando D E B U G), utile per sviluppo
 
 - Scritto in **Python** con **Pygame**
 - Grafiche a **spritesheet** per giocatore, mostri
-- Dialoghi della storia caricati da `data/story.json` con sostituzione dinamica di nome e genere
-- Livelli e pool operandi definiti in `data/levels.json`
 - **Profili salvati** in cartella `profiles/` (JSON)
 - **Sessioni di gioco** salvate in `history/` (log testuali)
 
+Nei log delle sessioni vengono registrate tutte le attività eseguite, tempi, risposte errate, livelli impostati.
+
 ---
+
+## 🚀 Come giocare
+
+Il gioco è già precompilato per piattaforme Windows e MacOS. Scarica il pacchetto corrispondente alla tua piattaforma  dalla sezione [Releases](https://github.com/thefactor82/math-wizard/releases).
+
+Un messaggio sulla schermata principale ti avviserà se è disponibile una nuova versione da scaricare. Salvo indicazioni particolari, è sufficiente sostituire l'eseguibile precedente con la nuova versione (profili e dati storici verranno automaticamente utilizzati dalla nuova versione).
 
 ## 🚀 Come eseguire il gioco dal codice sorgente
 
@@ -337,7 +344,5 @@ Se hai scaricato il repository da GitHub, puoi eseguire Math Wizard sul tuo comp
 - La prima esecuzione creerà automaticamente la cartella `profiles/` con un profilo predefinito. 
 - Tutte le impostazioni, i progressi e le statistiche sono salvate in file JSON all'interno di `profiles/`.
 - Su MacOS, se eseguito da cartella non scrivibile, il sistema operativo effettua una translocation su cartella temporanea e i profili e le sessioni vengono salvate su ~/Library/Application Support/MathWizard/profiles
-- Per personalizzare i pool di operandi della modalità Storia, modifica il file `data/levels.json`.
-- Per personalizzare i dialoghi della storia, modifica il file `data/story.json`.
 
 ---
