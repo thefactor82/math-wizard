@@ -983,7 +983,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if normalize_story_entry (e ) .get ("type")=="level")
 
-        self .version ="1.3.53"
+        self .version ="1.3.55"
 
         self .profiles =[]
         self .current_profile =""
@@ -997,6 +997,7 @@ class Game :
             self .profiles =list (dict .fromkeys (profiles ))
             current =sanitize_profile_name (data .get ("current",""))
             self .current_profile =current if current in self .profiles else ""
+        self .ensure_profile_configs ()
         if self .current_profile in self .profiles :
             self .load_profile_config (self .current_profile )
             self .update_char_image ()
@@ -1088,24 +1089,17 @@ class Game :
             with urllib .request .urlopen (req ,context =ctx ,timeout =10 )as resp :
                 return json .loads (resp .read ().decode ("utf-8")) 
 
-    def save_profile_config (self ,nome =None ):
-        nome =nome or self .current_profile 
-        nome =sanitize_profile_name (nome )
-        if not nome :
-            return 
-        prof_dir =os .path .join (PROFILES_DIR ,nome )
-        os .makedirs (prof_dir ,exist_ok =True )
-        path =os .path .join (prof_dir ,"config.json")
+    def profile_config_data (self ):
         data ={
         "gender":self .config_gender ,
-        "story_operation":legacy_operation_name (self .config_story_operation ),
+        "story_operation":normalize_operation_name (self .config_story_operation ),
         "auto_timeout":self .auto_timeout ,
         "initial_level":self .initial_level ,
-        "initial_level_by_op":self .initial_level_by_op ,
+        "initial_level_by_op":{normalize_operation_name (k ):int (v )for k ,v in self .initial_level_by_op .items ()},
         "difficulty_position":self .difficulty_position ,
-        "difficulty_position_by_op":self .difficulty_position_by_op ,
-        "story_progress":self .story_progress ,
-        "story_completed":self .story_completed ,
+        "difficulty_position_by_op":{normalize_operation_name (k ):int (v )for k ,v in self .difficulty_position_by_op .items ()},
+        "story_progress":{normalize_operation_name (k ):int (v )for k ,v in self .story_progress .items ()},
+        "story_completed":{normalize_operation_name (k ):bool (v )for k ,v in self .story_completed .items ()},
         "plus_unlocked":bool (self .plus_unlocked ),
         "fullscreen":self .fullscreen ,
         "window_mode":self .window_mode ,
@@ -1114,9 +1108,75 @@ class Game :
         }
         for op in ["moltiplicazione","addizione","sottrazione","divisione"]:
             canonical =normalize_operation_name (op )
-            data [op ]=dict (self .config_by_operation [op ])
             data [canonical ]=dict (self .config_by_operation [op ])
-        save_json_file (path ,data )
+        return data
+
+    def save_profile_config (self ,nome =None ):
+        nome =nome or self .current_profile 
+        nome =sanitize_profile_name (nome )
+        if not nome :
+            return 
+        prof_dir =os .path .join (PROFILES_DIR ,nome )
+        os .makedirs (prof_dir ,exist_ok =True )
+        path =os .path .join (prof_dir ,"config.json")
+        save_json_file (path ,self .profile_config_data ())
+
+    def ensure_profile_configs (self ):
+        legacy_top ={
+        "genere":"gender",
+        "storia_operazione":"story_operation",
+        "storia_progresso":"story_progress",
+        "storia_completata":"story_completed",
+        "difficolta_posizione_per_op":"difficulty_position_by_op",
+        "livello_iniziale_per_op":"initial_level_by_op",
+        "difficolta_posizione":"difficulty_position",
+        "livello_iniziale":"initial_level",
+        }
+        by_op_keys =["story_progress","story_completed","initial_level_by_op","difficulty_position_by_op"]
+        try :
+            names =[nome for nome in os .listdir (PROFILES_DIR )
+                    if os .path .isdir (os .path .join (PROFILES_DIR ,nome ))
+                    and not nome .startswith (".")
+                    and sanitize_profile_name (nome )==nome ]
+        except OSError :
+            names =[]
+        for nome in sorted (names ):
+            try :
+                path =os .path .join (PROFILES_DIR ,nome ,"config.json")
+                base =load_json_file (path )
+                if not isinstance (base ,dict ):
+                    base ={}
+                normed ={}
+                for k ,v in base .items ():
+                    if not isinstance (k ,str ):
+                        continue 
+                    if k in legacy_top :
+                        k =legacy_top [k ]
+                    if normalize_operation_name (k )!=k :
+                        normed [normalize_operation_name (k )]=v
+                        continue 
+                    if isinstance (v ,dict )and k in by_op_keys :
+                        normed [k ]={normalize_operation_name (ik ):iv for ik ,iv in v .items ()}
+                    elif k =="story_operation"and v is not None :
+                        normed [k ]=normalize_operation_name (v )
+                    else :
+                        normed [k ]=v
+                self .reset_profile_config ()
+                candidate =self .profile_config_data ()
+                merged =dict (normed )
+                for k ,cand_v in candidate .items ():
+                    if isinstance (cand_v ,dict )and isinstance (merged .get (k ),dict ):
+                        out =dict (merged [k ])
+                        for ik ,iv in cand_v .items ():
+                            out .setdefault (ik ,iv )
+                        merged [k ]=out
+                    elif k not in merged :
+                        merged [k ]=cand_v
+                if merged !=base :
+                    save_json_file (path ,merged )
+                    print (f"Profile '{nome}' aligned")
+            except Exception as e :
+                print (f"Warning: unable to align profile '{nome}': {e }")
 
     def load_profile_config (self ,nome ):
         nome =sanitize_profile_name (nome )
@@ -1131,7 +1191,7 @@ class Game :
         if any (key in data for key in ["moltiplicazione","addizione","sottrazione","divisione","multiplication","addition","subtraction","division"]):
             for op in ["moltiplicazione","addizione","sottrazione","divisione"]:
                 candidates =[]
-                for key in [op ,normalize_operation_name (op )]:
+                for key in [normalize_operation_name (op ),op ]:
                     if key in data and isinstance (data [key ],dict ):
                         candidates .append (key )
                 if not candidates :
@@ -1151,13 +1211,13 @@ class Game :
             if isinstance (il_by_op ,dict ):
                 for op ,val in il_by_op .items ():
                     if isinstance (val ,(int ,float )):
-                        self .initial_level_by_op [op ]=int (val )
+                        self .initial_level_by_op [legacy_operation_name (op )]=int (val )
             elif flat_il is not None :
                 for op in self .initial_level_by_op :
                     self .initial_level_by_op [op ]=int (flat_il )
             dp_by_op =data .get ("difficulty_position_by_op",data .get ("difficolta_posizione_per_op",None ))
             if isinstance (dp_by_op ,dict ):
-                self .difficulty_position_by_op .update (dp_by_op )
+                self .difficulty_position_by_op .update ({legacy_operation_name (k ):v for k ,v in dp_by_op .items ()})
             else :
                 self .difficulty_position_by_op [self .config_story_operation ]=data .get ("difficulty_position",data .get ("difficolta_posizione",self .difficulty_position ))
             self .restore_difficulty_position ()
@@ -1165,10 +1225,10 @@ class Game :
             if isinstance (story_progress ,dict ):
                 for op ,val in story_progress .items ():
                     if isinstance (val ,(int ,float )):
-                        self .story_progress [op ]=int (val )
+                        self .story_progress [legacy_operation_name (op )]=int (val )
             story_completed =data .get ("story_completed",data .get ("storia_completata",self .story_completed ))
             if isinstance (story_completed ,dict ):
-                self .story_completed .update (story_completed )
+                self .story_completed .update ({legacy_operation_name (k ):v for k ,v in story_completed .items ()})
             for op in self .story_completed :
                 if not self .story_completed [op ]and self .story_progress .get (op ,0 )>=self .num_story_levels :
                     self .story_completed [op ]=True 

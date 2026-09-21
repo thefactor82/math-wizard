@@ -1,6 +1,6 @@
 # Math Wizard — Release Notes
 
-Release note cumulative dalla v1.1.8 alla v1.3.53 (rilascio attuale).
+Release note cumulative dalla v1.1.8 alla v1.3.55 (rilascio attuale).
 
 ## 🚀 Novità
 
@@ -50,6 +50,7 @@ Dialoghi delle scene senza npc (v1.3.49): se una scena ha dialoghi ma nessun per
 Rettangoli neri su macOS (v1.3.50): sulle build macOS la canvas veniva creata con un canale alpha (RGBA) e i blit con trasparenza (overlay, sprite, testo) ne corrompevano l'alpha, producendo quadrati neri semi-trasparenti sugli elementi dell'interfaccia (cuori, HUD, domanda, personaggio) e schermate completamente trasparenti nella splash; ora la canvas è forzata senza alpha (24bpp, come le build Windows), eliminando il difetto.
 Box di input del profilo (v1.3.51): nella schermata di creazione del nuovo profilo il campo del nome non era centrato rispetto allo schermo e si spostava di un pixel per lato ad ogni lampeggio del cursore (testo e cursore renderizzati insieme, con '|' largo 19px e lo spazio 13px); ora testo e cursore sono renderizzati separatamente come nel box di risposta dei livelli, il box resta ancorato al centro dello schermo e la larghezza riservata al cursore è costante, eliminando lo spostamento.
 Controllo aggiornamenti su macOS (v1.3.52): nelle app frozen (PyInstaller) su macOS la verifica HTTPS verso l'API GitHub falliva perché l'SSL non trovava il certificato CA di sistema non essendo presente certifi (su Windows Python usa lo store di sistema); ora la richiesta usa il bundle CA di certifi quando disponibile (aggiunto alle build macOS e Windows), con ripiego sul contesto predefinito e, come ultima risorsa, su un contesto senza verifica; il fallimento non è più silenzioso ma viene stampato.
+Config dei profili in inglese (v1.3.54): nel config.json di ogni profilo le sezioni dei pool per operazione erano salvate due volte, con la chiave italiana e con quella inglese (es. "moltiplicazione" e "multiplication") e i dict per-operazione usavano chiavi italiane; ora il file usa solo chiavi inglesi (pool, story_progress, story_completed, initial_level_by_op, difficulty_position_by_op, story_operation) e la lettura normalizza entrambe le forme (retrocompatibile con i profili esistenti), preferendo quella inglese se presente. I profili esistenti sono stati migrati rimuovendo i duplicati italiani.
 
 ## ✨ Miglioramenti
 
@@ -57,6 +58,7 @@ Grafica e testo (v1.3.5): font ridimensionati, barre di progresso corrette, rimo
 HUD e debug (v1.3.8): HUD più compatto e numero del livello relativo alla storia mostrato anche nel debug.
 Pannello debug (v1.3.19/v1.3.22/v1.3.25): mostra la traccia musicale corrente con i secondi trascorsi, la percentuale di carry/borrow degli operandi correnti e lo stato Fallback (Sì/No) quando la selezione ripiega dopo 50 tentativi.
 Progressi per difficoltà (v1.3.33): il progresso della storia traccia solo il livello di storia, indipendente dalla posizione di difficoltà.
+Allineamento automatico dei profili (v1.3.55): all'avvio, prima della schermata di selezione del profilo, il config.json di ogni profilo viene allineato allo schema corrente: le chiavi legacy (genere, storia_*, difficolta_*, livello_*) vengono rinormalizzate in inglese e le variabili mancanti vengono inserite con i valori predefiniti, senza mai modificare i valori già impostati (scrittura solo quando effettivamente necessario, operazione idempotente).
 
 ## 🛠️ DevOps
 
