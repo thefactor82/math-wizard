@@ -114,6 +114,7 @@ GAME_STATE_PLAYER_EXIT ="player_exit"
 GAME_STATE_STORY ="story"
 GAME_STATE_LOADING ="loading"
 GAME_STATE_TUTORIAL_PROMPT ="tutorial_prompt"
+GAME_STATE_CELEBRATION ="celebration"
 
 
 def normalize_game_state (value ):
@@ -982,7 +983,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if normalize_story_entry (e ) .get ("type")=="level")
 
-        self .version ="1.3.52"
+        self .version ="1.3.53"
 
         self .profiles =[]
         self .current_profile =""
@@ -1038,6 +1039,7 @@ class Game :
         self .dragging_difficulty =False
         self .story_progress ={"moltiplicazione":0 ,"addizione":0 ,"sottrazione":0 ,"divisione":0 }
         self .story_completed ={"moltiplicazione":False ,"addizione":False ,"sottrazione":False ,"divisione":False }
+        self .plus_unlocked =False
         self .music_volume =20
         self .sfx_volume =50
 
@@ -1104,6 +1106,7 @@ class Game :
         "difficulty_position_by_op":self .difficulty_position_by_op ,
         "story_progress":self .story_progress ,
         "story_completed":self .story_completed ,
+        "plus_unlocked":bool (self .plus_unlocked ),
         "fullscreen":self .fullscreen ,
         "window_mode":self .window_mode ,
         "music_volume":self .music_volume ,
@@ -1169,6 +1172,7 @@ class Game :
             for op in self .story_completed :
                 if not self .story_completed [op ]and self .story_progress .get (op ,0 )>=self .num_story_levels :
                     self .story_completed [op ]=True 
+            self .plus_unlocked =bool (data .get ("plus_unlocked",False ))
             self .restore_initial_level () 
             if "fullscreen"in data :
                 self .fullscreen =bool (data ["fullscreen"])
@@ -2137,13 +2141,13 @@ class Game :
                         self ._apply_display_mode ()
                         self .setup_cursor ()
                         self .save_profiles ()
-                        self .state =GAME_STATE_MENU
+                        self ._go_to_menu ()
                     else :
                         self .profile_input_mode =True 
                         self .profile_input =""
                 elif event .key ==pygame .K_ESCAPE :
                     if self .profiles :
-                        self .state =GAME_STATE_MENU
+                        self ._go_to_menu ()
                     else :
                         self .running =False 
             elif self .state ==GAME_STATE_MENU:
@@ -2276,14 +2280,14 @@ class Game :
                             self .end_tutorial ()
                         else :
                             self .save_session ()
-                            self .state =GAME_STATE_MENU
+                            self ._go_to_menu ()
                         return 
                     elif event .key ==pygame .K_ESCAPE :
                         if self .tutorial_active :
                             self .end_tutorial ()
                         else :
                             self .save_session ()
-                            self .state =GAME_STATE_MENU
+                            self ._go_to_menu ()
                         return 
                 if event .key ==pygame .K_ESCAPE :
                     self ._exit_to_menu ()
@@ -2315,9 +2319,12 @@ class Game :
                 elif event .key ==pygame .K_r :
                     self .start_game ()
                 elif event .key ==pygame .K_m :
-                    self .state =GAME_STATE_MENU
+                    self ._go_to_menu ()
                 elif event .key ==pygame .K_ESCAPE :
                     self .running =False 
+            elif self .state ==GAME_STATE_CELEBRATION:
+                if event .key in (pygame .K_RETURN ,pygame .K_KP_ENTER ,pygame .K_SPACE ):
+                    self .finish_celebration ()
             elif self .state ==GAME_STATE_LEVEL_COMPLETE:
                 self ._advance_level_complete ()
             elif self .state ==GAME_STATE_STORY:
@@ -2333,11 +2340,14 @@ class Game :
 
         if event .type ==pygame .MOUSEBUTTONDOWN :
             mx ,my =self ._scale_to_canvas (*event .pos ) 
+            if self .state ==GAME_STATE_CELEBRATION:
+                self .finish_celebration ()
+                return 
             if self .state ==GAME_STATE_TUTORIAL_PROMPT:
                 if getattr (self ,'tutorial_si_rect',None )and self .tutorial_si_rect .collidepoint (mx ,my ):
                     self .start_tutorial ()
                 elif getattr (self ,'tutorial_no_rect',None )and self .tutorial_no_rect .collidepoint (mx ,my ):
-                    self .state =GAME_STATE_MENU
+                    self ._go_to_menu ()
                 return 
             if self .state ==GAME_STATE_GAME and self .scene_phase =="dialogue":
                 self .advance_scene_dialogue ()
@@ -2367,7 +2377,7 @@ class Game :
                         self .state =GAME_STATE_PLAYER_EXIT
                         return 
                     if self .gameover_buttons .get ("menu")and self .gameover_buttons ["menu"].collidepoint (mx ,my ):
-                        self .state =GAME_STATE_MENU
+                        self ._go_to_menu ()
                         return 
             if self .state ==GAME_STATE_MENU:
                 for i ,hit in enumerate (getattr (self ,'menu_btn_rects',[ ])):
@@ -2412,7 +2422,7 @@ class Game :
                                 self ._apply_display_mode ()
                                 self .setup_cursor ()
                                 self .save_profiles ()
-                                self .state =GAME_STATE_MENU
+                                self ._go_to_menu ()
                             else :
                                 self .profile_input_mode =True 
                                 self .profile_input =""
@@ -3134,6 +3144,9 @@ class Game :
             return 
         if self .state ==GAME_STATE_GAME_OVER:
             return 
+        if self .state ==GAME_STATE_CELEBRATION:
+            self .update_celebration ()
+            return 
         if self .state ==GAME_STATE_PLAYER_EXIT:
             elapsed =pygame .time .get_ticks ()-self .player_exit_start 
             if elapsed >=4000 :
@@ -3383,6 +3396,8 @@ class Game :
             self .draw_game ()
         elif self .state ==GAME_STATE_PLAYER_EXIT:
             self .draw_player_exit ()
+        elif self .state ==GAME_STATE_CELEBRATION:
+            self .draw_celebration ()
         elif self .state ==GAME_STATE_LEVEL_COMPLETE:
             self .draw_level_complete ()
         elif self .state ==GAME_STATE_STORY:
@@ -4741,7 +4756,137 @@ class Game :
         if self .tutorial_active :
             self .end_tutorial ()
         else :
+            self ._go_to_menu ()
+
+    def _go_to_menu (self ):
+        if not self .plus_unlocked and all (bool (v )for v in self .story_completed .values ()):
+            self .start_celebration ()
+        else :
             self .state =GAME_STATE_MENU
+
+    def start_celebration (self ):
+        self .plus_unlocked =True
+        self .save_profile_config ()
+        if self .current_music =="level":
+            self .switch_music ("background")
+        self .celebration_start =pygame .time .get_ticks ()
+        self ._celeb_pendant_imgs ={}
+        for element in STORY_ELEMENTS .values ():
+            img =safe_load_image (resource_path (os .path .join ("graphics","misc","pendant_%s.png"%element )))
+            self ._celeb_pendant_imgs [element ]=scale_to_fit (img ,(130 ,130 ))
+        big =safe_load_image (resource_path (os .path .join ("graphics","misc","pendant.png")))
+        self ._celeb_pendant_big =scale_to_fit (big ,(200 ,200 ))
+        try :
+            pygame .mixer .music .set_volume (self .music_volume /100 )
+        except pygame .error :
+            pass
+        self .celebration_exit_start =None
+        self .state =GAME_STATE_CELEBRATION
+
+    def finish_celebration (self ):
+        if self .celebration_exit_start is None :
+            self .celebration_exit_start =pygame .time .get_ticks ()
+
+    def update_celebration (self ):
+        if self .celebration_exit_start is not None :
+            if pygame .time .get_ticks ()-self .celebration_exit_start >=5200 :
+                self .state =GAME_STATE_MENU
+
+    def draw_celebration (self ):
+        now =pygame .time .get_ticks ()
+        t =now -self .celebration_start
+        self .screen .blit (self .bg_options ,(0 ,0 ))
+        overlay =self ._overlay
+        overlay .set_alpha (min (200 ,int (200 *t /1200 )))
+        overlay .fill (BG_DARK )
+        self .screen .blit (overlay ,(0 ,0 ))
+        center =(CANVAS_WIDTH //2 ,500 )
+
+        data =self .char_data .get (self .config_gender ,self .char_data ["F"])
+        if self .celebration_exit_start is not None :
+            et =now -self .celebration_exit_start
+            frame_idx =(et //200 )%4
+            run_img =data ["run"][frame_idx ]
+            prog =min (et /4000 ,1.0 )
+            wx =self .player_stand_x +(CANVAS_WIDTH +300 -self .player_stand_x )*prog
+            cw ,ch =run_img .get_size ()
+            base_y =CANVAS_HEIGHT //2 -ch //2
+            wy =base_y +195
+            self .screen .blit (run_img ,(wx ,wy ))
+            if et >4000 :
+                a =min (255 ,int (255 *(et -4000 )/1200 ))
+                overlay .set_alpha (a )
+                self .screen .blit (overlay ,(0 ,0 ))
+            return
+
+        if t <1600 :
+            progress =min (t /1600 ,1.0 )
+            wx =-150 +(self .player_stand_x +150 )*progress
+            frame_idx =(t //120 )%4
+            char_img =data ["run"][frame_idx ]
+        else :
+            wx =self .player_stand_x
+            char_img =data ["charge"]
+        cw ,ch =char_img .get_size ()
+        base_y =CANVAS_HEIGHT //2 -ch //2
+        wy =base_y +195
+        self .screen .blit (char_img ,(wx ,wy ))
+
+        if t >=1600 :
+            glow_x ,glow_y =wx +45 ,wy +60
+            base_col =(235 ,220 ,255 )if self .config_gender =="F"else (220 ,255 ,220 )
+            radius =18 +int (6 *abs ((now %600 )/300 -1 ))
+            for r in range (radius ,0 ,-3 ):
+                alpha =max (0 ,200 -int (200 *(radius -r )/radius ))
+                ratio =(radius -r )/radius
+                col =tuple (max (0 ,int (c *(1 -ratio *0.3 )))for c in base_col )
+                surf =pygame .Surface ((r *2 ,r *2 ),pygame .SRCALPHA )
+                pygame .draw .circle (surf ,(*col ,alpha ),(r ,r ),r )
+                self .screen .blit (surf ,(glow_x -r ,glow_y -r ))
+
+        if t >=2200 :
+            order_keys =["moltiplicazione","addizione","sottrazione","divisione"]
+            corners =[(210 ,210 ),(1710 ,210 ),(210 ,880 ),(1710 ,880 )]
+            for i ,opkey in enumerate (order_keys ):
+                element =STORY_ELEMENTS [opkey ]
+                img =self ._celeb_pendant_imgs [element ]
+                if t <3000 :
+                    base_x =corners [i ][0 ]+random .randint (-14 ,14 )
+                    base_y =corners [i ][1 ]+random .randint (-14 ,14 )
+                elif t <5000 :
+                    p =(t -3000 )/2000
+                    ease =p*p
+                    base_x =corners [i ][0 ]+(center [0 ]-corners [i ][0 ])*ease
+                    base_y =corners [i ][1 ]+(center [1 ]-corners [i ][1 ])*ease
+                    base_x +=random .randint (-10 ,10 )
+                    base_y +=random .randint (-10 ,10 )
+                else :
+                    fuse =min ((t -5000 )/1400 ,1.0 )
+                    base_x ,base_y =center
+                    scale =max (0.05 ,1 -fuse )
+                    img =pygame .transform .scale (img ,(max (1 ,int (img .get_width ()*scale )),max (1 ,int (img .get_height ()*scale ))))
+                    img =img .copy ()
+                    img .set_alpha (int (255 *(1 -fuse )))
+                self .screen .blit (img ,img .get_rect (center =(base_x ,base_y )))
+            if t >=5000 :
+                fuse =min ((t -5000 )/1400 ,1.0 )
+                size =max (1 ,int (180 *(0.4 +0.6 *fuse )))
+                scaled =pygame .transform .scale (self ._celeb_pendant_big ,(size ,size ))
+                scaled =scaled .copy ()
+                scaled .set_alpha (int (255 *min (1 ,fuse *1.2 )))
+                self .screen .blit (scaled ,scaled .get_rect (center =center ))
+
+        if t >=6400 :
+            a =min (255 ,int (255 *(t -6400 )/450 ))
+            title =self ._render_cached (self .font_large ,"Congratulazioni!",GOLD ).copy ()
+            title .set_alpha (a )
+            self .screen .blit (title ,title .get_rect (center =(CANVAS_WIDTH //2 ,640 )))
+            msg =self ._render_cached (self .font_medium ,"Hai ottenuto il ciondolo magico per sbloccare nuove sfide e avventure!",WHITE ).copy ()
+            msg .set_alpha (a )
+            self .screen .blit (msg ,msg .get_rect (center =(CANVAS_WIDTH //2 ,730 )))
+            hint =self ._render_cached (self .font_small ,"(Invio per continuare)",GRAY ).copy ()
+            hint .set_alpha (a )
+            self .screen .blit (hint ,hint .get_rect (center =(CANVAS_WIDTH //2 ,820 )))
 
     def draw_tutorial_prompt (self ):
         mx ,my =self ._mouse_pos ()
@@ -5114,7 +5259,7 @@ class Game :
         return list (reversed (ultime [-6 :]))
 
     def run (self ):
-        animated_states =("splash","profile_select","game","story","player_exit","loading","options","options_auto","config_fixed")
+        animated_states =("splash","profile_select","game","story","player_exit","loading","options","options_auto","config_fixed","celebration")
         while self .running :
             events =pygame .event .get ()
             for event in events :

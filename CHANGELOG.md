@@ -1,6 +1,6 @@
 # Math Wizard — Release Notes
 
-Release note cumulative dalla v1.1.8 alla v1.3.52 (rilascio attuale).
+Release note cumulative dalla v1.1.8 alla v1.3.53 (rilascio attuale).
 
 ## 🚀 Novità
 
@@ -22,6 +22,7 @@ Difficoltà della moltiplicazione (v1.3.40): curva appiattita negli ultimi 15 li
 Risoluzione finestra 1280x720 (v1.3.48): nelle opzioni grafiche la voce "Schermo" cicla tra intero, finestra 1920x1080 e finestra 1280x720; F11 alterna intero e l'ultima risoluzione finestra scelta, con preferenza salvata nel profilo.
 Tutorial (v1.3.49): dopo la creazione di un profilo viene proposto un breve tutorial (Sì/No), raggiungibile anche da Opzioni con la voce "Tutorial" o il tasto 4; il livello di tutorial mostra sei dialoghi introduttivi, una domanda forzata 2+1 (solo risposta corretta, senza timeout/retry), dieci dialoghi di chiusura e l'uscita del personaggio a fine livello, per poi tornare al menu.
 Dialoghi delle scene di livello (v1.3.49): le entry livello con una sceneggiatura "when: before/after" mostrano i dialoghi con la nuvola sopra il personaggio parlante (il player nei dialoghi del tutorial) prima e dopo le domande.
+Animazione del completamento (v1.3.53): quando un profilo ha completato tutte e quattro le storie al 100%, all'ingresso nel menu principale (dalla selezione del profilo o al ritorno da una partita) viene riprodotta una breve animazione celebrativa su sfondo delle opzioni: il mago entra da sinistra e si mette in posa da incantesimo, i quattro pendenti elementali compaiono ai quattro angoli, vibrano e convergono lentamente verso il centro fondendosi nel ciondolo magico; a fine sequenza appare il messaggio "Congratulazioni!" e con INVIO il mago esce di scena, lo sfondo sfuma e si torna al menu. Il flag "plus_unlocked" viene salvato nel config del profilo al completamento (ignorato se assente o false, per non rompere i profili esistenti, e i profili "vecchi" con le storie già completate lo ricevono alla prima apertura del menu) e servirà per sbloccare nuove sfide in futuro.
 
 ## 🐛 Fix
 
