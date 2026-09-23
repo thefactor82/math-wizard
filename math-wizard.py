@@ -554,6 +554,7 @@ class Game :
         self .font_debug =pygame .font .Font (None ,22 )
         self .font_num =pygame .font .Font (resource_path (FONT_PATH ),42 )
         self .font_tiny =pygame .font .Font (resource_path (FONT_PATH ),26 )
+        self .font_log =pygame .font .Font (resource_path (FONT_PATH ),20 )
 
         self .load_resources ()
         self .setup_profiles ()
@@ -984,7 +985,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if normalize_story_entry (e ) .get ("type")=="level")
 
-        self .version ="1.4.0"
+        self .version ="1.4.1"
 
         self .profiles =[]
         self .current_profile =""
@@ -2685,9 +2686,6 @@ class Game :
                     self .config_plus_missing_operand =not self .config_plus_missing_operand 
                     self .save_profile_config ()
                     return 
-                if getattr (self ,'plus_back_rect',None )and self .plus_back_rect .collidepoint (mx ,my ):
-                    self .state =GAME_STATE_OPTIONS_AUTO if self .mode =="auto"else GAME_STATE_CONFIG_FIXED
-                    return 
                 if CANVAS_WIDTH //2 -165 <=mx <=CANVAS_WIDTH //2 +165 and 717 <=my <=786 :
                     self .save_profile_config ()
                     self .start_game ()
@@ -3080,7 +3078,13 @@ class Game :
         except ValueError :
             risposta =None 
 
-        if risposta is not None and is_answer_correct (risposta ,self .expected_result ):
+        zero_mult =getattr (self ,'missing_operand',None )in ("a","b")and self .operation =="moltiplicazione"and (self .a ==0 or self .b ==0 )
+        if zero_mult and text_value != "":
+            corretto =True 
+        else :
+            corretto =risposta is not None and is_answer_correct (risposta ,self .expected_result )
+
+        if corretto :
             self .is_correct =True 
             if self .tutorial_active :
                 self ._tutorial_passed =True 
@@ -4460,46 +4464,25 @@ class Game :
         rect =title .get_rect (center =(CANVAS_WIDTH //2 ,120 ))
         self .screen .blit (title ,rect )
 
-        y =300
-        label =self ._render_cached (self .font_tiny ,"Opzioni bonus (sbloccate completando la storia)",WHITE )
-        rect =label .get_rect (midleft =(120 ,y +40 ))
-        self .screen .blit (label ,rect )
-
-        y_tog =370
-        self .plus_toggle_rect =pygame .Rect (CANVAS_WIDTH //2 -230 ,y_tog ,460 ,70 )
-        hover_tog =self .plus_toggle_rect .collidepoint (mx ,my )
+        y_tog =420
+        toggle_rect =pygame .Rect (540 ,y_tog ,279 ,54 )
+        self .plus_toggle_rect =toggle_rect
+        hover_tog =toggle_rect .collidepoint (mx ,my )
         on =bool (self .config_plus_missing_operand )
-        focused =getattr (self ,'config_plus_cursor',0 )==0
-        bg_tog =(100 ,160 ,90 )if on else (90 ,90 ,100 )if hover_tog else (70 ,70 ,80 )
-        pygame .draw .rect (self .screen ,bg_tog ,self .plus_toggle_rect ,border_radius =10 )
-        if hover_tog or focused :
-            pygame .draw .rect (self .screen ,GOLD if focused else (200 ,200 ,210 ),self .plus_toggle_rect ,2 ,border_radius =10 )
-        box_x =self .plus_toggle_rect .x +22
-        box_y =y_tog +15
-        chk =pygame .Rect (box_x ,box_y ,40 ,40 )
-        pygame .draw .rect (self .screen ,(50 ,50 ,60 )if on else (30 ,30 ,40 ),chk ,border_radius =6 )
         if on :
-            pygame .draw .rect (self .screen ,(120 ,220 ,110 ),chk ,2 ,border_radius =6 )
-            segno_chk =self ._render_cached (self .font_small ,"X",(120 ,220 ,110 ))
-            self .screen .blit (segno_chk ,segno_chk .get_rect (center =chk .center ))
-        lbl =self ._render_cached (self .font_small ,"OPERANDO MANCANTE",WHITE )
-        self .screen .blit (lbl ,lbl .get_rect (midleft =(box_x +62 ,y_tog +35 )))
-        stato ="(attivo)"if on else "(spento)"
-        col_stato =GREEN if on else GRAY
-        stato_surf =self ._render_cached (self .font_tiny ,stato ,col_stato )
-        self .screen .blit (stato_surf ,stato_surf .get_rect (midleft =(box_x +62 ,y_tog +60 )))
-
-        desc =self ._render_cached (self .font_tiny ,"Un operando della domanda resta nascosto: rispondi con quello mancante.",WHITE )
-        self .screen .blit (desc ,desc .get_rect (center =(CANVAS_WIDTH //2 ,478 )))
-
-        bck_rect =pygame .Rect (CANVAS_WIDTH //2 -165 ,560 ,200 ,54 )
-        self .plus_back_rect =bck_rect
-        hover_bck =bck_rect .collidepoint (mx ,my )
-        pygame .draw .rect (self .screen ,(110 ,70 ,70 )if hover_bck else (90 ,60 ,60 ),bck_rect ,border_radius =10 )
-        if hover_bck :
-            pygame .draw .rect (self .screen ,GOLD ,bck_rect ,2 ,border_radius =10 )
-        back_txt =self ._render_cached (self .font_tiny ,"Indietro (ESC)",WHITE )
-        self .screen .blit (back_txt ,back_txt .get_rect (center =bck_rect .center ))
+            bg_tog =(100 ,150 ,220 )if hover_tog else SEL_BLUE
+        else :
+            bg_tog =(80 ,80 ,90 )if hover_tog else (60 ,60 ,70 )
+        pygame .draw .rect (self .screen ,bg_tog ,toggle_rect ,border_radius =9 )
+        if hover_tog :
+            pygame .draw .rect (self .screen ,GOLD ,toggle_rect ,2 ,border_radius =9 )
+        lbl_tog =self ._render_cached (self .font_tiny ,"Operando Mancante",WHITE )
+        rect_l =lbl_tog .get_rect (midleft =(120 ,y_tog +27 ))
+        self .screen .blit (lbl_tog ,rect_l )
+        val_txt ="ON"if on else "OFF"
+        val_surf =self ._render_cached (self .font_tiny ,val_txt ,WHITE )
+        rect_v =val_surf .get_rect (center =(679 ,y_tog +27 ))
+        self .screen .blit (val_surf ,rect_v )
 
         if getattr (self ,'config_plus_cursor',0 )==1 :
             pygame .draw .rect (self .screen ,(255 ,255 ,100 ),(CANVAS_WIDTH //2 -168 ,714 ,336 ,75 ),3 ,border_radius =12 )
@@ -4670,10 +4653,10 @@ class Game :
             missing =getattr (self ,'missing_operand',None )
             if missing =="a":
                 res_display =calculate_result (self .a ,self .b ,self .operation ,getattr (self ,'integer_result',True ))
-                domanda_text =f"?  {segno }  {self .b }  =  {res_display }"
+                domanda_text =f"...  {segno }  {self .b }  =  {res_display }"
             elif missing =="b":
                 res_display =calculate_result (self .a ,self .b ,self .operation ,getattr (self ,'integer_result',True ))
-                domanda_text =f"{self .a }  {segno }  ?  =  {res_display }"
+                domanda_text =f"{self .a }  {segno }  ...  =  {res_display }"
             else :
                 domanda_text =f"{self .a }  {segno }  {self .b }  =  ?"
         else :
@@ -5375,12 +5358,12 @@ class Game :
             max_w =CANVAS_WIDTH -100 
             for s in sessioni :
                 disp =s 
-                if self .font_tiny .size (disp )[0 ]>max_w and len (disp )>24 :
+                if self .font_log .size (disp )[0 ]>max_w and len (disp )>24 :
                     disp =disp [:24 ]
-                    while self .font_tiny .size (disp )[0 ]>max_w and len (disp )>4 :
+                    while self .font_log .size (disp )[0 ]>max_w and len (disp )>4 :
                         disp =disp [:-1 ]
                     disp =disp .rstrip ()+"..."
-                self .draw_text_shadow (self .font_tiny ,disp ,(180 ,180 ,180 ),center =(CANVAS_WIDTH //2 ,y ))
+                self .draw_text_shadow (self .font_log ,disp ,(180 ,180 ,180 ),center =(CANVAS_WIDTH //2 ,y ))
                 y +=36 
 
         mx ,my =self ._mouse_pos ()

@@ -1,6 +1,6 @@
 # Math Wizard — Release Notes
 
-Release note cumulative dalla v1.3.53 alla v1.4.0 (rilascio attuale).
+Release note cumulative dalla v1.3.53 alla v1.4.1 (rilascio attuale).
 
 ## 🚀 Novità
 
@@ -13,6 +13,8 @@ Animazione del completamento (v1.3.53): quando un profilo ha completato tutte e 
 Config dei profili in inglese (v1.3.54): nel config.json di ogni profilo le sezioni dei pool per operazione erano salvate due volte, con la chiave italiana e con quella inglese (es. "moltiplicazione" e "multiplication") e i dict per-operazione usavano chiavi italiane; ora il file usa solo chiavi inglesi (pool, story_progress, story_completed, initial_level_by_op, difficulty_position_by_op, story_operation) e la lettura normalizza entrambe le forme (retrocompatibile con i profili esistenti), preferendo quella inglese se presente. I profili esistenti sono stati migrati rimuovendo i duplicati italiani.
 
 ## ✨ Miglioramenti
+
+Raffinamento delle opzioni plus (v1.4.1): schermata "OPZIONI +" riallineata allo stile delle opzioni normali (etichetta "Operando Mancante", toggle ON/OFF senza checkbox, rimosse le scritte di spiegazione e il pulsante "Indietro ESC", resta solo CONFERMA); l'opzione resta di default OFF e ricorda l'ultima scelta nel profilo. Nelle domande l'operando nascosto è indicato con "..." invece che con "?"; nelle moltiplicazioni con 0 (0 x ... o ... x 0) viene accettata qualsiasi risposta. Font dell'elenco "Ultime sessioni" nella schermata finale ridotto a 20px per mostrare più righe.
 
 Allineamento automatico dei profili (v1.3.55): all'avvio, prima della schermata di selezione del profilo, il config.json di ogni profilo viene allineato allo schema corrente: le chiavi legacy (genere, storia_*, difficolta_*, livello_*) vengono rinormalizzate in inglese e le variabili mancanti vengono inserite con i valori predefiniti, senza mai modificare i valori già impostati (scrittura solo quando effettivamente necessario, operazione idempotente).
 
