@@ -285,11 +285,15 @@ def get_operation_symbol (operation ):
     return "x"
 
 
-def format_wrong_entry (a ,b ,operation ,answer ):
+def format_wrong_entry (a ,b ,c ,operation ,answer ):
     segno =get_operation_symbol (operation )
+    if c is None :
+        body =f"{a }{segno }{b }"
+    else :
+        body =f"{a }{segno }{b }{segno }{c }"
     if answer is None :
-        return f"{a }{segno }{b }=(nessuna risposta)"
-    return f"{a }{segno }{b }={answer }"
+        return f"{body }=(nessuna risposta)"
+    return f"{body }={answer }"
 
 
 def calculate_result (a ,b ,operation ,integer_result =True ):
@@ -302,6 +306,19 @@ def calculate_result (a ,b ,operation ,integer_result =True ):
             return 0 
         return a //b if integer_result else a /b 
     return a *b 
+
+
+def calculate_result3 (a ,b ,c ,operation ,integer_result =True ):
+    if operation =="addizione":
+        return a +b +c 
+    if operation =="sottrazione":
+        return a -b -c 
+    if operation =="divisione":
+        den =b *c 
+        if den ==0 :
+            return 0 
+        return a //den if integer_result else a /den 
+    return a *b *c 
 
 
 def finite_decimal_places (a ,b ,max_places =2 ):
@@ -364,7 +381,7 @@ def needs_borrow (a ,b ):
     return False
 
 
-def select_operands (pool_a ,pool_b ,reinforce_queue ,operation ,integer_result =True ,max_sum =None ,min_value =None ,max_value =None ,carry_prob =None ,borrow_prob =None ,positive_diff =True ):
+def select_operands (pool_a ,pool_b ,reinforce_queue ,operation ,integer_result =True ,max_sum =None ,min_value =None ,max_value =None ,carry_prob =None ,borrow_prob =None ):
     need_carry =None
     if carry_prob is not None and operation =="addizione":
         need_carry =random .random ()<carry_prob
@@ -387,17 +404,119 @@ def select_operands (pool_a ,pool_b ,reinforce_queue ,operation ,integer_result 
             continue
         if need_carry is not None and needs_carry (a ,b )!=need_carry :
             continue
-        if need_borrow is not None :
-            if positive_diff :
-                lo ,hi =min (a ,b ),max (a ,b )
-                if needs_borrow (hi ,lo )!=need_borrow :
-                    continue
-            else :
-                if needs_borrow (a ,b )!=need_borrow or needs_borrow (b ,a )!=need_borrow :
-                    continue
+        if need_borrow is not None and needs_borrow (a ,b )!=need_borrow :
+            continue
         return a ,b ,False,False
     a ,b =random .choice (pool_a ),random .choice (pool_b )
     return a ,b ,True,False
+
+
+def needs_carry3 (a ,b ,c ):
+    while a >0 or b >0 or c >0 :
+        if (a %10 +b %10 +c %10 )>=10 :
+            return True
+        a //=10
+        b //=10
+        c //=10
+    return False
+
+
+def needs_borrow3 (a ,b ,c ):
+    while a >0 or b >0 or c >0 :
+        if a %10 <(b %10 +c %10 ):
+            return True
+        a //=10
+        b //=10
+        c //=10
+    return False
+
+
+def generate_three_division_operands (pool_a ,pool_b ,reinforce_queue ,integer_result =True ):
+    if reinforce_queue and random .random ()<0.4 :
+        it =reinforce_queue .popleft ()
+        if isinstance (it ,tuple )and len (it )==3 and it [1 ]!=0 and it [2 ]!=0 and it [0 ]%(it [1 ]*it [2 ])==0 :
+            return it [0 ],it [1 ],it [2 ],True
+    valid_b =[x for x in pool_b if x !=0 ]
+    if not valid_b :
+        return 1 ,1 ,1 ,False
+    for _ in range (50 ):
+        b =random .choice (valid_b )
+        c =random .choice (valid_b )
+        den =b *c
+        if den ==0 :
+            continue
+        if integer_result :
+            candidates =[x for x in pool_a if x >0 and x %den ==0 ]
+            if candidates :
+                return random .choice (candidates ),b ,c ,False
+        else :
+            return random .choice (pool_a ),b ,c ,False
+    return min ((x for x in pool_a if x >0 ),default =1 ),1 ,1 ,False
+
+
+def select_three_operands (pool_a ,pool_b ,reinforce_queue ,operation ,integer_result =True ,max_sum =None ,min_value =None ,max_value =None ,carry_prob =None ,borrow_prob =None ):
+    need_carry =None
+    if carry_prob is not None and operation =="addizione":
+        need_carry =random .random ()<carry_prob
+    need_borrow =None
+    if borrow_prob is not None and operation =="sottrazione":
+        need_borrow =random .random ()<borrow_prob
+    if reinforce_queue and random .random ()<0.4 :
+        it =None
+        try :
+            it =reinforce_queue .popleft ()
+        except IndexError :
+            it =None
+        if isinstance (it ,tuple )and len (it )==3 :
+            if operation =="divisione":
+                if it [1 ]!=0 and it [2 ]!=0 and it [0 ]%(it [1 ]*it [2 ])==0 :
+                    return it [0 ],it [1 ],it [2 ],False,True
+            elif operation =="sottrazione":
+                subt_res =it [0 ]-it [1 ]-it [2 ]
+                if min_value is not None and subt_res <min_value :
+                    pass
+                elif max_value is not None and subt_res >max_value :
+                    pass
+                else :
+                    return it [0 ],it [1 ],it [2 ],False,True
+            else :
+                return it [0 ],it [1 ],it [2 ],False,True
+        if it is not None :
+            reinforce_queue .appendleft (it )
+    for _ in range (300 ):
+        if operation =="divisione":
+            a ,b ,c ,from_queue =generate_three_division_operands (pool_a ,pool_b ,deque (),integer_result )
+            if from_queue :
+                return a ,b ,c ,False,True
+        elif operation =="addizione":
+            a =random .choice (pool_a )
+            b =random .choice (pool_b )
+            c =random .choice (pool_b )
+            if max_sum is not None and a +b +c >max_sum :
+                continue
+        else :
+            a =random .choice (pool_a )
+            b =random .choice (pool_b )
+            c =random .choice (pool_b )
+        res =calculate_result3 (a ,b ,c ,operation ,integer_result )
+        if min_value is not None and res <min_value :
+            continue
+        if max_value is not None and res >max_value :
+            continue
+        if need_carry is not None and needs_carry3 (a ,b ,c )!=need_carry :
+            continue
+        if need_borrow is not None and needs_borrow3 (a ,b ,c )!=need_borrow :
+            continue
+        return a ,b ,c ,False,False
+    if operation =="addizione"and max_sum is not None :
+        a =random .choice ([x for x in pool_a if x <=max_sum ]or [min (pool_a ,key =lambda x :abs (x -max_sum ))])
+        rest =max_sum -a
+        b =random .choice ([x for x in pool_b if x <=rest ]or [0 ])
+        rest =rest -b
+        c =random .choice ([x for x in pool_b if x <=rest ]or [0 ])
+        return a ,b ,c ,True,False
+    a ,b ,c =random .choice (pool_a ),random .choice (pool_b ),random .choice (pool_b )
+    return a ,b ,c ,True,False
 
 LEVELS ={}
 for src in (data_path ,resource_path ):
@@ -532,7 +651,6 @@ class Game :
         self .monster_y_offset =0 
         self .debug =False 
         self .debug_buf =""
-        self .positive_difference =True 
         self .integer_result =True
         self .scene_phase =None 
         self .scene_data =None 
@@ -655,7 +773,7 @@ class Game :
             self .config ["somma_massima"]=min (199 ,self .config ["somma_massima"]+1 )
             self .save_profile_config ()
         elif action =="risultato_minimo_minus":
-            self .config ["risultato_minimo"]=max (0 ,self .config ["risultato_minimo"]-1 )
+            self .config ["risultato_minimo"]=max (-99 ,self .config ["risultato_minimo"]-1 )
             self .save_profile_config ()
         elif action =="risultato_minimo_plus":
             self .config ["risultato_minimo"]=min (199 ,self .config ["risultato_minimo"]+1 )
@@ -985,7 +1103,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if normalize_story_entry (e ) .get ("type")=="level")
 
-        self .version ="1.4.1"
+        self .version ="1.4.2"
 
         self .profiles =[]
         self .current_profile =""
@@ -1026,7 +1144,6 @@ class Game :
             }
         self .config_by_operation ["addizione"]["somma_massima"]=10
         self .config_by_operation ["addizione"]["riporto"]=50
-        self .config_by_operation ["sottrazione"]["differenza_positiva"]=True
         self .config_by_operation ["sottrazione"]["prestito"]=50 
         self .config_by_operation ["divisione"]["risultato_intero"]=True 
         self .config_by_operation ["divisione"]["swap"]=False 
@@ -1044,6 +1161,7 @@ class Game :
         self .story_completed ={"moltiplicazione":False ,"addizione":False ,"sottrazione":False ,"divisione":False }
         self .plus_unlocked =False
         self .config_plus_missing_operand =False
+        self .config_plus_three_operands =False
         self .music_volume =20
         self .sfx_volume =50
 
@@ -1105,6 +1223,7 @@ class Game :
         "story_completed":{normalize_operation_name (k ):bool (v )for k ,v in self .story_completed .items ()},
         "plus_unlocked":bool (self .plus_unlocked ),
         "plus_missing_operand":bool (self .config_plus_missing_operand ),
+        "plus_three_operands":bool (self .config_plus_three_operands ),
         "fullscreen":self .fullscreen ,
         "window_mode":self .window_mode ,
         "music_volume":self .music_volume ,
@@ -1136,6 +1255,7 @@ class Game :
         "difficolta_posizione":"difficulty_position",
         "livello_iniziale":"initial_level",
         "plus_operando_mancante":"plus_missing_operand",
+        "plus_tre_operandi":"plus_three_operands",
         }
         by_op_keys =["story_progress","story_completed","initial_level_by_op","difficulty_position_by_op"]
         try :
@@ -1239,6 +1359,7 @@ class Game :
                     self .story_completed [op ]=True 
             self .plus_unlocked =bool (data .get ("plus_unlocked",False ))
             self .config_plus_missing_operand =bool (data .get ("plus_missing_operand",data .get ("plus_operando_mancante",False )))
+            self .config_plus_three_operands =bool (data .get ("plus_three_operands",data .get ("plus_tre_operandi",False )))
             self .restore_initial_level () 
             if "fullscreen"in data :
                 self .fullscreen =bool (data ["fullscreen"])
@@ -1264,7 +1385,6 @@ class Game :
                 self .config_by_operation [op ]["swap"]=data .get ("swap",self .config_by_operation [op ]["swap"])
                 self .config_by_operation [op ]["timeout"]=data .get ("timeout",self .config_by_operation [op ]["timeout"])
             self .config_by_operation ["addizione"]["somma_massima"]=data .get ("somma_massima",self .config_by_operation ["addizione"]["somma_massima"])
-            self .config_by_operation ["sottrazione"]["differenza_positiva"]=data .get ("differenza_positiva",self .config_by_operation ["sottrazione"]["differenza_positiva"])
             self .config_by_operation ["divisione"]["risultato_intero"]=data .get ("risultato_intero",self .config_by_operation ["divisione"]["risultato_intero"])
         self .config =self .config_by_operation [self .config_operation ]
         try :
@@ -1291,12 +1411,14 @@ class Game :
         self .is_correct =0 
         self .a =0
         self .b =0
+        self .c =0
         self ._operands_fallback =False 
         self ._from_queue =False 
         self ._prev_from_queue =False 
         self ._no_queue_next =False 
         self .prev_a =-1 
         self .prev_b =-1 
+        self .prev_c =None 
         self .expected_result =0 
         self .input_utente =""
         self .monster_progress =0.0 
@@ -1395,10 +1517,17 @@ class Game :
         else :
             self .start_game ()
 
+    def _plus_three_active (self ):
+        return self .config_plus_three_operands and not self .tutorial_active
+
     def _apply_missing_operand (self ):
         if self .config_plus_missing_operand and not self .tutorial_active :
-            self .missing_operand =random .choice (["a","b"])
-            self .expected_result =self .a if self .missing_operand =="a"else self .b 
+            if self ._plus_three_active ():
+                self .missing_operand =random .choice (["a","b","c"])
+                self .expected_result =(self .a if self .missing_operand =="a"else self .b if self .missing_operand =="b"else self .c )
+            else :
+                self .missing_operand =random .choice (["a","b"])
+                self .expected_result =self .a if self .missing_operand =="a"else self .b 
         else :
             self .missing_operand =None 
 
@@ -1446,6 +1575,7 @@ class Game :
         self .wait_for_enter =False 
         self .prev_a =-1 
         self .prev_b =-1 
+        self .prev_c =None 
         self .game_over =False 
         if self .mode =="fixed":
             if self ._bg_names :
@@ -1462,7 +1592,6 @@ class Game :
             self .player_stand_x =112 
             self .operation =self .config_operation 
             self .max_sum =self .config .get ("somma_massima",10 )
-            self .positive_difference =self .config .get ("differenza_positiva",True )
             self .integer_result =self .config .get ("risultato_intero",True )
             if self .config_operation =="divisione":
                 self .integer_result =True 
@@ -1485,7 +1614,6 @@ class Game :
             self .operation =self .config_story_operation 
             self .config =self .config_by_operation .get (self .config_story_operation ,self .config )
             self .integer_result =op_cfg .get ("risultato_intero",True )
-            self .positive_difference =op_cfg .get ("differenza_positiva",True )
             if self .initial_level >0 :
                 self .state =GAME_STATE_LOADING
                 self .loading_start =pygame .time .get_ticks ()
@@ -1953,6 +2081,24 @@ class Game :
                     return a ,b ,fb
         return a ,b ,fb 
 
+    def _new_distinct_triple (self ):
+        prev =(self .prev_a ,self .prev_b ,self .prev_c )
+        a ,b ,c =self .a ,self .b ,self .c 
+        fb =True
+        if self .mode =="auto":
+            lv =self .effective_level ()
+            lv_data =self .levels [lv ]
+            for _ in range (20 ):
+                a ,b ,c ,fb ,from_queue =select_three_operands (lv_data ["pool_a"],lv_data ["pool_b"],deque (),self .operation ,self .integer_result ,min_value =lv_data .get ("min_value"),max_value =lv_data .get ("max_value"),carry_prob =lv_data .get ("carry"),borrow_prob =lv_data .get ("borrow"))
+                if (a ,b ,c )!=prev :
+                    return a ,b ,c ,fb
+        else :
+            for _ in range (20 ):
+                a ,b ,c ,fb ,from_queue =select_three_operands (self .pool_a ,self .pool_b ,deque (),self .operation ,self .integer_result ,self .max_sum ,min_value =self .config .get ("risultato_minimo",0 ),max_value =self .config .get ("risultato_massimo",199 ),carry_prob =self .config .get ("riporto",0 )/100 if self .operation =="addizione"else None ,borrow_prob =self .config .get ("prestito",0 )/100 if self .operation =="sottrazione"else None )
+                if (a ,b ,c )!=prev :
+                    return a ,b ,c ,fb
+        return a ,b ,c ,fb 
+
     def new_question (self ):
         if self .lives <=0 :
             return 
@@ -1963,26 +2109,34 @@ class Game :
                 self .boss_defeated_start =pygame .time .get_ticks ()
                 self .boss_defeated_timer =0 
                 return 
-            self .prev_a ,self .prev_b =self .a ,self .b 
+            self .prev_a ,self .prev_b ,self .prev_c =self .a ,self .b ,self .c 
             lv =self .effective_level ()
             lv_data =self .levels [lv ]
             self .operation =self .config_story_operation 
             allow_queue =not self ._no_queue_next and not self ._prev_from_queue
             self ._no_queue_next =False
-            self .a ,self .b ,self ._operands_fallback ,self ._from_queue =select_operands (lv_data ["pool_a"],lv_data ["pool_b"],self .reinforcement_queue if allow_queue else deque (),self .operation ,self .integer_result ,min_value =lv_data .get ("min_value"),max_value =lv_data .get ("max_value"),carry_prob =lv_data .get ("carry"),borrow_prob =lv_data .get ("borrow"))
-            self ._prev_from_queue =self ._from_queue
-            if self .operation =="sottrazione"and self .a <self .b :
-                self .a ,self .b =self .b ,self .a 
-            if not self ._from_queue and (self .a ,self .b )==(self .prev_a ,self .prev_b ):
-                if self .operation =="divisione":
-                    self .a ,self .b ,self ._operands_fallback =self ._new_distinct_pair ()
-                elif self .operation =="sottrazione"and self .positive_difference :
-                    self .a ,self .b ,self ._operands_fallback =self ._new_distinct_pair ()
-                    if self .a <self .b :
-                        self .a ,self .b =self .b ,self .a 
-                else :
+            three =self ._plus_three_active ()
+            if three :
+                self .a ,self .b ,self .c ,self ._operands_fallback ,self ._from_queue =select_three_operands (lv_data ["pool_a"],lv_data ["pool_b"],self .reinforcement_queue if allow_queue else deque (),self .operation ,self .integer_result ,min_value =lv_data .get ("min_value"),max_value =lv_data .get ("max_value"),carry_prob =lv_data .get ("carry"),borrow_prob =lv_data .get ("borrow"))
+            else :
+                self .a ,self .b ,self ._operands_fallback ,self ._from_queue =select_operands (lv_data ["pool_a"],lv_data ["pool_b"],self .reinforcement_queue if allow_queue else deque (),self .operation ,self .integer_result ,min_value =lv_data .get ("min_value"),max_value =lv_data .get ("max_value"),carry_prob =lv_data .get ("carry"),borrow_prob =lv_data .get ("borrow"))
+                if self .operation =="sottrazione"and self .a <self .b :
                     self .a ,self .b =self .b ,self .a 
-            self .expected_result =calculate_result (self .a ,self .b ,self .operation ,self .integer_result )
+            self ._prev_from_queue =self ._from_queue
+            if three :
+                if not self ._from_queue and (self .a ,self .b ,self .c )==(self .prev_a ,self .prev_b ,self .prev_c ):
+                    self .a ,self .b ,self .c ,self ._operands_fallback =self ._new_distinct_triple () 
+            else :
+                if not self ._from_queue and (self .a ,self .b )==(self .prev_a ,self .prev_b ):
+                    if self .operation =="divisione":
+                        self .a ,self .b ,self ._operands_fallback =self ._new_distinct_pair () 
+                    elif self .operation =="sottrazione":
+                        self .a ,self .b ,self ._operands_fallback =self ._new_distinct_pair ()
+                        if self .a <self .b :
+                            self .a ,self .b =self .b ,self .a 
+                    else :
+                        self .a ,self .b =self .b ,self .a 
+            self .expected_result =calculate_result3 (self .a ,self .b ,self .c ,self .operation ,self .integer_result )if three else calculate_result (self .a ,self .b ,self .operation ,self .integer_result )
             self ._apply_missing_operand ()
             self .boss_questions_asked +=1
             self .question_active =True 
@@ -2005,7 +2159,7 @@ class Game :
             self .is_correct =False 
             return 
 
-        self .prev_a ,self .prev_b =self .a ,self .b 
+        self .prev_a ,self .prev_b ,self .prev_c =self .a ,self .b ,self .c 
         if self .mode =="auto":
             if self .questions_asked >=self .questions_per_level or (self .tutorial_active and self ._tutorial_passed ):
                 if self .boss_active :
@@ -2039,10 +2193,13 @@ class Game :
                 self .operation =self .config_story_operation 
                 allow_queue =not self ._no_queue_next and not self ._prev_from_queue
                 self ._no_queue_next =False
-                self .a ,self .b ,self ._operands_fallback ,self ._from_queue =select_operands (lv_data ["pool_a"],lv_data ["pool_b"],self .reinforcement_queue if allow_queue else deque (),self .operation ,self .integer_result ,min_value =lv_data .get ("min_value"),max_value =lv_data .get ("max_value"),carry_prob =lv_data .get ("carry"),borrow_prob =lv_data .get ("borrow"))
+                if self ._plus_three_active ():
+                    self .a ,self .b ,self .c ,self ._operands_fallback ,self ._from_queue =select_three_operands (lv_data ["pool_a"],lv_data ["pool_b"],self .reinforcement_queue if allow_queue else deque (),self .operation ,self .integer_result ,min_value =lv_data .get ("min_value"),max_value =lv_data .get ("max_value"),carry_prob =lv_data .get ("carry"),borrow_prob =lv_data .get ("borrow"))
+                else :
+                    self .a ,self .b ,self ._operands_fallback ,self ._from_queue =select_operands (lv_data ["pool_a"],lv_data ["pool_b"],self .reinforcement_queue if allow_queue else deque (),self .operation ,self .integer_result ,min_value =lv_data .get ("min_value"),max_value =lv_data .get ("max_value"),carry_prob =lv_data .get ("carry"),borrow_prob =lv_data .get ("borrow"))
+                    if self .operation =="sottrazione"and self .a <self .b :
+                        self .a ,self .b =self .b ,self .a 
                 self ._prev_from_queue =self ._from_queue
-                if self .operation =="sottrazione"and self .a <self .b :
-                    self .a ,self .b =self .b ,self .a 
                 self .questions_asked +=1
         else :
             if self .questions_asked >=self .total_questions :
@@ -2053,28 +2210,44 @@ class Game :
                 return 
             allow_queue =not self ._no_queue_next and not self ._prev_from_queue
             self ._no_queue_next =False
-            self .a ,self .b ,self ._operands_fallback ,self ._from_queue =select_operands (
-            self .pool_a ,
-            self .pool_b ,
-            self .reinforcement_queue if allow_queue else deque () ,
-            self .operation ,
-            self .integer_result ,
-            self .max_sum ,
-            min_value =self .config .get ("risultato_minimo",0 ),
-            max_value =self .config .get ("risultato_massimo",199 ),
-            carry_prob =self .config .get ("riporto",0 )/100 if self .operation =="addizione"else None ,
-            borrow_prob =self .config .get ("prestito",0 )/100 if self .operation =="sottrazione"else None ,
-            positive_diff =self .positive_difference ,
-            )
+            if self ._plus_three_active ():
+                self .a ,self .b ,self .c ,self ._operands_fallback ,self ._from_queue =select_three_operands (
+                self .pool_a ,
+                self .pool_b ,
+                self .reinforcement_queue if allow_queue else deque () ,
+                self .operation ,
+                self .integer_result ,
+                self .max_sum ,
+                min_value =self .config .get ("risultato_minimo",0 ),
+                max_value =self .config .get ("risultato_massimo",199 ),
+                carry_prob =self .config .get ("riporto",0 )/100 if self .operation =="addizione"else None ,
+                borrow_prob =self .config .get ("prestito",0 )/100 if self .operation =="sottrazione"else None ,
+                )
+            else :
+                self .a ,self .b ,self ._operands_fallback ,self ._from_queue =select_operands (
+                self .pool_a ,
+                self .pool_b ,
+                self .reinforcement_queue if allow_queue else deque () ,
+                self .operation ,
+                self .integer_result ,
+                self .max_sum ,
+                min_value =self .config .get ("risultato_minimo",0 ),
+                max_value =self .config .get ("risultato_massimo",199 ),
+                carry_prob =self .config .get ("riporto",0 )/100 if self .operation =="addizione"else None ,
+                borrow_prob =self .config .get ("prestito",0 )/100 if self .operation =="sottrazione"else None ,
+                )
             self ._prev_from_queue =self ._from_queue
-            if self .swap_operandi and random .random ()<0.5 and not self ._from_queue :
-                if self .operation !="divisione"or not self .integer_result :
-                    self .a ,self .b =self .b ,self .a 
-            if self .operation =="sottrazione"and self .positive_difference and self .a <self .b :
-                self .a ,self .b =self .b ,self .a 
+            if not self ._plus_three_active ():
+                if self .swap_operandi and random .random ()<0.5 and not self ._from_queue :
+                    if self .operation !="divisione"or not self .integer_result :
+                        if self .operation !="sottrazione":
+                            self .a ,self .b =self .b ,self .a 
             self .questions_asked +=1 
 
-        if not self .tutorial_active and not self ._from_queue and (self .a ,self .b )==(self .prev_a ,self .prev_b ):
+        three =self ._plus_three_active ()
+        if three and not self ._from_queue and (self .a ,self .b ,self .c )==(self .prev_a ,self .prev_b ,self .prev_c ):
+            self .a ,self .b ,self .c ,self ._operands_fallback =self ._new_distinct_triple () 
+        elif not self .tutorial_active and not self ._from_queue and (self .a ,self .b )==(self .prev_a ,self .prev_b ):
             if self .operation =="divisione":
                 self .a ,self .b ,self ._operands_fallback =self ._new_distinct_pair ()
             elif self .a ==self .b :
@@ -2089,12 +2262,12 @@ class Game :
                     self .b =random .choice (pool_a if self .mode =="auto"else self .pool_a )
             else :
                 self .a ,self .b =self .b ,self .a 
-                if self .operation =="sottrazione"and self .positive_difference :
+                if self .operation =="sottrazione":
                     self .a ,self .b ,self ._operands_fallback =self ._new_distinct_pair ()
                     if self .a <self .b :
                         self .a ,self .b =self .b ,self .a 
 
-        self .expected_result =calculate_result (self .a ,self .b ,self .operation ,self .integer_result )
+        self .expected_result =calculate_result3 (self .a ,self .b ,self .c ,self .operation ,self .integer_result )if three else calculate_result (self .a ,self .b ,self .operation ,self .integer_result )
         self ._apply_missing_operand ()
         if self .mode =="auto":
             wanted =self .story_monsters 
@@ -2346,12 +2519,17 @@ class Game :
                 self .handle_config (event )
             elif self .state ==GAME_STATE_CONFIG_PLUS:
                 if event .key in (pygame .K_UP ,pygame .K_w ):
-                    self .config_plus_cursor =0 
+                    self .config_plus_cursor =(self .config_plus_cursor -1 )%3
                 elif event .key in (pygame .K_DOWN ,pygame .K_s ):
-                    self .config_plus_cursor =1 
+                    self .config_plus_cursor =(self .config_plus_cursor +1 )%3
                 elif event .key in (pygame .K_RETURN ,pygame .K_KP_ENTER ,pygame .K_SPACE ):
                     if self .config_plus_cursor ==0 :
                         self .config_plus_missing_operand =not self .config_plus_missing_operand 
+                        self .save_profile_config ()
+                        if event .key in (pygame .K_RETURN ,pygame .K_KP_ENTER ):
+                            self .start_game ()
+                    elif self .config_plus_cursor ==1 :
+                        self .config_plus_three_operands =not self .config_plus_three_operands 
                         self .save_profile_config ()
                         if event .key in (pygame .K_RETURN ,pygame .K_KP_ENTER ):
                             self .start_game ()
@@ -2686,6 +2864,11 @@ class Game :
                     self .config_plus_missing_operand =not self .config_plus_missing_operand 
                     self .save_profile_config ()
                     return 
+                if getattr (self ,'plus_toggle_rect3',None )and self .plus_toggle_rect3 .collidepoint (mx ,my ):
+                    self .config_plus_cursor =1 
+                    self .config_plus_three_operands =not self .config_plus_three_operands 
+                    self .save_profile_config ()
+                    return 
                 if CANVAS_WIDTH //2 -165 <=mx <=CANVAS_WIDTH //2 +165 and 717 <=my <=786 :
                     self .save_profile_config ()
                     self .start_game ()
@@ -2736,8 +2919,6 @@ class Game :
             if r in (1 ,2 ):
                 return cols_u -1 
             if r ==3 :
-                return 1
-            if r ==4 and subtraction :
                 return 1
             return 0 
 
@@ -2831,7 +3012,7 @@ class Game :
                     self .config_cursor_row =3 
                     self .config_cursor_col =0 
                     if mx <sx_min +lw :
-                        self .config ["risultato_minimo"]=max (0 ,self .config ["risultato_minimo"]-1 )
+                        self .config ["risultato_minimo"]=max (-99 ,self .config ["risultato_minimo"]-1 )
                         self ._opts_hold =("risultato_minimo_minus",pygame .time .get_ticks ())
                         self ._opts_last_repeat =0
                     elif mx >=sx_min +lw +vw :
@@ -2855,7 +3036,7 @@ class Game :
                     self .save_profile_config ()
                     return 
 
-                    # Row 4: Differenza positiva / Risultato intero / Riporto / Prestito
+                    # Row 4: Prestito / Risultato intero / Riporto
             y4 =row_y (4 )
             if y4 -3 <=my <=y4 +54 :
                 if subtraction :
@@ -2873,11 +3054,6 @@ class Game :
                             self ._opts_hold =("prestito_plus",pygame .time .get_ticks ())
                             self ._opts_last_repeat =0
                         self .save_profile_config ()
-                        return 
-                    if 1400 -3 <=mx <=1400 +279 +3 and y4 -6 <=my <=y4 +60 :
-                        self .config_cursor_row =4
-                        self .config_cursor_col =1
-                        self .config ["differenza_positiva"]=not self .config ["differenza_positiva"]
                         return 
                 elif division :
                     pass
@@ -3019,8 +3195,6 @@ class Game :
                             new_state =not any (pool [start :start +10 ])
                             for i in range (start ,start +10 ):
                                 pool [i ]=new_state 
-            elif row ==4 and subtraction and col ==1 :
-                self .config ["differenza_positiva"]=not self .config ["differenza_positiva"]
             elif row ==6 and not subtraction and not division :
                 self .config ["swap"]=not self .config ["swap"]
         elif event .key in (pygame .K_PLUS ,pygame .K_EQUALS ,pygame .K_KP_PLUS ):
@@ -3038,7 +3212,7 @@ class Game :
                 self .config ["timeout"]=min (99 ,self .config ["timeout"]+1 )
         elif event .key in (pygame .K_MINUS ,pygame .K_KP_MINUS ):
             if row ==3 and col ==0 :
-                self .config ["risultato_minimo"]=max (0 ,self .config ["risultato_minimo"]-1 )
+                self .config ["risultato_minimo"]=max (-99 ,self .config ["risultato_minimo"]-1 )
             elif row ==3 and col ==1 :
                 self .config ["risultato_massimo"]=max (0 ,self .config ["risultato_massimo"]-1 )
             elif row ==4 and addition :
@@ -3078,7 +3252,8 @@ class Game :
         except ValueError :
             risposta =None 
 
-        zero_mult =getattr (self ,'missing_operand',None )in ("a","b")and self .operation =="moltiplicazione"and (self .a ==0 or self .b ==0 )
+        three_now =self ._plus_three_active ()
+        zero_mult =getattr (self ,'missing_operand',None )in ("a","b","c")and self .operation =="moltiplicazione"and ((three_now and (self .a ==0 or self .b ==0 or self .c ==0 ))or (not three_now and (self .a ==0 or self .b ==0 )))
         if zero_mult and text_value != "":
             corretto =True 
         else :
@@ -3104,7 +3279,10 @@ class Game :
             self ._no_queue_next =True 
             self .stats [level ]["sbagliate"]+=1 
             self .play_sfx ("hit")
-            self .wrong_questions .append ((self .a ,self .b ,self .operation ,text_value ,self .expected_result ))
+            if self ._plus_three_active ():
+                self .wrong_questions .append ((self .a ,self .b ,self .c ,self .operation ,text_value ,self .expected_result ))
+            else :
+                self .wrong_questions .append ((self .a ,self .b ,None ,self .operation ,text_value ,self .expected_result ))
             self .lives -=1 
             if self .boss_active and self .boss_phase =="fight":
                 self .boss_total_questions +=1 
@@ -3115,8 +3293,9 @@ class Game :
             self .zap_reverse =True 
             self .player_hit =True 
             self .current_block .clear ()
+            entry =(self .a ,self .b ,self .c )if self ._plus_three_active ()else (self .a ,self .b )
             for _ in range (3 ):
-                self .reinforcement_queue .append ((self .a ,self .b ))
+                self .reinforcement_queue .append (entry )
             self .hit_timer =12 
 
         if self .lives <=0 :
@@ -3159,11 +3338,15 @@ class Game :
         self .stats .setdefault (level ,{"corrette":0 ,"sbagliate":0 ,"tempi":[]})
         self .stats [level ]["sbagliate"]+=1 
         self .stats [level ]["tempi"].append (elapsed_time )
-        self .wrong_questions .append ((self .a ,self .b ,self .operation ,None ,self .expected_result ))
+        if self ._plus_three_active ():
+            self .wrong_questions .append ((self .a ,self .b ,self .c ,self .operation ,None ,self .expected_result ))
+        else :
+            self .wrong_questions .append ((self .a ,self .b ,None ,self .operation ,None ,self .expected_result ))
         self .lives -=1 
         self .current_block .clear ()
+        entry =(self .a ,self .b ,self .c )if self ._plus_three_active ()else (self .a ,self .b )
         for _ in range (3 ):
-            self .reinforcement_queue .append ((self .a ,self .b ))
+            self .reinforcement_queue .append (entry )
         self .is_correct =False 
         self .question_active =False 
         self .feedback =False 
@@ -4290,7 +4473,7 @@ class Game :
         rma_surf =self ._render_cached (self .font_tiny ,str (self .config ["risultato_massimo"]),WHITE )
         self .screen .blit (rma_surf ,rma_surf .get_rect (center =(sx_max +lw +vw //2 ,y +25 )))
 
-                    # Row 4: Differenza positiva / Risultato intero / Riporto / Prestito
+                    # Row 4: Prestito / Risultato intero / Riporto
         row =4 
         y =row_y (row )
         if subtraction :
@@ -4316,19 +4499,6 @@ class Game :
             self .screen .blit (plus ,plus .get_rect (center =(px +lw +vw +rw //2 ,y +25 )))
             pre_surf =self ._render_cached (self .font_tiny ,str (self .config ["prestito"]),WHITE )
             self .screen .blit (pre_surf ,pre_surf .get_rect (center =(px +lw +vw //2 ,y +25 )))
-            label_d =self ._render_cached (self .font_tiny ,"Differenza positiva",WHITE )
-            rect =label_d .get_rect (midleft =(1020 ,y +25 ))
-            self .screen .blit (label_d ,rect )
-            toggle_rect =pygame .Rect (1400 ,y ,279 ,54 )
-            hover_toggle =toggle_rect .collidepoint (mx ,my )
-            bg_d =(100 ,150 ,220 )if self .config ["differenza_positiva"]and hover_toggle else SEL_BLUE if self .config ["differenza_positiva"]else (80 ,80 ,90 )if hover_toggle else (60 ,60 ,70 )
-            pygame .draw .rect (self .screen ,bg_d ,toggle_rect ,border_radius =9 )
-            if hover_toggle :
-                pygame .draw .rect (self .screen ,GOLD ,toggle_rect ,2 ,border_radius =9 )
-            dp_txt ="ON"if self .config ["differenza_positiva"]else "OFF"
-            dp_val =self ._render_cached (self .font_tiny ,dp_txt ,WHITE )
-            rect_dv =dp_val .get_rect (center =(1400 +279 //2 ,y +27 ))
-            self .screen .blit (dp_val ,rect_dv )
         elif division :
             locked_bg =(85 ,85 ,95 )
             label_r =self ._render_cached (self .font_tiny ,"Risultato intero",WHITE )
@@ -4464,27 +4634,36 @@ class Game :
         rect =title .get_rect (center =(CANVAS_WIDTH //2 ,120 ))
         self .screen .blit (title ,rect )
 
-        y_tog =420
-        toggle_rect =pygame .Rect (540 ,y_tog ,279 ,54 )
-        self .plus_toggle_rect =toggle_rect
-        hover_tog =toggle_rect .collidepoint (mx ,my )
-        on =bool (self .config_plus_missing_operand )
-        if on :
-            bg_tog =(100 ,150 ,220 )if hover_tog else SEL_BLUE
-        else :
-            bg_tog =(80 ,80 ,90 )if hover_tog else (60 ,60 ,70 )
-        pygame .draw .rect (self .screen ,bg_tog ,toggle_rect ,border_radius =9 )
-        if hover_tog :
-            pygame .draw .rect (self .screen ,GOLD ,toggle_rect ,2 ,border_radius =9 )
-        lbl_tog =self ._render_cached (self .font_tiny ,"Operando Mancante",WHITE )
-        rect_l =lbl_tog .get_rect (midleft =(120 ,y_tog +27 ))
-        self .screen .blit (lbl_tog ,rect_l )
-        val_txt ="ON"if on else "OFF"
-        val_surf =self ._render_cached (self .font_tiny ,val_txt ,WHITE )
-        rect_v =val_surf .get_rect (center =(679 ,y_tog +27 ))
-        self .screen .blit (val_surf ,rect_v )
+        rows =[
+        (340 ,"Operando Mancante",bool (self .config_plus_missing_operand ),0 ),
+        (490 ,"Tre Operandi",bool (self .config_plus_three_operands ),1 ),
+        ]
+        self .plus_toggle_rect =None 
+        self .plus_toggle_rect3 =None 
+        for y_tog ,label ,on ,idx in rows :
+            toggle_rect =pygame .Rect (540 ,y_tog ,279 ,54 )
+            if idx ==0 :
+                self .plus_toggle_rect =toggle_rect
+            else :
+                self .plus_toggle_rect3 =toggle_rect
+            hover_tog =toggle_rect .collidepoint (mx ,my )
+            focus =getattr (self ,'config_plus_cursor',0 )==idx 
+            if on :
+                bg_tog =(100 ,150 ,220 )if hover_tog else SEL_BLUE
+            else :
+                bg_tog =(80 ,80 ,90 )if hover_tog else (60 ,60 ,70 )
+            pygame .draw .rect (self .screen ,bg_tog ,toggle_rect ,border_radius =9 )
+            if hover_tog or focus :
+                pygame .draw .rect (self .screen ,GOLD ,toggle_rect ,2 ,border_radius =9 )
+            lbl_tog =self ._render_cached (self .font_tiny ,label ,WHITE )
+            rect_l =lbl_tog .get_rect (midleft =(120 ,y_tog +27 ))
+            self .screen .blit (lbl_tog ,rect_l )
+            val_txt ="ON"if on else "OFF"
+            val_surf =self ._render_cached (self .font_tiny ,val_txt ,WHITE )
+            rect_v =val_surf .get_rect (center =(679 ,y_tog +27 ))
+            self .screen .blit (val_surf ,rect_v )
 
-        if getattr (self ,'config_plus_cursor',0 )==1 :
+        if getattr (self ,'config_plus_cursor',0 )==2 :
             pygame .draw .rect (self .screen ,(255 ,255 ,100 ),(CANVAS_WIDTH //2 -168 ,714 ,336 ,75 ),3 ,border_radius =12 )
         y_conf =717
         conf_rect =pygame .Rect (CANVAS_WIDTH //2 -165 ,y_conf ,330 ,69 )
@@ -4649,9 +4828,20 @@ class Game :
                 pygame .draw .lines (self .screen ,col ,False ,points ,width )
 
         segno =get_operation_symbol (self .operation if hasattr (self ,'operation')else None )
+        three =self ._plus_three_active ()
         if self .scene_phase is None :
             missing =getattr (self ,'missing_operand',None )
-            if missing =="a":
+            if three :
+                res_display =calculate_result3 (self .a ,self .b ,self .c ,self .operation ,getattr (self ,'integer_result',True ))
+                if missing =="a":
+                    domanda_text =f"...  {segno }  {self .b }  {segno }  {self .c }  =  {res_display }"
+                elif missing =="b":
+                    domanda_text =f"{self .a }  {segno }  ...  {segno }  {self .c }  =  {res_display }"
+                elif missing =="c":
+                    domanda_text =f"{self .a }  {segno }  {self .b }  {segno }  ...  =  {res_display }"
+                else :
+                    domanda_text =f"{self .a }  {segno }  {self .b }  {segno }  {self .c }  =  ?"
+            elif missing =="a":
                 res_display =calculate_result (self .a ,self .b ,self .operation ,getattr (self ,'integer_result',True ))
                 domanda_text =f"...  {segno }  {self .b }  =  {res_display }"
             elif missing =="b":
@@ -4817,7 +5007,7 @@ class Game :
             f"Operandi: {self .a } {segno_debug } {self .b }",
             f"Operandi precedenti: {self .prev_a } {segno_debug } {self .prev_b }",
             f"Risultato: {self .expected_result }",
-            f"Risultato positivo/intero: {self .positive_difference if self .operation =='sottrazione'else self .integer_result if self .operation =='divisione'else 'N/A'}",
+            f"Risultato minimo/massimo: {self .config .get ('risultato_minimo',0)if self .mode =='fixed'else '-'}/{self .config .get ('risultato_massimo',199)if self .mode =='fixed'else '-'}",
             (f"Riporto: {int (self .levels [self .effective_level ()].get ('carry',0 )*100 )if self .mode =='auto'else self .config .get ('riporto',0 )}%" +(f"  has:{needs_carry (self .a ,self .b )}"if self .operation =='addizione'else "")if self .operation =='addizione'else "Riporto: N/A"),
             (f"Prestito: {int (self .levels [self .effective_level ()].get ('borrow',0 )*100 )if self .mode =='auto'else self .config .get ('prestito',0 )}%" +(f"  has:{needs_borrow (self .a ,self .b )}"if self .operation =='sottrazione'else "")if self .operation =='sottrazione'else "Prestito: N/A"),
             f"Fallback: {'SI'if getattr (self ,'_operands_fallback',False )else 'NO'}",
@@ -5396,7 +5586,7 @@ class Game :
         for w in getattr (self ,"wrong_questions",[]):
             if errori_txt :
                 errori_txt +=", "
-            errori_txt +=format_wrong_entry (*w [:4 ])
+            errori_txt +=format_wrong_entry (*w [:5 ])
         if errori_txt :
             errori_txt =" | Errori: "+errori_txt 
         if self .mode =="auto":
@@ -5406,8 +5596,6 @@ class Game :
             pool_a_txt =format_pool_compact (self .pool_a )
             pool_b_txt =format_pool_compact (self .pool_b )
             extra =""
-            if self .operation =="sottrazione"and getattr (self ,'differenza_positiva',False ):
-                extra =" | Diff. positiva: ON"
             if self .operation =="divisione"and getattr (self ,'risultato_intero',True ):
                 extra =" | Ris. intero: ON"
             line_text =f"{now } | Allenamento | {op_txt } | Corrette: {total_correct } | Sbagliate: {total_wrong } | Pool A: [{pool_a_txt }] | Pool B: [{pool_b_txt }] | Domande: {self .questions_asked }/{self .total_questions } | Tempo medio: {average_time :.1f}s{extra }{errori_txt }"

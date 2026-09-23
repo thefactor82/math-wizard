@@ -1,8 +1,12 @@
 # Math Wizard — Release Notes
 
-Release note cumulative dalla v1.3.53 alla v1.4.1 (rilascio attuale).
+Release note cumulative dalla v1.3.53 alla v1.4.2 (rilascio attuale).
 
 ## 🚀 Novità
+
+Opzione plus "Tre Operandi" (v1.4.2): nella seconda schermata "OPZIONI - STORIA +" o "OPZIONI - ALLENAMENTO +" è disponibile un nuovo interruttore "Tre Operandi" (O)FF di default, ricordato nel config del profilo con la chiave plus_three_operands): se attivo, in ogni domanda vengono proposti 3 operandi invece di 2 (es. "5 + 3 + 6 = ?"), usando due valori dal pool A/B e un terzo operando c scelto dagli stessi valori del pool B. Tutti gli altri parametri sono rispettati: risultati interi (divisione esatta a/(b·c)), somma massima, percentuale di riporto e di prestito calcolate su 3 operandi e limiti minimo/massimo del risultato (per la sottrazione il risultato a - b - c rispetta l'intervallo scelto, quindi può essere negativo se il risultato minimo scende sotto lo zero). Con l'opzione "Operando Mancante" attiva contemporaneamente viene nascosto a caso uno dei 3 operandi ("..." al posto dell'operando); nelle moltiplicazioni con un qualsiasi operando pari a 0 (prodotto 0) viene accettata qualsiasi risposta. I log di sessione riportano gli errori con la forma "a op b op c = risposta".
+
+Sottrazione con risultati negativi (v1.4.2): rimossa l'opzione "Differenza positiva" dalla schermata delle opzioni: non serve più, perché la positività è già garantita dal "Risultato Minimo" (con minimo 0 o superiore i risultati non possono essere negativi). Il valore "Risultato Minimo" ora può scendere anche sotto lo zero: impostandolo a un valore negativo si permettono operazioni di sottrazione con risultato negativo (il valore massimo resta limitato a 0 come minimo). I valori memorizzati nelle opzioni dei profili esistenti sono ignorati.
 
 Opzioni plus (v1.4.0): quando un profilo ha sbloccato le opzioni extra (completando tutte le storie), sia in Storia sia in Allenamento dopo la prima schermata di configurazione compare una seconda schermata "OPZIONI - STORIA +" o "OPZIONI - ALLENAMENTO +". La prima opzione è "OPERANDO MANCANTE" (deselezionata di default, valida per tutte le operazioni): se attiva, in ogni domanda uno dei due operandi viene nascosto a caso e si risponde con l'operando mancante invece che con il risultato. L'impostazione è salvata nel config del profilo (chiave plus_missing_operand) e vale per ogni operazione.
 
