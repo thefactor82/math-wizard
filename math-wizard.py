@@ -107,6 +107,7 @@ GAME_STATE_CONFIRM_DELETE ="confirm_delete"
 GAME_STATE_PROGRESS ="progress"
 GAME_STATE_OPTIONS_AUTO ="options_auto"
 GAME_STATE_CONFIG_FIXED ="config_fixed"
+GAME_STATE_CONFIG_PLUS ="config_plus"
 GAME_STATE_GAME ="game"
 GAME_STATE_GAME_OVER ="gameover"
 GAME_STATE_LEVEL_COMPLETE ="level_complete"
@@ -983,7 +984,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if normalize_story_entry (e ) .get ("type")=="level")
 
-        self .version ="1.3.55"
+        self .version ="1.4.0"
 
         self .profiles =[]
         self .current_profile =""
@@ -1041,6 +1042,7 @@ class Game :
         self .story_progress ={"moltiplicazione":0 ,"addizione":0 ,"sottrazione":0 ,"divisione":0 }
         self .story_completed ={"moltiplicazione":False ,"addizione":False ,"sottrazione":False ,"divisione":False }
         self .plus_unlocked =False
+        self .config_plus_missing_operand =False
         self .music_volume =20
         self .sfx_volume =50
 
@@ -1101,6 +1103,7 @@ class Game :
         "story_progress":{normalize_operation_name (k ):int (v )for k ,v in self .story_progress .items ()},
         "story_completed":{normalize_operation_name (k ):bool (v )for k ,v in self .story_completed .items ()},
         "plus_unlocked":bool (self .plus_unlocked ),
+        "plus_missing_operand":bool (self .config_plus_missing_operand ),
         "fullscreen":self .fullscreen ,
         "window_mode":self .window_mode ,
         "music_volume":self .music_volume ,
@@ -1131,6 +1134,7 @@ class Game :
         "livello_iniziale_per_op":"initial_level_by_op",
         "difficolta_posizione":"difficulty_position",
         "livello_iniziale":"initial_level",
+        "plus_operando_mancante":"plus_missing_operand",
         }
         by_op_keys =["story_progress","story_completed","initial_level_by_op","difficulty_position_by_op"]
         try :
@@ -1233,6 +1237,7 @@ class Game :
                 if not self .story_completed [op ]and self .story_progress .get (op ,0 )>=self .num_story_levels :
                     self .story_completed [op ]=True 
             self .plus_unlocked =bool (data .get ("plus_unlocked",False ))
+            self .config_plus_missing_operand =bool (data .get ("plus_missing_operand",data .get ("plus_operando_mancante",False )))
             self .restore_initial_level () 
             if "fullscreen"in data :
                 self .fullscreen =bool (data ["fullscreen"])
@@ -1313,6 +1318,7 @@ class Game :
         self .heart_reward_active =False 
         self .heart_reward_start =0 
 
+        self .missing_operand =None 
         self .boss_active =False 
         self .boss_phase =None 
         self .boss_x =0.0 
@@ -1380,6 +1386,20 @@ class Game :
         self .config_cursor_row =0 
         self .config_cursor_col =0 
         self .config_cursor_subrow =0 
+
+    def _start_after_config (self ):
+        if self .plus_unlocked and not self .tutorial_active :
+            self .config_plus_cursor =0 
+            self .set_state (GAME_STATE_CONFIG_PLUS ,reset_scene =True )
+        else :
+            self .start_game ()
+
+    def _apply_missing_operand (self ):
+        if self .config_plus_missing_operand and not self .tutorial_active :
+            self .missing_operand =random .choice (["a","b"])
+            self .expected_result =self .a if self .missing_operand =="a"else self .b 
+        else :
+            self .missing_operand =None 
 
     def start_game (self ):
         self .set_state (GAME_STATE_GAME ,reset_scene =True )
@@ -1962,6 +1982,7 @@ class Game :
                 else :
                     self .a ,self .b =self .b ,self .a 
             self .expected_result =calculate_result (self .a ,self .b ,self .operation ,self .integer_result )
+            self ._apply_missing_operand ()
             self .boss_questions_asked +=1
             self .question_active =True 
             self .input_utente =""
@@ -2073,6 +2094,7 @@ class Game :
                         self .a ,self .b =self .b ,self .a 
 
         self .expected_result =calculate_result (self .a ,self .b ,self .operation ,self .integer_result )
+        self ._apply_missing_operand ()
         if self .mode =="auto":
             wanted =self .story_monsters 
         else :
@@ -2316,11 +2338,28 @@ class Game :
                 elif event .key in (pygame .K_RETURN ,pygame .K_KP_ENTER ):
                     self .save_profile_config ()
                     self .mode ="auto"
-                    self .start_game ()
+                    self ._start_after_config ()
                 elif event .key ==pygame .K_ESCAPE :
                     self .state =GAME_STATE_MENU
             elif self .state ==GAME_STATE_CONFIG_FIXED:
                 self .handle_config (event )
+            elif self .state ==GAME_STATE_CONFIG_PLUS:
+                if event .key in (pygame .K_UP ,pygame .K_w ):
+                    self .config_plus_cursor =0 
+                elif event .key in (pygame .K_DOWN ,pygame .K_s ):
+                    self .config_plus_cursor =1 
+                elif event .key in (pygame .K_RETURN ,pygame .K_KP_ENTER ,pygame .K_SPACE ):
+                    if self .config_plus_cursor ==0 :
+                        self .config_plus_missing_operand =not self .config_plus_missing_operand 
+                        self .save_profile_config ()
+                        if event .key in (pygame .K_RETURN ,pygame .K_KP_ENTER ):
+                            self .start_game ()
+                    else :
+                        self .save_profile_config ()
+                        self .start_game ()
+                elif event .key ==pygame .K_ESCAPE :
+                    self .state =GAME_STATE_OPTIONS_AUTO if self .mode =="auto"else GAME_STATE_CONFIG_FIXED
+                    return 
             elif self .state ==GAME_STATE_GAME:
                 if self .scene_phase =="dialogue":
                     if event .key in (pygame .K_RETURN ,pygame .K_KP_ENTER ,pygame .K_SPACE ):
@@ -2632,7 +2671,7 @@ class Game :
                 if CANVAS_WIDTH //2 -165 <=mx <=CANVAS_WIDTH //2 +165 and 717 <=my <=786 :
                     self .save_profile_config ()
                     self .mode ="auto"
-                    self .start_game ()
+                    self ._start_after_config ()
             elif self .state ==GAME_STATE_CONFIG_FIXED:
                 try :
                     self .handle_config (event )
@@ -2640,6 +2679,18 @@ class Game :
                     print (f"config mouse error: {e }")
                     import traceback 
                     traceback .print_exc ()
+            elif self .state ==GAME_STATE_CONFIG_PLUS:
+                if getattr (self ,'plus_toggle_rect',None )and self .plus_toggle_rect .collidepoint (mx ,my ):
+                    self .config_plus_cursor =0 
+                    self .config_plus_missing_operand =not self .config_plus_missing_operand 
+                    self .save_profile_config ()
+                    return 
+                if getattr (self ,'plus_back_rect',None )and self .plus_back_rect .collidepoint (mx ,my ):
+                    self .state =GAME_STATE_OPTIONS_AUTO if self .mode =="auto"else GAME_STATE_CONFIG_FIXED
+                    return 
+                if CANVAS_WIDTH //2 -165 <=mx <=CANVAS_WIDTH //2 +165 and 717 <=my <=786 :
+                    self .save_profile_config ()
+                    self .start_game ()
         if event .type ==pygame .MOUSEMOTION and self .dragging_difficulty :
             mx ,my =self ._scale_to_canvas (*event .pos )
             if self .state ==GAME_STATE_OPTIONS_AUTO:
@@ -2723,7 +2774,7 @@ class Game :
             if CANVAS_WIDTH //2 -165 <=mx <=CANVAS_WIDTH //2 +165 and y8 <=my <=y8 +69 :
                 self .save_profile_config ()
                 self .mode ="fixed"
-                self .start_game ()
+                self ._start_after_config ()
                 return 
 
                 # Row 0: operation selector
@@ -2902,7 +2953,7 @@ class Game :
         if event .key ==pygame .K_RETURN :
             self .save_profile_config ()
             self .mode ="fixed"
-            self .start_game ()
+            self ._start_after_config ()
             return 
 
         row =self .config_cursor_row 
@@ -3465,7 +3516,7 @@ class Game :
         elif self .state ==GAME_STATE_LOADING:
             self .draw_loading ()
         else :
-            if self .state in (GAME_STATE_OPTIONS,GAME_STATE_OPTIONS_AUTO,GAME_STATE_CONFIG_FIXED,GAME_STATE_CONFIRM_DELETE,GAME_STATE_PROGRESS):
+            if self .state in (GAME_STATE_OPTIONS,GAME_STATE_OPTIONS_AUTO,GAME_STATE_CONFIG_FIXED,GAME_STATE_CONFIG_PLUS,GAME_STATE_CONFIRM_DELETE,GAME_STATE_PROGRESS):
                 self .screen .blit (self .bg_options ,(0 ,0 ))
             else :
                 self .screen .blit (self .bg_menu ,(0 ,0 ))
@@ -3481,6 +3532,8 @@ class Game :
                 self .draw_auto_options ()
             elif self .state ==GAME_STATE_CONFIG_FIXED:
                 self .draw_config ()
+            elif self .state ==GAME_STATE_CONFIG_PLUS:
+                self .draw_config_plus ()
             elif self .state ==GAME_STATE_PROGRESS:
                 self .draw_progress ()
             elif self .state in (GAME_STATE_GAME,GAME_STATE_GAME_OVER):
@@ -4395,6 +4448,72 @@ class Game :
         rect_s =start_txt .get_rect (center =(CANVAS_WIDTH //2 ,y +34 ))
         self .screen .blit (start_txt ,rect_s )
 
+    def draw_config_plus (self ):
+        mx ,my =self ._mouse_pos ()
+        overlay =self ._overlay
+        overlay .set_alpha (200 )
+        overlay .fill (BG_DARK )
+        self .screen .blit (overlay ,(0 ,0 ))
+
+        title_txt ="OPZIONI - STORIA +"if self .mode =="auto"else "OPZIONI - ALLENAMENTO +"
+        title =self ._render_cached (self .font_large ,title_txt ,GOLD )
+        rect =title .get_rect (center =(CANVAS_WIDTH //2 ,120 ))
+        self .screen .blit (title ,rect )
+
+        y =300
+        label =self ._render_cached (self .font_tiny ,"Opzioni bonus (sbloccate completando la storia)",WHITE )
+        rect =label .get_rect (midleft =(120 ,y +40 ))
+        self .screen .blit (label ,rect )
+
+        y_tog =370
+        self .plus_toggle_rect =pygame .Rect (CANVAS_WIDTH //2 -230 ,y_tog ,460 ,70 )
+        hover_tog =self .plus_toggle_rect .collidepoint (mx ,my )
+        on =bool (self .config_plus_missing_operand )
+        focused =getattr (self ,'config_plus_cursor',0 )==0
+        bg_tog =(100 ,160 ,90 )if on else (90 ,90 ,100 )if hover_tog else (70 ,70 ,80 )
+        pygame .draw .rect (self .screen ,bg_tog ,self .plus_toggle_rect ,border_radius =10 )
+        if hover_tog or focused :
+            pygame .draw .rect (self .screen ,GOLD if focused else (200 ,200 ,210 ),self .plus_toggle_rect ,2 ,border_radius =10 )
+        box_x =self .plus_toggle_rect .x +22
+        box_y =y_tog +15
+        chk =pygame .Rect (box_x ,box_y ,40 ,40 )
+        pygame .draw .rect (self .screen ,(50 ,50 ,60 )if on else (30 ,30 ,40 ),chk ,border_radius =6 )
+        if on :
+            pygame .draw .rect (self .screen ,(120 ,220 ,110 ),chk ,2 ,border_radius =6 )
+            segno_chk =self ._render_cached (self .font_small ,"X",(120 ,220 ,110 ))
+            self .screen .blit (segno_chk ,segno_chk .get_rect (center =chk .center ))
+        lbl =self ._render_cached (self .font_small ,"OPERANDO MANCANTE",WHITE )
+        self .screen .blit (lbl ,lbl .get_rect (midleft =(box_x +62 ,y_tog +35 )))
+        stato ="(attivo)"if on else "(spento)"
+        col_stato =GREEN if on else GRAY
+        stato_surf =self ._render_cached (self .font_tiny ,stato ,col_stato )
+        self .screen .blit (stato_surf ,stato_surf .get_rect (midleft =(box_x +62 ,y_tog +60 )))
+
+        desc =self ._render_cached (self .font_tiny ,"Un operando della domanda resta nascosto: rispondi con quello mancante.",WHITE )
+        self .screen .blit (desc ,desc .get_rect (center =(CANVAS_WIDTH //2 ,478 )))
+
+        bck_rect =pygame .Rect (CANVAS_WIDTH //2 -165 ,560 ,200 ,54 )
+        self .plus_back_rect =bck_rect
+        hover_bck =bck_rect .collidepoint (mx ,my )
+        pygame .draw .rect (self .screen ,(110 ,70 ,70 )if hover_bck else (90 ,60 ,60 ),bck_rect ,border_radius =10 )
+        if hover_bck :
+            pygame .draw .rect (self .screen ,GOLD ,bck_rect ,2 ,border_radius =10 )
+        back_txt =self ._render_cached (self .font_tiny ,"Indietro (ESC)",WHITE )
+        self .screen .blit (back_txt ,back_txt .get_rect (center =bck_rect .center ))
+
+        if getattr (self ,'config_plus_cursor',0 )==1 :
+            pygame .draw .rect (self .screen ,(255 ,255 ,100 ),(CANVAS_WIDTH //2 -168 ,714 ,336 ,75 ),3 ,border_radius =12 )
+        y_conf =717
+        conf_rect =pygame .Rect (CANVAS_WIDTH //2 -165 ,y_conf ,330 ,69 )
+        hover_conf =conf_rect .collidepoint (mx ,my )
+        bg_conf =(50 ,140 ,50 )if hover_conf else (40 ,120 ,40 )
+        if hover_conf :
+            pygame .draw .rect (self .screen ,GOLD ,(CANVAS_WIDTH //2 -168 ,y_conf -3 ,336 ,75 ),3 ,border_radius =12 )
+        pygame .draw .rect (self .screen ,bg_conf ,conf_rect ,border_radius =12 )
+        conf_txt =self ._render_cached (self .font_tiny ,"CONFERMA",WHITE )
+        rect_c =conf_txt .get_rect (center =(CANVAS_WIDTH //2 ,y_conf +34 ))
+        self .screen .blit (conf_txt ,rect_c )
+
     def draw_game (self ):
         shake =(0 ,0 )
         boss_shaking =self .boss_active and self .boss_phase =="shake"
@@ -4547,7 +4666,18 @@ class Game :
                 pygame .draw .lines (self .screen ,col ,False ,points ,width )
 
         segno =get_operation_symbol (self .operation if hasattr (self ,'operation')else None )
-        domanda_text =f"{self .a }  {segno }  {self .b }  =  ?"if self .scene_phase is None else ""
+        if self .scene_phase is None :
+            missing =getattr (self ,'missing_operand',None )
+            if missing =="a":
+                res_display =calculate_result (self .a ,self .b ,self .operation ,getattr (self ,'integer_result',True ))
+                domanda_text =f"?  {segno }  {self .b }  =  {res_display }"
+            elif missing =="b":
+                res_display =calculate_result (self .a ,self .b ,self .operation ,getattr (self ,'integer_result',True ))
+                domanda_text =f"{self .a }  {segno }  ?  =  {res_display }"
+            else :
+                domanda_text =f"{self .a }  {segno }  {self .b }  =  ?"
+        else :
+            domanda_text =""
         ombra =self ._render_cached (self .font_large ,domanda_text ,(30 ,30 ,30 ))
         domanda =self ._render_cached (self .font_large ,domanda_text ,WHITE )
         rect =domanda .get_rect (center =(CANVAS_WIDTH //2 ,120 ))
