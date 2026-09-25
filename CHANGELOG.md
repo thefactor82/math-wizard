@@ -1,8 +1,10 @@
 # Math Wizard — Release Notes
 
-Release note cumulative dalla v1.3.53 alla v1.4.4 (rilascio attuale).
+Release note cumulative dalla v1.3.53 alla v1.4.5 (rilascio attuale).
 
 ## 🚀 Novità
+
+Pool C per il terzo operando (v1.4.5): con l'opzione "Tre Operandi" attiva, nella schermata "OPZIONI - STORIA +" o "OPZIONI - ALLENAMENTO +" appare la griglia "Operando C" (gli stessi selettori di intervallo dei pool A e B). Si può così scegliere quali range usare per il terzo operando c, che prima copiava sempre il pool B. Il pool C è salvato nel config del profilo come chiave pool_c per ogni operazione, esattamente come pool_a e pool_b; i profili esistenti senza pool_c vengono allineati in automatico seguendo il proprio pool B personalizzato, quindi per chi non tocca la nuova opzione il comportamento resta identico.
 
 Build Windows 32-bit (v1.4.4): il workflow di build Windows ora produce anche la versione 32-bit dell'eseguibile (MathWizard-windows-32bit.zip), allegata insieme alla solita versione 64-bit (MathWizard-windows.zip) a ogni release. La bitness dell'exe viene verificata durante la build (PE header), così le due versioni non possono essere scambiate per errore.
 

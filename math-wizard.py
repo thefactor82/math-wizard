@@ -438,17 +438,19 @@ def needs_borrow3 (a ,b ,c ):
     return False
 
 
-def generate_three_division_operands (pool_a ,pool_b ,reinforce_queue ,integer_result =True ):
+def generate_three_division_operands (pool_a ,pool_b ,reinforce_queue ,integer_result =True ,pool_c =None ):
     if reinforce_queue and random .random ()<0.4 :
         it =reinforce_queue .popleft ()
         if isinstance (it ,tuple )and len (it )==3 and it [1 ]!=0 and it [2 ]!=0 and it [0 ]%(it [1 ]*it [2 ])==0 :
             return it [0 ],it [1 ],it [2 ],True
+    pool_c =pool_b if pool_c is None else pool_c 
     valid_b =[x for x in pool_b if x !=0 ]
-    if not valid_b :
+    valid_c =[x for x in pool_c if x !=0 ]
+    if not valid_b or not valid_c :
         return 1 ,1 ,1 ,False
     for _ in range (50 ):
         b =random .choice (valid_b )
-        c =random .choice (valid_b )
+        c =random .choice (valid_c )
         den =b *c
         if den ==0 :
             continue
@@ -461,7 +463,8 @@ def generate_three_division_operands (pool_a ,pool_b ,reinforce_queue ,integer_r
     return min ((x for x in pool_a if x >0 ),default =1 ),1 ,1 ,False
 
 
-def select_three_operands (pool_a ,pool_b ,reinforce_queue ,operation ,integer_result =True ,max_sum =None ,min_value =None ,max_value =None ,carry_prob =None ,borrow_prob =None ):
+def select_three_operands (pool_a ,pool_b ,reinforce_queue ,operation ,integer_result =True ,max_sum =None ,min_value =None ,max_value =None ,carry_prob =None ,borrow_prob =None ,pool_c =None ):
+    pool_c =pool_b if pool_c is None else pool_c 
     need_carry =None
     if carry_prob is not None and operation =="addizione":
         need_carry =random .random ()<carry_prob
@@ -492,19 +495,19 @@ def select_three_operands (pool_a ,pool_b ,reinforce_queue ,operation ,integer_r
             reinforce_queue .appendleft (it )
     for _ in range (300 ):
         if operation =="divisione":
-            a ,b ,c ,from_queue =generate_three_division_operands (pool_a ,pool_b ,deque (),integer_result )
+            a ,b ,c ,from_queue =generate_three_division_operands (pool_a ,pool_b ,deque (),integer_result ,pool_c =pool_c )
             if from_queue :
                 return a ,b ,c ,False,True
         elif operation =="addizione":
             a =random .choice (pool_a )
             b =random .choice (pool_b )
-            c =random .choice (pool_b )
+            c =random .choice (pool_c )
             if max_sum is not None and a +b +c >max_sum :
                 continue
         else :
             a =random .choice (pool_a )
             b =random .choice (pool_b )
-            c =random .choice (pool_b )
+            c =random .choice (pool_c )
         res =calculate_result3 (a ,b ,c ,operation ,integer_result )
         if min_value is not None and res <min_value :
             continue
@@ -520,9 +523,9 @@ def select_three_operands (pool_a ,pool_b ,reinforce_queue ,operation ,integer_r
         rest =max_sum -a
         b =random .choice ([x for x in pool_b if x <=rest ]or [0 ])
         rest =rest -b
-        c =random .choice ([x for x in pool_b if x <=rest ]or [0 ])
+        c =random .choice ([x for x in pool_c if x <=rest ]or [0 ])
         return a ,b ,c ,True,False
-    a ,b ,c =random .choice (pool_a ),random .choice (pool_b ),random .choice (pool_b )
+    a ,b ,c =random .choice (pool_a ),random .choice (pool_b ),random .choice (pool_c )
     return a ,b ,c ,True,False
 
 LEVELS ={}
@@ -1110,7 +1113,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if normalize_story_entry (e ) .get ("type")=="level")
 
-        self .version ="1.4.4"
+        self .version ="1.4.5"
 
         self .profiles =[]
         self .current_profile =""
@@ -1137,6 +1140,7 @@ class Game :
         self .config_by_operation ["moltiplicazione"]={
         "pool_a":[n <10 for n in range (20 )],
         "pool_b":[n <10 for n in range (20 )],
+        "pool_c":[n <10 for n in range (20 )],
         "domande":10 ,
         "swap":True ,
         "timeout":15 ,
@@ -1145,6 +1149,7 @@ class Game :
             self .config_by_operation [op ]={
             "pool_a":[n <100 for n in range (200 )],
             "pool_b":[n <100 for n in range (200 )],
+            "pool_c":[n <100 for n in range (200 )],
             "domande":10 ,
             "swap":True ,
             "timeout":15 ,
@@ -1299,6 +1304,8 @@ class Game :
                 for k ,cand_v in candidate .items ():
                     if isinstance (cand_v ,dict )and isinstance (merged .get (k ),dict ):
                         out =dict (merged [k ])
+                        if "pool_b"in out and "pool_c"not in out :
+                            out ["pool_c"]=list (out ["pool_b"])
                         for ik ,iv in cand_v .items ():
                             out .setdefault (ik ,iv )
                         merged [k ]=out
@@ -1334,7 +1341,11 @@ class Game :
                     self .config_by_operation [op ]["pool_a"]=normalize_pool_list (raw ["pool_a"],pool_len )
                 if "pool_b"in raw :
                     self .config_by_operation [op ]["pool_b"]=normalize_pool_list (raw ["pool_b"],pool_len )
-                self .config_by_operation [op ].update ({k :v for k ,v in raw .items ()if k not in ("pool_a","pool_b")})
+                if "pool_c"in raw :
+                    self .config_by_operation [op ]["pool_c"]=normalize_pool_list (raw ["pool_c"],pool_len )
+                else :
+                    self .config_by_operation [op ]["pool_c"]=list (self .config_by_operation [op ]["pool_b"])
+                self .config_by_operation [op ].update ({k :v for k ,v in raw .items ()if k not in ("pool_a","pool_b","pool_c")})
             self .config_gender =data .get ("gender",data .get ("genere",self .config_gender ))
             self .config_story_operation =legacy_operation_name (data .get ("story_operation",data .get ("storia_operazione",self .config_story_operation )))
             self .auto_timeout =data .get ("auto_timeout",self .auto_timeout )
@@ -1388,6 +1399,7 @@ class Game :
                 pool_len =20 if op =="moltiplicazione"else 200
                 self .config_by_operation [op ]["pool_a"]=normalize_pool_list (data .get ("pool_a",self .config_by_operation [op ]["pool_a"]),pool_len )
                 self .config_by_operation [op ]["pool_b"]=normalize_pool_list (data .get ("pool_b",self .config_by_operation [op ]["pool_b"]),pool_len )
+                self .config_by_operation [op ]["pool_c"]=list (self .config_by_operation [op ]["pool_b"])
                 self .config_by_operation [op ]["domande"]=data .get ("domande",self .config_by_operation [op ]["domande"])
                 self .config_by_operation [op ]["swap"]=data .get ("swap",self .config_by_operation [op ]["swap"])
                 self .config_by_operation [op ]["timeout"]=data .get ("timeout",self .config_by_operation [op ]["timeout"])
@@ -1411,6 +1423,7 @@ class Game :
         self ._mode_before_tutorial =self .mode
         self .pool_a =list (range (0 ,10 ))
         self .pool_b =list (range (0 ,10 ))
+        self .pool_c =list (range (0 ,10 ))
         self .total_questions =10 
         self .questions_asked =0 
         self .lives =WIZARD_LIVES 
@@ -1606,10 +1619,13 @@ class Game :
             pool_range =range (20 )if self .config_operation =="moltiplicazione"else range (200 )
             self .pool_a =[n for n in pool_range if self .config ["pool_a"][n ]]
             self .pool_b =[n for n in pool_range if self .config ["pool_b"][n ]]
+            self .pool_c =[n for n in pool_range if self .config ["pool_c"][n ]]
             if not self .pool_a :
                 self .pool_a =[0 ]
             if not self .pool_b :
                 self .pool_b =[0 ]
+            if not self .pool_c :
+                self .pool_c =[0 ]
             self .total_questions =self .config ["domande"]
             self .swap_operandi =True if self .operation in ("sottrazione","divisione")else self .config ["swap"]
             training_cfg =LEVELS .get ("training",{}).get (self .config_operation ,{})
@@ -2096,12 +2112,12 @@ class Game :
             lv =self .effective_level ()
             lv_data =self .levels [lv ]
             for _ in range (20 ):
-                a ,b ,c ,fb ,from_queue =select_three_operands (lv_data ["pool_a"],lv_data ["pool_b"],deque (),self .operation ,self .integer_result ,min_value =lv_data .get ("min_value"),max_value =lv_data .get ("max_value"),carry_prob =lv_data .get ("carry"),borrow_prob =lv_data .get ("borrow"))
+                a ,b ,c ,fb ,from_queue =select_three_operands (lv_data ["pool_a"],lv_data ["pool_b"],deque (),self .operation ,self .integer_result ,pool_c =lv_data .get ("pool_c",lv_data ["pool_b"]),min_value =lv_data .get ("min_value"),max_value =lv_data .get ("max_value"),carry_prob =lv_data .get ("carry"),borrow_prob =lv_data .get ("borrow"))
                 if (a ,b ,c )!=prev :
                     return a ,b ,c ,fb
         else :
             for _ in range (20 ):
-                a ,b ,c ,fb ,from_queue =select_three_operands (self .pool_a ,self .pool_b ,deque (),self .operation ,self .integer_result ,self .max_sum ,min_value =self .config .get ("risultato_minimo",0 ),max_value =self .config .get ("risultato_massimo",199 ),carry_prob =self .config .get ("riporto",0 )/100 if self .operation =="addizione"else None ,borrow_prob =self .config .get ("prestito",0 )/100 if self .operation =="sottrazione"else None )
+                a ,b ,c ,fb ,from_queue =select_three_operands (self .pool_a ,self .pool_b ,deque (),self .operation ,self .integer_result ,self .max_sum ,pool_c =self .pool_c ,min_value =self .config .get ("risultato_minimo",0 ),max_value =self .config .get ("risultato_massimo",199 ),carry_prob =self .config .get ("riporto",0 )/100 if self .operation =="addizione"else None ,borrow_prob =self .config .get ("prestito",0 )/100 if self .operation =="sottrazione"else None )
                 if (a ,b ,c )!=prev :
                     return a ,b ,c ,fb
         return a ,b ,c ,fb 
@@ -2124,7 +2140,7 @@ class Game :
             self ._no_queue_next =False
             three =self ._plus_three_active ()
             if three :
-                self .a ,self .b ,self .c ,self ._operands_fallback ,self ._from_queue =select_three_operands (lv_data ["pool_a"],lv_data ["pool_b"],self .reinforcement_queue if allow_queue else deque (),self .operation ,self .integer_result ,min_value =lv_data .get ("min_value"),max_value =lv_data .get ("max_value"),carry_prob =lv_data .get ("carry"),borrow_prob =lv_data .get ("borrow"))
+                self .a ,self .b ,self .c ,self ._operands_fallback ,self ._from_queue =select_three_operands (lv_data ["pool_a"],lv_data ["pool_b"],self .reinforcement_queue if allow_queue else deque (),self .operation ,self .integer_result ,pool_c =lv_data .get ("pool_c",lv_data ["pool_b"]),min_value =lv_data .get ("min_value"),max_value =lv_data .get ("max_value"),carry_prob =lv_data .get ("carry"),borrow_prob =lv_data .get ("borrow"))
             else :
                 self .a ,self .b ,self ._operands_fallback ,self ._from_queue =select_operands (lv_data ["pool_a"],lv_data ["pool_b"],self .reinforcement_queue if allow_queue else deque (),self .operation ,self .integer_result ,min_value =lv_data .get ("min_value"),max_value =lv_data .get ("max_value"),carry_prob =lv_data .get ("carry"),borrow_prob =lv_data .get ("borrow"))
                 if self .operation =="sottrazione"and self .a <self .b :
@@ -2201,7 +2217,7 @@ class Game :
                 allow_queue =not self ._no_queue_next and not self ._prev_from_queue
                 self ._no_queue_next =False
                 if self ._plus_three_active ():
-                    self .a ,self .b ,self .c ,self ._operands_fallback ,self ._from_queue =select_three_operands (lv_data ["pool_a"],lv_data ["pool_b"],self .reinforcement_queue if allow_queue else deque (),self .operation ,self .integer_result ,min_value =lv_data .get ("min_value"),max_value =lv_data .get ("max_value"),carry_prob =lv_data .get ("carry"),borrow_prob =lv_data .get ("borrow"))
+                    self .a ,self .b ,self .c ,self ._operands_fallback ,self ._from_queue =select_three_operands (lv_data ["pool_a"],lv_data ["pool_b"],self .reinforcement_queue if allow_queue else deque (),self .operation ,self .integer_result ,pool_c =lv_data .get ("pool_c",lv_data ["pool_b"]),min_value =lv_data .get ("min_value"),max_value =lv_data .get ("max_value"),carry_prob =lv_data .get ("carry"),borrow_prob =lv_data .get ("borrow"))
                 else :
                     self .a ,self .b ,self ._operands_fallback ,self ._from_queue =select_operands (lv_data ["pool_a"],lv_data ["pool_b"],self .reinforcement_queue if allow_queue else deque (),self .operation ,self .integer_result ,min_value =lv_data .get ("min_value"),max_value =lv_data .get ("max_value"),carry_prob =lv_data .get ("carry"),borrow_prob =lv_data .get ("borrow"))
                     if self .operation =="sottrazione"and self .a <self .b :
@@ -2225,6 +2241,7 @@ class Game :
                 self .operation ,
                 self .integer_result ,
                 self .max_sum ,
+                pool_c =self .pool_c ,
                 min_value =self .config .get ("risultato_minimo",0 ),
                 max_value =self .config .get ("risultato_massimo",199 ),
                 carry_prob =self .config .get ("riporto",0 )/100 if self .operation =="addizione"else None ,
@@ -2876,6 +2893,36 @@ class Game :
                     self .config_plus_three_operands =not self .config_plus_three_operands 
                     self .save_profile_config ()
                     return 
+                if self .config_plus_three_operands :
+                    pool_c =self .config .get ("pool_c")
+                    if pool_c is not None :
+                        multiplication =self .config_operation =="moltiplicazione"
+                        items =20
+                        cols_u =10
+                        subrows =(items +cols_u -1 )//cols_u 
+                        cell_w ,cell_h =115 ,45 
+                        gap =10 
+                        grid_x =540 
+                        y_pool_c =590 
+                        for sr in range (subrows ):
+                            sy =y_pool_c +sr *(cell_h +gap )
+                            for c in range (cols_u ):
+                                idx =sr *cols_u +c 
+                                if idx >=items :
+                                    break 
+                                sx =grid_x +c *(cell_w +gap )
+                                if sx -3 <=mx <=sx +cell_w +3 and sy -3 <=my <=sy +cell_h +3 :
+                                    if multiplication :
+                                        if not (pool_c [idx ]and sum (pool_c )==1 ):
+                                            pool_c [idx ]=not pool_c [idx ]
+                                    else :
+                                        start =idx *10
+                                        if not (any (pool_c [start :start +10 ])and sum (pool_c )==10 ):
+                                            new_state =not any (pool_c [start :start +10 ])
+                                            for i in range (start ,start +10 ):
+                                                pool_c [i ]=new_state
+                                    self .save_profile_config ()
+                                    return 
                 if CANVAS_WIDTH //2 -165 <=mx <=CANVAS_WIDTH //2 +165 and 717 <=my <=786 :
                     self .save_profile_config ()
                     self .start_game ()
@@ -4669,6 +4716,45 @@ class Game :
             val_surf =self ._render_cached (self .font_tiny ,val_txt ,WHITE )
             rect_v =val_surf .get_rect (center =(679 ,y_tog +27 ))
             self .screen .blit (val_surf ,rect_v )
+
+        if self .config_plus_three_operands :
+            pool_c =self .config .get ("pool_c")
+            if pool_c is not None :
+                label_c =self ._render_cached (self .font_tiny ,"Operando C",WHITE )
+                rect =label_c .get_rect (midleft =(120 ,615 ))
+                self .screen .blit (label_c ,rect )
+                multiplication =self .config_operation =="moltiplicazione"
+                items =20
+                cols_u =10
+                subrows =(items +cols_u -1 )//cols_u 
+                cell_w ,cell_h =115 ,45 
+                gap =10 
+                grid_x =540 
+                y_pool_c =590 
+                for sr in range (subrows ):
+                    sy =y_pool_c +sr *(cell_h +gap )
+                    for c in range (cols_u ):
+                        idx =sr *cols_u +c 
+                        if idx >=items :
+                            break 
+                        sx =grid_x +c *(cell_w +gap )
+                        if multiplication :
+                            selected =pool_c [idx ]
+                            txt =str (idx )
+                        else :
+                            start =idx *10
+                            end =min (start +9 ,199 )
+                            selected =any (pool_c [start :start +10 ])
+                            txt =f"{start }-{end }"
+                        cell_rect =pygame .Rect (sx ,sy ,cell_w ,cell_h )
+                        hovered_cell =cell_rect .collidepoint (mx ,my )
+                        bg_col =(100 ,150 ,220 )if selected and hovered_cell else SEL_BLUE if selected else (80 ,80 ,90 )if hovered_cell else (60 ,60 ,70 )
+                        pygame .draw .rect (self .screen ,bg_col ,cell_rect ,border_radius =6 )
+                        if hovered_cell :
+                            pygame .draw .rect (self .screen ,GOLD ,cell_rect ,2 ,border_radius =6 )
+                        t =self ._render_cached (self .font_tiny ,txt ,WHITE )
+                        rt =t .get_rect (center =(sx +cell_w //2 ,sy +cell_h //2 ))
+                        self .screen .blit (t ,rt )
 
         if getattr (self ,'config_plus_cursor',0 )==2 :
             pygame .draw .rect (self .screen ,(255 ,255 ,100 ),(CANVAS_WIDTH //2 -168 ,714 ,336 ,75 ),3 ,border_radius =12 )

@@ -65,7 +65,7 @@ def test_select_three_operands_respects_bounds_and_signs():
             assert MODULE.calculate_result3(a, b, c, "divisione") >= 0
 
 
-def test_select_three_operands_uses_pool_c_equal_to_pool_b():
+def test_select_three_operands_uses_pool_c_equal_to_pool_b_or_explicit():
     random.seed(3)
     pool_a = list(range(0, 11))
     pool_b = list(range(5, 8))
@@ -74,6 +74,15 @@ def test_select_three_operands_uses_pool_c_equal_to_pool_b():
             pool_a, pool_b, deque(), "addizione", max_sum=30
         )
         assert c in pool_b
+        assert a in pool_a
+        assert b in pool_b
+    random.seed(3)
+    pool_c = list(range(11, 19))
+    for _ in range(100):
+        a, b, c, fb, fq = MODULE.select_three_operands(
+            pool_a, pool_b, deque(), "addizione", max_sum=30, pool_c=pool_c
+        )
+        assert c in pool_c
         assert a in pool_a
         assert b in pool_b
 
@@ -87,6 +96,21 @@ def test_generate_three_division_operands_returns_integer_quotient():
         den = b * c
         if den:
             assert a % den == 0
+
+
+def test_generate_three_division_operands_uses_pool_c_for_third_operand():
+    random.seed(41)
+    pool_a = list(range(0, 101))
+    pool_b = list(range(1, 4))
+    pool_c = list(range(4, 9))
+    for _ in range(100):
+        a, b, c, fq = MODULE.generate_three_division_operands(
+            pool_a, pool_b, deque(), integer_result=True, pool_c=pool_c
+        )
+        den = b * c
+        if den:
+            assert a % den == 0
+        assert c in pool_c or (b == 1 and c == 1)
 
 
 def test_format_wrong_entry_shows_three_operands():
