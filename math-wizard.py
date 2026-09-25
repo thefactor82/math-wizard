@@ -296,6 +296,13 @@ def format_wrong_entry (a ,b ,c ,operation ,answer ):
     return f"{body }={answer }"
 
 
+def format_total_time (seconds ):
+    total =int (round (seconds ))
+    if total <60 :
+        return f"{total }s"
+    return f"{total //60 }m {total %60 }s"
+
+
 def calculate_result (a ,b ,operation ,integer_result =True ):
     if operation =="addizione":
         return a +b 
@@ -1103,7 +1110,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if normalize_story_entry (e ) .get ("type")=="level")
 
-        self .version ="1.4.2"
+        self .version ="1.4.3"
 
         self .profiles =[]
         self .current_profile =""
@@ -5308,6 +5315,7 @@ class Game :
         (f"Domande: {len (self .answer_times )}",WHITE ),
         (f"Corrette: {correct_count }",GREEN ),
         (f"Tempo medio: {average :.1f}s",WHITE ),
+        (f"Tempo totale: {format_total_time (sum (self .monster_times ))}",WHITE ),
         ]
         richieste =5 +self .level 
         recent_times =self .monster_times [-richieste :]
@@ -5461,6 +5469,7 @@ class Game :
         if not completato :
             average_monster_time =sum (self .monster_times )/len (self .monster_times )if self .monster_times else 0 
             lines .append ((f"Tempo medio: {average_monster_time :.1f}s",WHITE ))
+            lines .append ((f"Tempo totale: {format_total_time (sum (self .monster_times ))}",WHITE ))
         y =165 
         for text_value ,colore in lines :
             self .draw_text_shadow (self .font_medium ,text_value ,colore ,center =(CANVAS_WIDTH //2 ,y ))
@@ -5534,6 +5543,7 @@ class Game :
         (f"Sbagliate: {total_wrong }",RED ),
         (f"Vite rimaste: {self .lives }",YELLOW ),
         (f"Tempo medio: {average_time :.1f}s",WHITE ),
+        (f"Tempo totale: {format_total_time (sum (self .answer_times ))}",WHITE ),
         ]
         y =165 
         for text_value ,colore in lines :
@@ -5590,7 +5600,7 @@ class Game :
         if errori_txt :
             errori_txt =" | Errori: "+errori_txt 
         if self .mode =="auto":
-            line_text =f"{now } | Storia | {self .config_story_operation .capitalize ()} | Corrette: {total_correct } | Sbagliate: {total_wrong } | Livello: {self .effective_level ()+1 }/{len (self .levels )} | Tempo medio: {average_time :.1f}s{errori_txt }"
+            line_text =f"{now } | Storia | {self .config_story_operation .capitalize ()} | Corrette: {total_correct } | Sbagliate: {total_wrong } | Livello: {self .effective_level ()+1 }/{len (self .levels )} | Tempo medio: {average_time :.1f}s | Tempo totale: {format_total_time (sum (self .answer_times ))}{errori_txt }"
         else :
             op_txt =self .operation .capitalize ()if hasattr (self ,'operation')else "Moltiplicazione"
             pool_a_txt =format_pool_compact (self .pool_a )
@@ -5598,7 +5608,7 @@ class Game :
             extra =""
             if self .operation =="divisione"and getattr (self ,'risultato_intero',True ):
                 extra =" | Ris. intero: ON"
-            line_text =f"{now } | Allenamento | {op_txt } | Corrette: {total_correct } | Sbagliate: {total_wrong } | Pool A: [{pool_a_txt }] | Pool B: [{pool_b_txt }] | Domande: {self .questions_asked }/{self .total_questions } | Tempo medio: {average_time :.1f}s{extra }{errori_txt }"
+            line_text =f"{now } | Allenamento | {op_txt } | Corrette: {total_correct } | Sbagliate: {total_wrong } | Pool A: [{pool_a_txt }] | Pool B: [{pool_b_txt }] | Domande: {self .questions_asked }/{self .total_questions } | Tempo medio: {average_time :.1f}s | Tempo totale: {format_total_time (sum (self .answer_times ))}{extra }{errori_txt }"
         path =self .sessions_path ()
         try :
             with open (path ,"a",encoding ="utf-8")as f :

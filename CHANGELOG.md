@@ -1,8 +1,10 @@
 # Math Wizard — Release Notes
 
-Release note cumulative dalla v1.3.53 alla v1.4.2 (rilascio attuale).
+Release note cumulative dalla v1.3.53 alla v1.4.3 (rilascio attuale).
 
 ## 🚀 Novità
+
+Tempo totale in sessione e fine livello (v1.4.3): oltre al "Tempo medio di risposta", nei file di sessione e nelle schermate di fine livello (livello completato, game over e partita terminata) viene ora riportato anche il "Tempo totale" (es. 2m 34s), calcolato come somma dei tempi di risposta della sessione.
 
 Opzione plus "Tre Operandi" (v1.4.2): nella seconda schermata "OPZIONI - STORIA +" o "OPZIONI - ALLENAMENTO +" è disponibile un nuovo interruttore "Tre Operandi" (O)FF di default, ricordato nel config del profilo con la chiave plus_three_operands): se attivo, in ogni domanda vengono proposti 3 operandi invece di 2 (es. "5 + 3 + 6 = ?"), usando due valori dal pool A/B e un terzo operando c scelto dagli stessi valori del pool B. Tutti gli altri parametri sono rispettati: risultati interi (divisione esatta a/(b·c)), somma massima, percentuale di riporto e di prestito calcolate su 3 operandi e limiti minimo/massimo del risultato (per la sottrazione il risultato a - b - c rispetta l'intervallo scelto, quindi può essere negativo se il risultato minimo scende sotto lo zero). Con l'opzione "Operando Mancante" attiva contemporaneamente viene nascosto a caso uno dei 3 operandi ("..." al posto dell'operando); nelle moltiplicazioni con un qualsiasi operando pari a 0 (prodotto 0) viene accettata qualsiasi risposta. I log di sessione riportano gli errori con la forma "a op b op c = risposta".
 
