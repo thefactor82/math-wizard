@@ -1,8 +1,10 @@
 # Math Wizard — Release Notes
 
-Release note cumulative dalla v1.3.53 alla v1.4.3 (rilascio attuale).
+Release note cumulative dalla v1.3.53 alla v1.4.4 (rilascio attuale).
 
 ## 🚀 Novità
+
+Build Windows 32-bit (v1.4.4): il workflow di build Windows ora produce anche la versione 32-bit dell'eseguibile (MathWizard-windows-32bit.zip), allegata insieme alla solita versione 64-bit (MathWizard-windows.zip) a ogni release. La bitness dell'exe viene verificata durante la build (PE header), così le due versioni non possono essere scambiate per errore.
 
 Tempo totale in sessione e fine livello (v1.4.3): oltre al "Tempo medio di risposta", nei file di sessione e nelle schermate di fine livello (livello completato, game over e partita terminata) viene ora riportato anche il "Tempo totale" (es. 2m 34s), calcolato come somma dei tempi di risposta della sessione.
 

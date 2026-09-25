@@ -1,7 +1,10 @@
 # -*- mode: python ; coding: utf-8 -*-
 #
-# Spec per l'eseguibile Windows (onefile).
-# Usata anche dal workflow .github/workflows/build-windows.yml.
+# Spec per l'eseguibile Windows (onefile), usato dal workflow
+# .github/workflows/build-windows.yml sia per l'architettura 64-bit
+# (MathWizard-windows.zip) sia per la 32-bit (MathWizard-windows-32bit.zip):
+# PyInstaller produce un exe con la stessa bitness del Python in uso, quindi
+# lo stesso spec vale per entrambe le architetture.
 # - icona cercata in MathWizard.ico (radice repo, generata da graphics/misc/icon.png);
 #   se assente si costruisce senza icona.
 # - data/ e tutte le risorse (grafica, font, musica) incorporate nel onefile:

@@ -1110,7 +1110,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if normalize_story_entry (e ) .get ("type")=="level")
 
-        self .version ="1.4.3"
+        self .version ="1.4.4"
 
         self .profiles =[]
         self .current_profile =""

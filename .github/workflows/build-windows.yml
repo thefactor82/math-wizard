@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Tag della release a cui allegare il pacchetto (es. v1.0.21). Vuoto = ultimo tag del repo.'
+        description: 'Tag della release a cui allegare i pacchetti (es. v1.0.21). Vuoto = ultimo tag del repo.'
         required: false
         type: string
   release:
@@ -15,7 +15,17 @@ permissions:
 
 jobs:
   build-windows:
-    name: Build Windows
+    name: Build Windows (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            py_arch: x64
+            zip: MathWizard-windows.zip
+          - arch: win32
+            py_arch: x86
+            zip: MathWizard-windows-32bit.zip
     runs-on: windows-latest
     steps:
       - name: Checkout
@@ -37,10 +47,20 @@ jobs:
           Write-Host "RELEASE_TAG=$RELEASE_TAG"
           Add-Content -Path $env:GITHUB_ENV -Value "RELEASE_TAG=$RELEASE_TAG"
 
-      - name: Setup Python
+      - name: Setup Python (${{ matrix.arch }})
         uses: actions/setup-python@v6
         with:
           python-version: '3.13'
+          architecture: ${{ matrix.py_arch }}
+
+      - name: Verifica bitness di Python
+        shell: pwsh
+        run: |
+          python -c "import struct,sys; print('python', sys.version.split()[0], 'bits', struct.calcsize('P')*8)"
+          $bits = (python -c "import struct; print(struct.calcsize('P')*8)")
+          $expected = if ("${{ matrix.arch }}" -eq "win32") { 32 } else { 64 }
+          if ($bits -ne $expected) { Write-Error "Python non è $($expected)-bit: $bits"; exit 1 }
+          Write-Host "Python $($bits)-bit OK"
 
       - name: Installa dipendenze
         run: |
@@ -53,6 +73,21 @@ jobs:
 
       - name: Build exe con PyInstaller
         run: python -m PyInstaller --noconfirm --clean MathWizard.spec
+
+      - name: Verifica architettura exe
+        shell: pwsh
+        run: |
+          $path = (Resolve-Path "dist\MathWizard.exe").Path
+          $fs = [System.IO.File]::OpenRead($path)
+          $br = New-Object System.IO.BinaryReader($fs)
+          $fs.Position = 0x3C
+          $peOffset = $br.ReadInt32()
+          $fs.Position = $peOffset + 4
+          $machine = $br.ReadUInt16()
+          $br.Close(); $fs.Close()
+          $expected = if ("${{ matrix.arch }}" -eq "win32") { 0x014c } else { 0x8664 }
+          if ($machine -ne $expected) { Write-Error "architettura exe non attesa: 0x$($machine.ToString('X4')) (atteso 0x$($expected.ToString('X4')))"; exit 1 }
+          Write-Host "exe OK: 0x$($machine.ToString('X4')) (${{ matrix.arch }})"
 
       - name: Verifica exe e dati incorporati
         shell: pwsh
@@ -84,14 +119,14 @@ jobs:
         working-directory: dist
         shell: pwsh
         run: |
-          tar -a -c -f "MathWizard-windows.zip" "MathWizard.exe"
-          Get-Item MathWizard-windows.zip | Select-Object Name, Length
+          tar -a -c -f "${{ matrix.zip }}" "MathWizard.exe"
+          Get-Item "${{ matrix.zip }}" | Select-Object Name, Length
 
       - name: Verifica contenuto zip
         working-directory: dist
         shell: pwsh
         run: |
-          $list = tar -tf "MathWizard-windows.zip"
+          $list = tar -tf "${{ matrix.zip }}"
           foreach ($needle in @('MathWizard.exe')) {
             if ($list -notcontains $needle) { Write-Error "zip senza $needle"; exit 1 }
           }
@@ -101,7 +136,7 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ env.RELEASE_TAG }}
-          files: dist/MathWizard-windows.zip
+          files: dist/${{ matrix.zip }}
           overwrite_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
