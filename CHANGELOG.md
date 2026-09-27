@@ -1,8 +1,10 @@
 # Math Wizard — Release Notes
 
-Release note cumulative dalla v1.3.53 alla v1.4.5 (rilascio attuale).
+Release note cumulative dalla v1.3.53 alla v1.4.6 (rilascio attuale).
 
 ## 🚀 Novità
+
+Operandi misti dai pool per operazione (v1.4.6): nelle domande miste ("Operazioni Miste") gli operandi vengono presi dal pool dell'operazione che li usa, non da un unico pool condiviso. Con 2 operandi, a viene dal pool A e b dal pool B dell'operazione della domanda; con 3 operandi, a dal pool A della prima operazione, c dal pool C della seconda e l'operando centrale b dal pool B dell'operazione con precedenza maggiore (moltiplicazione, poi divisione, poi addizione, poi sottrazione). Così in un'espressione come "a × b + c" sia a sia b vengono dal pool delle moltiplicazioni e c da quello delle addizioni, e in "a + b × c" b e c vengono dal pool delle moltiplicazioni e a da quello delle addizioni. I limiti di risultato, riporti, prestiti e divisioni esatte restano verificati come prima.
 
 Pool C per il terzo operando (v1.4.5): con l'opzione "Tre Operandi" attiva, nella schermata "OPZIONI - STORIA +" o "OPZIONI - ALLENAMENTO +" appare la griglia "Operando C" (gli stessi selettori di intervallo dei pool A e B). Si può così scegliere quali range usare per il terzo operando c, che prima copiava sempre il pool B. Il pool C è salvato nel config del profilo come chiave pool_c per ogni operazione, esattamente come pool_a e pool_b; i profili esistenti senza pool_c vengono allineati in automatico seguendo il proprio pool B personalizzato, quindi per chi non tocca la nuova opzione il comportamento resta identico.
 

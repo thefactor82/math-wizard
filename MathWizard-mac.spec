@@ -71,8 +71,8 @@ app = BUNDLE(
     icon='MathWizard.icns',
     bundle_identifier='com.thefactor82.mathwizard',
     info_plist={
-        'CFBundleShortVersionString': '1.4.5',
-        'CFBundleVersion': '1.4.5',
+        'CFBundleShortVersionString': '1.4.6',
+        'CFBundleVersion': '1.4.6',
         'NSHighResolutionCapable': True,
     },
 )

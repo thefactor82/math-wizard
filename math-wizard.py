@@ -296,6 +296,15 @@ def format_wrong_entry (a ,b ,c ,operation ,answer ):
     return f"{body }={answer }"
 
 
+def format_wrong_entry_mixed (a ,b ,c ,op1 ,op2 ,answer ):
+    s1 =get_operation_symbol (op1 )
+    s2 =get_operation_symbol (op2 )
+    body =f"{a }{s1 }{b }{s2 }{c }"
+    if answer is None :
+        return f"{body }=(nessuna risposta)"
+    return f"{body }={answer }"
+
+
 def format_total_time (seconds ):
     total =int (round (seconds ))
     if total <60 :
@@ -527,6 +536,201 @@ def select_three_operands (pool_a ,pool_b ,reinforce_queue ,operation ,integer_r
         return a ,b ,c ,True,False
     a ,b ,c =random .choice (pool_a ),random .choice (pool_b ),random .choice (pool_c )
     return a ,b ,c ,True,False
+
+
+def apply_operation (x ,y ,op ):
+    if op =="divisione":
+        return x //y if y !=0 else 0
+    if op =="moltiplicazione":
+        return x *y
+    if op =="sottrazione":
+        return x -y
+    return x +y
+
+
+def mixed3_steps (a ,op1 ,b ,op2 ,c ):
+    if op1 in ("moltiplicazione","divisione"):
+        ab =apply_operation (a ,b ,op1 )
+        res =apply_operation (ab ,c ,op2 )
+        steps =[(op1 ,a ,b ,ab ),(op2 ,ab ,c ,res )]
+    elif op2 in ("moltiplicazione","divisione"):
+        bc =apply_operation (b ,c ,op2 )
+        res =apply_operation (a ,bc ,op1 )
+        steps =[(op2 ,b ,c ,bc ),(op1 ,a ,bc ,res )]
+    else :
+        ab =apply_operation (a ,b ,op1 )
+        res =apply_operation (ab ,c ,op2 )
+        steps =[(op1 ,a ,b ,ab ),(op2 ,ab ,c ,res )]
+    return res ,steps
+
+
+def mixed_result (a ,op1 ,b ,op2 ,c ):
+    res ,_ =mixed3_steps (a ,op1 ,b ,op2 ,c )
+    return res
+
+
+def _mixed_bounds (cfg_map ,ops ):
+    lo =max (cfg_map [op ].get ("risultato_minimo",0 )for op in ops )
+    hi =min (cfg_map [op ].get ("risultato_massimo",199 )for op in ops )
+    return lo ,hi
+
+
+MIXED_PRECEDENCE =["moltiplicazione","divisione","addizione","sottrazione"]
+
+
+def _mixed_weight (op ):
+    try :
+        return MIXED_PRECEDENCE .index (op )
+    except ValueError :
+        return len (MIXED_PRECEDENCE )
+
+
+def _mixed_owner (op1 ,op2 ):
+    return op1 if _mixed_weight (op1 )<=_mixed_weight (op2 )else op2
+
+
+def _op_pool (cfg_map ,op ,kind ):
+    pool =cfg_map [op ].get (kind ,[])
+    if pool and isinstance (pool [0 ],bool ):
+        return [n for n ,on in enumerate (pool )if on ]
+    return list (pool )
+
+
+def _choice (pool ):
+    return random .choice (pool )if pool else 0
+
+
+def _mixed2_ok (cfg_map ,need_carry ,need_borrow ,a ,op ,b ,a_pool ,b_pool ):
+    if a not in a_pool or b not in b_pool :
+        return False
+    res =apply_operation (a ,b ,op )
+    lo ,hi =_mixed_bounds (cfg_map ,(op ,))
+    if lo >hi or res <lo or res >hi :
+        return False
+    if op =="divisione":
+        if b ==0 or a %b !=0 :
+            return False
+    if op =="addizione":
+        if need_carry is not None and needs_carry (a ,b )!=need_carry :
+            return False
+        ms =cfg_map ["addizione"].get ("somma_massima")
+        if ms is not None and a +b >ms :
+            return False
+    if op =="sottrazione":
+        if need_borrow is not None and needs_borrow (a ,b )!=need_borrow :
+            return False
+    return True
+
+
+def _mixed3_ok (cfg_map ,need_carry ,need_borrow ,a ,op1 ,b ,op2 ,c ,a_pool ,b_pool ,c_pool ):
+    if a not in a_pool or b not in b_pool or c not in c_pool :
+        return False
+    res ,steps =mixed3_steps (a ,op1 ,b ,op2 ,c )
+    lo ,hi =_mixed_bounds (cfg_map ,(op1 ,op2 ))
+    if lo >hi or res <lo or res >hi :
+        return False
+    if op1 ==op2 =="addizione":
+        ms =cfg_map ["addizione"].get ("somma_massima")
+        if ms is not None and a +b +c >ms :
+            return False
+    for op ,left ,right ,_sr in steps :
+        if op =="divisione":
+            if right ==0 or left %right !=0 :
+                return False
+        elif op =="addizione":
+            if need_carry is not None and needs_carry (left ,right )!=need_carry :
+                return False
+        elif op =="sottrazione":
+            if need_borrow is not None and needs_borrow (left ,right )!=need_borrow :
+                return False
+    return True
+
+
+def select_mixed_pair (reinforce_queue ,ops ,cfg_map ,prev =None ):
+    need_carry =None
+    if "addizione"in ops :
+        need_carry =random .random ()<cfg_map ["addizione"].get ("riporto",0 )/100
+    need_borrow =None
+    if "sottrazione"in ops :
+        need_borrow =random .random ()<cfg_map ["sottrazione"].get ("prestito",0 )/100
+    if reinforce_queue and random .random ()<0.4 :
+        it =None
+        try :
+            it =reinforce_queue .popleft ()
+        except IndexError :
+            it =None
+        if isinstance (it ,tuple )and len (it )==2 :
+            a ,b =it
+            for op in ops :
+                if _mixed2_ok (cfg_map ,need_carry ,need_borrow ,a ,op ,b ,_op_pool (cfg_map ,op ,"pool_a"),_op_pool (cfg_map ,op ,"pool_b")):
+                    return a ,b ,op ,False,True
+        if it is not None :
+            reinforce_queue .appendleft (it )
+    for _ in range (300 ):
+        op =random .choice (ops )
+        a_pool =_op_pool (cfg_map ,op ,"pool_a")
+        b_pool =_op_pool (cfg_map ,op ,"pool_b")
+        a =_choice (a_pool )
+        b =_choice (b_pool )
+        if prev is not None and (a ,b )==prev :
+            continue
+        if _mixed2_ok (cfg_map ,need_carry ,need_borrow ,a ,op ,b ,a_pool ,b_pool ):
+            return a ,b ,op ,False,False
+    op =random .choice (ops )
+    a_pool =_op_pool (cfg_map ,op ,"pool_a")
+    b_pool =_op_pool (cfg_map ,op ,"pool_b")
+    a =random .choice (a_pool )if a_pool else 0
+    b =1 if op =="divisione"else (random .choice (b_pool )if b_pool else 0)
+    return a ,b ,op ,True,False
+
+
+def select_mixed_triple (reinforce_queue ,ops ,cfg_map ,prev =None ):
+    need_carry =None
+    if "addizione"in ops :
+        need_carry =random .random ()<cfg_map ["addizione"].get ("riporto",0 )/100
+    need_borrow =None
+    if "sottrazione"in ops :
+        need_borrow =random .random ()<cfg_map ["sottrazione"].get ("prestito",0 )/100
+    if reinforce_queue and random .random ()<0.4 :
+        it =None
+        try :
+            it =reinforce_queue .popleft ()
+        except IndexError :
+            it =None
+        if isinstance (it ,tuple )and len (it )==3 :
+            a ,b ,c =it
+            for op1 in ops :
+                for op2 in ops :
+                    b_owner =_mixed_owner (op1 ,op2 )
+                    if _mixed3_ok (cfg_map ,need_carry ,need_borrow ,a ,op1 ,b ,op2 ,c ,_op_pool (cfg_map ,op1 ,"pool_a"),_op_pool (cfg_map ,b_owner ,"pool_b"),_op_pool (cfg_map ,op2 ,"pool_c")):
+                        return a ,b ,c ,op1 ,op2 ,False,True
+        if it is not None :
+            reinforce_queue .appendleft (it )
+    for _ in range (300 ):
+        op1 =random .choice (ops )
+        op2 =random .choice (ops )
+        b_owner =_mixed_owner (op1 ,op2 )
+        a_pool =_op_pool (cfg_map ,op1 ,"pool_a")
+        b_pool =_op_pool (cfg_map ,b_owner ,"pool_b")
+        c_pool =_op_pool (cfg_map ,op2 ,"pool_c")
+        a =_choice (a_pool )
+        b =_choice (b_pool )
+        c =_choice (c_pool )
+        if prev is not None and (a ,b ,c )==prev :
+            continue
+        if _mixed3_ok (cfg_map ,need_carry ,need_borrow ,a ,op1 ,b ,op2 ,c ,a_pool ,b_pool ,c_pool ):
+            return a ,b ,c ,op1 ,op2 ,False,False
+    op1 =random .choice (ops )
+    op2 =random .choice (ops )
+    b_owner =_mixed_owner (op1 ,op2 )
+    a_pool =_op_pool (cfg_map ,op1 ,"pool_a")
+    b_pool =_op_pool (cfg_map ,b_owner ,"pool_b")
+    c_pool =_op_pool (cfg_map ,op2 ,"pool_c")
+    a =random .choice (a_pool )if a_pool else 0
+    b =1 if b_owner =="divisione"else (random .choice (b_pool )if b_pool else 0)
+    c =1 if op2 =="divisione"else (random .choice (c_pool )if c_pool else 0)
+    return a ,b ,c ,op1 ,op2 ,True,False
+
 
 LEVELS ={}
 for src in (data_path ,resource_path ):
@@ -1113,7 +1317,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if normalize_story_entry (e ) .get ("type")=="level")
 
-        self .version ="1.4.5"
+        self .version ="1.4.6"
 
         self .profiles =[]
         self .current_profile =""
@@ -1174,6 +1378,8 @@ class Game :
         self .plus_unlocked =False
         self .config_plus_missing_operand =False
         self .config_plus_three_operands =False
+        self .config_plus_mixed_operations =False
+        self .config_plus_mixed_ops ={"moltiplicazione":False ,"addizione":False ,"sottrazione":False ,"divisione":False }
         self .music_volume =20
         self .sfx_volume =50
 
@@ -1236,6 +1442,8 @@ class Game :
         "plus_unlocked":bool (self .plus_unlocked ),
         "plus_missing_operand":bool (self .config_plus_missing_operand ),
         "plus_three_operands":bool (self .config_plus_three_operands ),
+        "plus_mixed_operations":bool (self .config_plus_mixed_operations ),
+        "plus_mixed_ops":{normalize_operation_name (k ):bool (v )for k ,v in self .config_plus_mixed_ops .items ()},
         "fullscreen":self .fullscreen ,
         "window_mode":self .window_mode ,
         "music_volume":self .music_volume ,
@@ -1378,6 +1586,13 @@ class Game :
             self .plus_unlocked =bool (data .get ("plus_unlocked",False ))
             self .config_plus_missing_operand =bool (data .get ("plus_missing_operand",data .get ("plus_operando_mancante",False )))
             self .config_plus_three_operands =bool (data .get ("plus_three_operands",data .get ("plus_tre_operandi",False )))
+            self .config_plus_mixed_operations =bool (data .get ("plus_mixed_operations",False ))
+            mm =data .get ("plus_mixed_ops")
+            if isinstance (mm ,dict ):
+                for k ,v in mm .items ():
+                    op =legacy_operation_name (k )
+                    if op in self .config_plus_mixed_ops and isinstance (v ,bool ):
+                        self .config_plus_mixed_ops [op ]=v
             self .restore_initial_level () 
             if "fullscreen"in data :
                 self .fullscreen =bool (data ["fullscreen"])
@@ -1540,6 +1755,15 @@ class Game :
     def _plus_three_active (self ):
         return self .config_plus_three_operands and not self .tutorial_active
 
+    def _mixed_active (self ):
+        return self .mode =="fixed"and self .config_plus_mixed_operations and not self .tutorial_active
+
+    def _enabled_mixed_ops (self ):
+        if not self .config_plus_mixed_operations :
+            return [self .config_operation ]
+        base =self .config_operation
+        return [op for op in ["moltiplicazione","addizione","sottrazione","divisione"]if self .config_plus_mixed_ops .get (op )or op ==base ]or [base ]
+
     def _apply_missing_operand (self ):
         if self .config_plus_missing_operand and not self .tutorial_active :
             if self ._plus_three_active ():
@@ -1609,8 +1833,10 @@ class Game :
             self .player_entrance =True 
             self .monster_in_dir ="dx"
             self .player_flip =False 
-            self .player_stand_x =112 
-            self .operation =self .config_operation 
+            self .player_stand_x =112
+            self .operation =self .config_operation
+            self .op1 =None
+            self .op2 =None
             self .max_sum =self .config .get ("somma_massima",10 )
             self .integer_result =self .config .get ("risultato_intero",True )
             if self .config_operation =="divisione":
@@ -2233,7 +2459,14 @@ class Game :
                 return 
             allow_queue =not self ._no_queue_next and not self ._prev_from_queue
             self ._no_queue_next =False
-            if self ._plus_three_active ():
+            if self ._mixed_active ():
+                if self ._plus_three_active ():
+                    self .a ,self .b ,self .c ,self .op1 ,self .op2 ,self ._operands_fallback ,self ._from_queue =select_mixed_triple (self .reinforcement_queue if allow_queue else deque (),self ._enabled_mixed_ops (),self .config_by_operation ,(self .prev_a ,self .prev_b ,self .prev_c ))
+                else :
+                    self .a ,self .b ,self .op1 ,self ._operands_fallback ,self ._from_queue =select_mixed_pair (self .reinforcement_queue if allow_queue else deque (),self ._enabled_mixed_ops (),self .config_by_operation ,(self .prev_a ,self .prev_b ))
+                    self .operation =self .op1
+                    self .op2 =None
+            elif self ._plus_three_active ():
                 self .a ,self .b ,self .c ,self ._operands_fallback ,self ._from_queue =select_three_operands (
                 self .pool_a ,
                 self .pool_b ,
@@ -2269,29 +2502,32 @@ class Game :
             self .questions_asked +=1 
 
         three =self ._plus_three_active ()
-        if three and not self ._from_queue and (self .a ,self .b ,self .c )==(self .prev_a ,self .prev_b ,self .prev_c ):
-            self .a ,self .b ,self .c ,self ._operands_fallback =self ._new_distinct_triple () 
-        elif not self .tutorial_active and not self ._from_queue and (self .a ,self .b )==(self .prev_a ,self .prev_b ):
-            if self .operation =="divisione":
-                self .a ,self .b ,self ._operands_fallback =self ._new_distinct_pair ()
-            elif self .a ==self .b :
-                if self .mode =="auto":
-                    lv =self .effective_level ()
-                    pool_a =self .levels [lv ]["pool_a"]
-                    candidates =[n for n in pool_a if n !=self .a ]
-                else :
-                    candidates =[n for n in self .pool_a if n !=self .a ]
-                if candidates :
-                    self .a =random .choice (candidates )
-                    self .b =random .choice (pool_a if self .mode =="auto"else self .pool_a )
-            else :
-                self .a ,self .b =self .b ,self .a 
-                if self .operation =="sottrazione":
+        if not self ._mixed_active ():
+            if three and not self ._from_queue and (self .a ,self .b ,self .c )==(self .prev_a ,self .prev_b ,self .prev_c ):
+                self .a ,self .b ,self .c ,self ._operands_fallback =self ._new_distinct_triple () 
+            elif not self .tutorial_active and not self ._from_queue and (self .a ,self .b )==(self .prev_a ,self .prev_b ):
+                if self .operation =="divisione":
                     self .a ,self .b ,self ._operands_fallback =self ._new_distinct_pair ()
-                    if self .a <self .b :
-                        self .a ,self .b =self .b ,self .a 
-
-        self .expected_result =calculate_result3 (self .a ,self .b ,self .c ,self .operation ,self .integer_result )if three else calculate_result (self .a ,self .b ,self .operation ,self .integer_result )
+                elif self .a ==self .b :
+                    if self .mode =="auto":
+                        lv =self .effective_level ()
+                        pool_a =self .levels [lv ]["pool_a"]
+                        candidates =[n for n in pool_a if n !=self .a ]
+                    else :
+                        candidates =[n for n in self .pool_a if n !=self .a ]
+                    if candidates :
+                        self .a =random .choice (candidates )
+                        self .b =random .choice (pool_a if self .mode =="auto"else self .pool_a )
+                else :
+                    self .a ,self .b =self .b ,self .a 
+                    if self .operation =="sottrazione":
+                        self .a ,self .b ,self ._operands_fallback =self ._new_distinct_pair ()
+                        if self .a <self .b :
+                            self .a ,self .b =self .b ,self .a 
+        if self ._mixed_active ()and three :
+            self .expected_result =mixed_result (self .a ,self .op1 ,self .b ,self .op2 ,self .c )
+        else :
+            self .expected_result =calculate_result3 (self .a ,self .b ,self .c ,self .operation ,self .integer_result )if three else calculate_result (self .a ,self .b ,self .operation ,self .integer_result )
         self ._apply_missing_operand ()
         if self .mode =="auto":
             wanted =self .story_monsters 
@@ -2542,18 +2778,24 @@ class Game :
             elif self .state ==GAME_STATE_CONFIG_FIXED:
                 self .handle_config (event )
             elif self .state ==GAME_STATE_CONFIG_PLUS:
+                plus_cursor_max =4 if self .mode !="auto"else 3
                 if event .key in (pygame .K_UP ,pygame .K_w ):
-                    self .config_plus_cursor =(self .config_plus_cursor -1 )%3
+                    self .config_plus_cursor =(self .config_plus_cursor -1 )%plus_cursor_max
                 elif event .key in (pygame .K_DOWN ,pygame .K_s ):
-                    self .config_plus_cursor =(self .config_plus_cursor +1 )%3
+                    self .config_plus_cursor =(self .config_plus_cursor +1 )%plus_cursor_max
                 elif event .key in (pygame .K_RETURN ,pygame .K_KP_ENTER ,pygame .K_SPACE ):
                     if self .config_plus_cursor ==0 :
-                        self .config_plus_missing_operand =not self .config_plus_missing_operand 
+                        self .config_plus_missing_operand =not self .config_plus_missing_operand
                         self .save_profile_config ()
                         if event .key in (pygame .K_RETURN ,pygame .K_KP_ENTER ):
                             self .start_game ()
                     elif self .config_plus_cursor ==1 :
-                        self .config_plus_three_operands =not self .config_plus_three_operands 
+                        self .config_plus_three_operands =not self .config_plus_three_operands
+                        self .save_profile_config ()
+                        if event .key in (pygame .K_RETURN ,pygame .K_KP_ENTER ):
+                            self .start_game ()
+                    elif self .mode !="auto"and self .config_plus_cursor ==2 :
+                        self .config_plus_mixed_operations =not self .config_plus_mixed_operations
                         self .save_profile_config ()
                         if event .key in (pygame .K_RETURN ,pygame .K_KP_ENTER ):
                             self .start_game ()
@@ -2884,32 +3126,44 @@ class Game :
                     traceback .print_exc ()
             elif self .state ==GAME_STATE_CONFIG_PLUS:
                 if getattr (self ,'plus_toggle_rect',None )and self .plus_toggle_rect .collidepoint (mx ,my ):
-                    self .config_plus_cursor =0 
-                    self .config_plus_missing_operand =not self .config_plus_missing_operand 
+                    self .config_plus_cursor =0
+                    self .config_plus_missing_operand =not self .config_plus_missing_operand
                     self .save_profile_config ()
-                    return 
+                    return
                 if getattr (self ,'plus_toggle_rect3',None )and self .plus_toggle_rect3 .collidepoint (mx ,my ):
-                    self .config_plus_cursor =1 
-                    self .config_plus_three_operands =not self .config_plus_three_operands 
+                    self .config_plus_cursor =1
+                    self .config_plus_three_operands =not self .config_plus_three_operands
                     self .save_profile_config ()
-                    return 
+                    return
+                if getattr (self ,'plus_toggle_rect_mixed',None )and self .plus_toggle_rect_mixed .collidepoint (mx ,my ):
+                    self .config_plus_cursor =2
+                    self .config_plus_mixed_operations =not self .config_plus_mixed_operations
+                    self .save_profile_config ()
+                    return
+                if self .config_plus_mixed_operations and getattr (self ,'plus_mixed_op_rects',None ):
+                    for op ,op_rect in self .plus_mixed_op_rects .items ():
+                        if op !=self .config_operation and op_rect .collidepoint (mx ,my ):
+                            self .config_plus_cursor =2
+                            self .config_plus_mixed_ops [op ]=not self .config_plus_mixed_ops .get (op )
+                            self .save_profile_config ()
+                            return
                 if self .config_plus_three_operands :
                     pool_c =self .config .get ("pool_c")
                     if pool_c is not None :
                         multiplication =self .config_operation =="moltiplicazione"
                         items =20
                         cols_u =10
-                        subrows =(items +cols_u -1 )//cols_u 
-                        cell_w ,cell_h =115 ,45 
-                        gap =10 
-                        grid_x =540 
-                        y_pool_c =590 
+                        subrows =(items +cols_u -1 )//cols_u
+                        cell_w ,cell_h =115 ,45
+                        gap =10
+                        grid_x =540
+                        y_pool_c =375 if self .mode !="auto"else 590
                         for sr in range (subrows ):
                             sy =y_pool_c +sr *(cell_h +gap )
                             for c in range (cols_u ):
-                                idx =sr *cols_u +c 
+                                idx =sr *cols_u +c
                                 if idx >=items :
-                                    break 
+                                    break
                                 sx =grid_x +c *(cell_w +gap )
                                 if sx -3 <=mx <=sx +cell_w +3 and sy -3 <=my <=sy +cell_h +3 :
                                     if multiplication :
@@ -2922,7 +3176,7 @@ class Game :
                                             for i in range (start ,start +10 ):
                                                 pool_c [i ]=new_state
                                     self .save_profile_config ()
-                                    return 
+                                    return
                 if CANVAS_WIDTH //2 -165 <=mx <=CANVAS_WIDTH //2 +165 and 717 <=my <=786 :
                     self .save_profile_config ()
                     self .start_game ()
@@ -3307,7 +3561,9 @@ class Game :
             risposta =None 
 
         three_now =self ._plus_three_active ()
-        zero_mult =getattr (self ,'missing_operand',None )in ("a","b","c")and self .operation =="moltiplicazione"and ((three_now and (self .a ==0 or self .b ==0 or self .c ==0 ))or (not three_now and (self .a ==0 or self .b ==0 )))
+        mixed_three =three_now and self ._mixed_active ()
+        zero_ops =(self .op1 ,self .op2 )if mixed_three else (self .operation ,)
+        zero_mult =getattr (self ,'missing_operand',None )in ("a","b","c")and "moltiplicazione"in zero_ops and ((three_now and (self .a ==0 or self .b ==0 or self .c ==0 ))or (not three_now and (self .a ==0 or self .b ==0 )))
         if zero_mult and text_value != "":
             corretto =True 
         else :
@@ -3333,7 +3589,9 @@ class Game :
             self ._no_queue_next =True 
             self .stats [level ]["sbagliate"]+=1 
             self .play_sfx ("hit")
-            if self ._plus_three_active ():
+            if mixed_three :
+                self .wrong_questions .append ((self .a ,self .b ,self .c ,self .op1 ,self .op2 ,text_value ,self .expected_result ))
+            elif self ._plus_three_active ():
                 self .wrong_questions .append ((self .a ,self .b ,self .c ,self .operation ,text_value ,self .expected_result ))
             else :
                 self .wrong_questions .append ((self .a ,self .b ,None ,self .operation ,text_value ,self .expected_result ))
@@ -3392,7 +3650,9 @@ class Game :
         self .stats .setdefault (level ,{"corrette":0 ,"sbagliate":0 ,"tempi":[]})
         self .stats [level ]["sbagliate"]+=1 
         self .stats [level ]["tempi"].append (elapsed_time )
-        if self ._plus_three_active ():
+        if self ._plus_three_active ()and self ._mixed_active ():
+            self .wrong_questions .append ((self .a ,self .b ,self .c ,self .op1 ,self .op2 ,None ,self .expected_result ))
+        elif self ._plus_three_active ():
             self .wrong_questions .append ((self .a ,self .b ,self .c ,self .operation ,None ,self .expected_result ))
         else :
             self .wrong_questions .append ((self .a ,self .b ,None ,self .operation ,None ,self .expected_result ))
@@ -4688,20 +4948,37 @@ class Game :
         rect =title .get_rect (center =(CANVAS_WIDTH //2 ,120 ))
         self .screen .blit (title ,rect )
 
-        rows =[
-        (340 ,"Operando Mancante",bool (self .config_plus_missing_operand ),0 ),
-        (490 ,"Tre Operandi",bool (self .config_plus_three_operands ),1 ),
-        ]
-        self .plus_toggle_rect =None 
-        self .plus_toggle_rect3 =None 
+        is_fixed =self .mode !="auto"
+        if is_fixed :
+            show_c =self .config_plus_three_operands
+            show_btns =self .config_plus_mixed_operations
+            row2_y =520 if show_c else 375
+            rows =[
+            (225 ,"Operando Mancante",bool (self .config_plus_missing_operand ),0 ),
+            (300 ,"Tre Operandi",bool (self .config_plus_three_operands ),1 ),
+            (row2_y ,"Operazioni Miste",bool (self .config_plus_mixed_operations ),2 ),
+            ]
+        else :
+            show_c =self .config_plus_three_operands
+            show_btns =False
+            row2_y =None
+            rows =[
+            (340 ,"Operando Mancante",bool (self .config_plus_missing_operand ),0 ),
+            (490 ,"Tre Operandi",bool (self .config_plus_three_operands ),1 ),
+            ]
+        self .plus_toggle_rect =None
+        self .plus_toggle_rect3 =None
+        self .plus_toggle_rect_mixed =None
         for y_tog ,label ,on ,idx in rows :
             toggle_rect =pygame .Rect (540 ,y_tog ,279 ,54 )
             if idx ==0 :
                 self .plus_toggle_rect =toggle_rect
-            else :
+            elif idx ==1 :
                 self .plus_toggle_rect3 =toggle_rect
+            else :
+                self .plus_toggle_rect_mixed =toggle_rect
             hover_tog =toggle_rect .collidepoint (mx ,my )
-            focus =getattr (self ,'config_plus_cursor',0 )==idx 
+            focus =getattr (self ,'config_plus_cursor',0 )==idx
             if on :
                 bg_tog =(100 ,150 ,220 )if hover_tog else SEL_BLUE
             else :
@@ -4717,26 +4994,26 @@ class Game :
             rect_v =val_surf .get_rect (center =(679 ,y_tog +27 ))
             self .screen .blit (val_surf ,rect_v )
 
-        if self .config_plus_three_operands :
+        if show_c :
             pool_c =self .config .get ("pool_c")
             if pool_c is not None :
+                y_pool_c =375 if is_fixed else 590
                 label_c =self ._render_cached (self .font_tiny ,"Operando C",WHITE )
-                rect =label_c .get_rect (midleft =(120 ,615 ))
+                rect =label_c .get_rect (midleft =(120 ,y_pool_c +25 ))
                 self .screen .blit (label_c ,rect )
                 multiplication =self .config_operation =="moltiplicazione"
                 items =20
                 cols_u =10
-                subrows =(items +cols_u -1 )//cols_u 
-                cell_w ,cell_h =115 ,45 
-                gap =10 
-                grid_x =540 
-                y_pool_c =590 
+                subrows =(items +cols_u -1 )//cols_u
+                cell_w ,cell_h =115 ,45
+                gap =10
+                grid_x =540
                 for sr in range (subrows ):
                     sy =y_pool_c +sr *(cell_h +gap )
                     for c in range (cols_u ):
-                        idx =sr *cols_u +c 
+                        idx =sr *cols_u +c
                         if idx >=items :
-                            break 
+                            break
                         sx =grid_x +c *(cell_w +gap )
                         if multiplication :
                             selected =pool_c [idx ]
@@ -4756,7 +5033,30 @@ class Game :
                         rt =t .get_rect (center =(sx +cell_w //2 ,sy +cell_h //2 ))
                         self .screen .blit (t ,rt )
 
-        if getattr (self ,'config_plus_cursor',0 )==2 :
+        if show_btns :
+            opzioni_op =["Moltiplicazione","Addizione","Sottrazione","Divisione"]
+            ops =["moltiplicazione","addizione","sottrazione","divisione"]
+            self .plus_mixed_op_rects ={}
+            btn_w =295
+            btn_step =btn_w +20
+            y_btn =row2_y +75
+            for i ,nome in enumerate (opzioni_op ):
+                sx =540 +i *btn_step
+                btn_rect =pygame .Rect (sx ,y_btn ,btn_w ,62 )
+                self .plus_mixed_op_rects [ops [i ]]=btn_rect
+                on_btn =bool (self .config_plus_mixed_ops .get (ops [i ]))or ops [i ]==self .config_operation
+                hovered_btn =btn_rect .collidepoint (mx ,my )
+                bg_col =(100 ,150 ,220 )if on_btn and hovered_btn else SEL_BLUE if on_btn else (80 ,80 ,90 )if hovered_btn else (60 ,60 ,70 )
+                pygame .draw .rect (self .screen ,bg_col ,btn_rect ,border_radius =6 )
+                if ops [i ]==self .config_operation or hovered_btn :
+                    pygame .draw .rect (self .screen ,GOLD ,btn_rect ,2 ,border_radius =6 )
+                txt =self ._render_cached (self .font_small ,nome ,WHITE )
+                rect_t =txt .get_rect (center =(sx +btn_w //2 ,y_btn +31 ))
+                self .screen .blit (txt ,rect_t )
+        else :
+            self .plus_mixed_op_rects ={}
+
+        if getattr (self ,'config_plus_cursor',0 )==(3 if is_fixed else 2 ):
             pygame .draw .rect (self .screen ,(255 ,255 ,100 ),(CANVAS_WIDTH //2 -168 ,714 ,336 ,75 ),3 ,border_radius =12 )
         y_conf =717
         conf_rect =pygame .Rect (CANVAS_WIDTH //2 -165 ,y_conf ,330 ,69 )
@@ -4925,15 +5225,28 @@ class Game :
         if self .scene_phase is None :
             missing =getattr (self ,'missing_operand',None )
             if three :
-                res_display =calculate_result3 (self .a ,self .b ,self .c ,self .operation ,getattr (self ,'integer_result',True ))
-                if missing =="a":
-                    domanda_text =f"...  {segno }  {self .b }  {segno }  {self .c }  =  {res_display }"
-                elif missing =="b":
-                    domanda_text =f"{self .a }  {segno }  ...  {segno }  {self .c }  =  {res_display }"
-                elif missing =="c":
-                    domanda_text =f"{self .a }  {segno }  {self .b }  {segno }  ...  =  {res_display }"
+                if self ._mixed_active ():
+                    s1 =get_operation_symbol (self .op1 )
+                    s2 =get_operation_symbol (self .op2 )
+                    res_display =mixed_result (self .a ,self .op1 ,self .b ,self .op2 ,self .c )
+                    if missing =="a":
+                        domanda_text =f"...  {s1 }  {self .b }  {s2 }  {self .c }  =  {res_display }"
+                    elif missing =="b":
+                        domanda_text =f"{self .a }  {s1 }  ...  {s2 }  {self .c }  =  {res_display }"
+                    elif missing =="c":
+                        domanda_text =f"{self .a }  {s1 }  {self .b }  {s2 }  ...  =  {res_display }"
+                    else :
+                        domanda_text =f"{self .a }  {s1 }  {self .b }  {s2 }  {self .c }  =  ?"
                 else :
-                    domanda_text =f"{self .a }  {segno }  {self .b }  {segno }  {self .c }  =  ?"
+                    res_display =calculate_result3 (self .a ,self .b ,self .c ,self .operation ,getattr (self ,'integer_result',True ))
+                    if missing =="a":
+                        domanda_text =f"...  {segno }  {self .b }  {segno }  {self .c }  =  {res_display }"
+                    elif missing =="b":
+                        domanda_text =f"{self .a }  {segno }  ...  {segno }  {self .c }  =  {res_display }"
+                    elif missing =="c":
+                        domanda_text =f"{self .a }  {segno }  {self .b }  {segno }  ...  =  {res_display }"
+                    else :
+                        domanda_text =f"{self .a }  {segno }  {self .b }  {segno }  {self .c }  =  ?"
             elif missing =="a":
                 res_display =calculate_result (self .a ,self .b ,self .operation ,getattr (self ,'integer_result',True ))
                 domanda_text =f"...  {segno }  {self .b }  =  {res_display }"
@@ -5682,13 +5995,20 @@ class Game :
         for w in getattr (self ,"wrong_questions",[]):
             if errori_txt :
                 errori_txt +=", "
-            errori_txt +=format_wrong_entry (*w [:5 ])
+            if len (w )>=7 :
+                errori_txt +=format_wrong_entry_mixed (w [0 ],w [1 ],w [2 ],w [3 ],w [4 ],w [5 ])
+            else :
+                errori_txt +=format_wrong_entry (*w [:5 ])
         if errori_txt :
             errori_txt =" | Errori: "+errori_txt 
         if self .mode =="auto":
             line_text =f"{now } | Storia | {self .config_story_operation .capitalize ()} | Corrette: {total_correct } | Sbagliate: {total_wrong } | Livello: {self .effective_level ()+1 }/{len (self .levels )} | Tempo medio: {average_time :.1f}s | Tempo totale: {format_total_time (sum (self .answer_times ))}{errori_txt }"
         else :
-            op_txt =self .operation .capitalize ()if hasattr (self ,'operation')else "Moltiplicazione"
+            if self ._mixed_active ():
+                segni =",".join (get_operation_symbol (op )for op in self ._enabled_mixed_ops ())
+                op_txt =f"Operazioni Miste ({segni })"
+            else :
+                op_txt =self .operation .capitalize ()if hasattr (self ,'operation')else "Moltiplicazione"
             pool_a_txt =format_pool_compact (self .pool_a )
             pool_b_txt =format_pool_compact (self .pool_b )
             extra =""

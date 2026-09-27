@@ -181,3 +181,154 @@ def test_risultato_minimo_zero_mantiene_risultati_non_negativi():
             max_value=199, borrow_prob=0.5
         )
         assert a - b >= 0
+
+
+MIXED_CFG = {
+    "moltiplicazione": {"risultato_minimo": 0, "risultato_massimo": 100,
+                        "pool_a": list(range(0, 51)), "pool_b": list(range(1, 26)), "pool_c": list(range(1, 41))},
+    "addizione": {"risultato_minimo": 0, "risultato_massimo": 100, "somma_massima": 100, "riporto": 0,
+                  "pool_a": list(range(0, 51)), "pool_b": list(range(1, 26)), "pool_c": list(range(1, 41))},
+    "sottrazione": {"risultato_minimo": -50, "risultato_massimo": 100, "prestito": 0,
+                    "pool_a": list(range(0, 51)), "pool_b": list(range(1, 26)), "pool_c": list(range(1, 41))},
+    "divisione": {"risultato_minimo": 0, "risultato_massimo": 100,
+                  "pool_a": list(range(2, 51)), "pool_b": list(range(1, 26)), "pool_c": list(range(1, 41))},
+}
+
+
+def test_mixed_result_precedence():
+    assert MODULE.mixed_result(2, "moltiplicazione", 4, "addizione", 6) == 14
+    assert MODULE.mixed_result(2, "addizione", 4, "moltiplicazione", 6) == 26
+    assert MODULE.mixed_result(8, "divisione", 2, "addizione", 3) == 7
+    assert MODULE.mixed_result(12, "addizione", 3, "divisione", 3) == 13
+    assert MODULE.mixed_result(2, "addizione", 3, "sottrazione", 1) == 4
+    assert MODULE.mixed_result(8, "divisione", 2, "moltiplicazione", 4) == 16
+    assert MODULE.mixed_result(3, "moltiplicazione", 4, "divisione", 2) == 6
+
+
+def test_mixed3_steps_order():
+    res, steps = MODULE.mixed3_steps(2, "moltiplicazione", 4, "addizione", 6)
+    assert res == 14
+    assert steps[0][0] == "moltiplicazione" and steps[0][3] == 8
+    assert steps[1][0] == "addizione" and steps[1][3] == 14
+    res, steps = MODULE.mixed3_steps(2, "addizione", 4, "moltiplicazione", 6)
+    assert res == 26
+    assert steps[0][0] == "moltiplicazione" and steps[0][3] == 24
+    assert steps[1][0] == "addizione" and steps[1][3] == 26
+
+
+def test_format_wrong_entry_mixed():
+    assert MODULE.format_wrong_entry_mixed(2, 4, 6, "moltiplicazione", "addizione", 14) == "2x4+6=14"
+    assert MODULE.format_wrong_entry_mixed(2, 4, 6, "addizione", "moltiplicazione", None) == "2+4x6=(nessuna risposta)"
+
+
+def test_select_mixed_pair_respects_bounds_and_exact_division():
+    random.seed(13)
+    for _ in range(200):
+        a, b, op, fb, fq = MODULE.select_mixed_pair(
+            deque(),
+            ["moltiplicazione", "addizione", "sottrazione", "divisione"],
+            MIXED_CFG,
+        )
+        res = MODULE.apply_operation(a, b, op)
+        lo, hi = MODULE._mixed_bounds(MIXED_CFG, (op,))
+        assert lo <= res <= hi, (a, b, op)
+        if op == "divisione":
+            assert b != 0 and a % b == 0
+
+
+def test_select_mixed_triple_precedence_and_exact_division():
+    random.seed(17)
+    for _ in range(300):
+        a, b, c, op1, op2, fb, fq = MODULE.select_mixed_triple(
+            deque(),
+            ["moltiplicazione", "addizione", "sottrazione", "divisione"],
+            MIXED_CFG,
+        )
+        res = MODULE.mixed_result(a, op1, b, op2, c)
+        lo, hi = MODULE._mixed_bounds(MIXED_CFG, (op1, op2))
+        assert lo <= res <= hi, (a, op1, b, op2, c)
+        for step_op, left, right, _sr in MODULE.mixed3_steps(a, op1, b, op2, c)[1]:
+            if step_op == "divisione":
+                assert right != 0 and left % right == 0
+
+
+def test_select_mixed_pair_uses_only_selected_ops():
+    random.seed(19)
+    for _ in range(150):
+        a, b, op, fb, fq = MODULE.select_mixed_pair(
+            deque(), ["sottrazione", "moltiplicazione"], MIXED_CFG
+        )
+        assert op in ("sottrazione", "moltiplicazione")
+
+
+def test_select_mixed_triple_pure_add_respects_somma_massima():
+    random.seed(23)
+    pool = list(range(0, 10))
+    cfg = dict(MIXED_CFG)
+    cfg["addizione"] = dict(cfg["addizione"], somma_massima=20,
+                            pool_a=pool, pool_b=pool, pool_c=pool)
+    for _ in range(200):
+        a, b, c, op1, op2, fb, fq = MODULE.select_mixed_triple(
+            deque(), ["addizione"], cfg
+        )
+        assert op1 == op2 == "addizione"
+        assert a + b + c <= 20
+
+
+def test_mixed_pair_uses_op_pools():
+    random.seed(37)
+    cfg = {
+        "moltiplicazione": {"risultato_minimo": 0, "risultato_massimo": 100000,
+                            "pool_a": [5], "pool_b": [7]},
+        "addizione": {"risultato_minimo": 0, "risultato_massimo": 100000, "somma_massima": 100000,
+                      "riporto": 0, "pool_a": [7], "pool_b": [2]},
+    }
+    seen = set()
+    for _ in range(100):
+        a, b, op, fb, fq = MODULE.select_mixed_pair(deque(), ["moltiplicazione", "addizione"], cfg)
+        assert (a, b, op) in {((5, 7, "moltiplicazione")), ((7, 2, "addizione"))}, (a, b, op)
+        seen.add((a, b, op))
+    assert seen == {(5, 7, "moltiplicazione"), (7, 2, "addizione")}, seen
+
+
+def test_mixed_triple_operands_from_per_op_pools():
+    random.seed(31)
+    cfg = {
+        "moltiplicazione": {"risultato_minimo": 0, "risultato_massimo": 100000,
+                            "pool_a": [2], "pool_b": [3], "pool_c": [4]},
+        "addizione": {"risultato_minimo": 0, "risultato_massimo": 100000, "somma_massima": 100000,
+                      "riporto": 0, "pool_a": [10], "pool_b": [6], "pool_c": [1]},
+    }
+    expected = {
+        ("moltiplicazione", "moltiplicazione"): (2, 3, 4),
+        ("moltiplicazione", "addizione"): (2, 3, 1),
+        ("addizione", "moltiplicazione"): (10, 3, 4),
+        ("addizione", "addizione"): (10, 6, 1),
+    }
+    seen = set()
+    for _ in range(300):
+        a, b, c, op1, op2, fb, fq = MODULE.select_mixed_triple(
+            deque(), ["moltiplicazione", "addizione"], cfg
+        )
+        assert (a, b, c) == expected[(op1, op2)], (a, op1, b, op2, c)
+        seen.add((op1, op2))
+    assert seen == set(expected), seen
+
+
+def test_mixed_triple_b_from_higher_precedence_pool():
+    random.seed(41)
+    cfg = dict(MIXED_CFG)
+    pool_b_by_op = {"moltiplicazione": [22], "divisione": [6], "addizione": [55], "sottrazione": [77]}
+    for op, pb in pool_b_by_op.items():
+        cfg[op] = dict(cfg[op], pool_b=pb)
+    ok = 0
+    for _ in range(400):
+        a, b, c, op1, op2, fb, fq = MODULE.select_mixed_triple(
+            deque(), ["moltiplicazione", "addizione", "sottrazione", "divisione"], cfg
+        )
+        owner = op1 if MODULE._mixed_weight(op1) <= MODULE._mixed_weight(op2) else op2
+        if fb and owner == "divisione":
+            continue
+        ok += 1
+        assert b == pool_b_by_op[owner][0], (a, op1, b, op2, c, owner, fb)
+    assert ok > 0
