@@ -52,6 +52,35 @@ DEFAULT_TIMEOUT =12
 CHALLENGE_TIMEOUT =12
 CHALLENGE_TOTAL_OPTIONS =(50 ,100 )
 CHALLENGE_OPERATION_SYMBOLS ={"addizione":"+","sottrazione":"-","moltiplicazione":"\u00d7","divisione":":"}
+# stati ridisegnati a ogni frame: senza eventi di input devono comunque animarsi
+# (il disegno continuo e' indispensabile per i tooltip che contano il tempo sul mouse fermo)
+ANIMATED_STATES =("splash","profile_select","game","story","player_exit","loading","options","options_auto","config_fixed","config_plus","celebration","challenge_config","challenge_result","leaderboard")
+TOOLTIP_DELAY_MS =1000
+TOOLTIP_PAD_X =24
+TOOLTIP_PAD_Y =16
+TOOLTIP_MAX_WIDTH =640
+TOOLTIP_HOVER_PAD_X =16
+TOOLTIP_HOVER_PAD_Y =10
+OPTION_TOOLTIPS ={
+"operazione":"Sceglie che tipo di operazione generare per le domande.",
+"difficolta":"Scala da 1a a 5a elementare: sposta il punto di partenza dei numeri e la difficoltà dei calcoli usati nella storia.",
+"livello_iniziale":"Da quale livello della storia partire. Il massimo disponibile cresce con i livelli già completati; a destra vedi il livello effettivo (difficoltà più livello iniziale).",
+"timeout":"Tempo massimo per rispondere a una domanda, da 3 a 99 secondi. Quando scade la risposta viene contata come sbagliata e si passa alla domanda successiva.",
+"pool_a":"Insieme dei numeri usati per il primo operando. In moltiplicazione ogni cella è un numero singolo; per le altre operazioni ogni cella copre un intervallo di 10 (per esempio 0-9). Le celle grigie non vengono usate.",
+"pool_b":"Insieme dei numeri usati per il secondo operando, con la stessa logica del primo operando.",
+"pool_c":"Insieme dei numeri usati per il terzo operando. Compare solo quando l'opzione Tre Operandi è attiva.",
+"risultato_minimo":"Le domande con risultato inferiore a questo valore vengono scartate e rigenerate.",
+"risultato_massimo":"Le domande con risultato superiore a questo valore vengono scartate e rigenerate.",
+"riporto":"Percentuale (da 0 a 100) di domande di addizione che richiedono il riporto, come 8+7. Con 0% mai, con 100% sempre.",
+"prestito":"Percentuale (da 0 a 100) di domande di sottrazione che richiedono il prestito, come 12-5. Con 0% mai, con 100% sempre.",
+"risultato_intero":"Le operazioni danno sempre un risultato intero, senza decimali.",
+"domande":"Numero di domande richieste per terminare il livello.",
+"swap":"Attiva proprietà commutativa e scambia i due operandi: 3x5 diventa 5x3",
+"missing_operand":"Invece di chiedere il risultato dell'operazione, mostra il risultato ma chiede uno degli operandi.",
+"three_operands":"Tre operandi invece di due, con la precedenza normale: prima moltiplicazione e divisione, poi addizione e sottrazione.",
+"mixed_ops":"Permette di richiedere operazioni con altri segni mischiate a quello scelto in precedenza.",
+"sfida_domande":"Determina quante domande proporre per la sfida",
+}
 LEADERBOARD_VISIBLE_ROWS =10
 CHALLENGE_LEADERBOARD_URL ="https://wqzeqsryoezralkbyfed.supabase.co/rest/v1/challenge_scores" 
 CHALLENGE_LEADERBOARD_ANON_KEY ="sb_publishable_NgdMeZ80IMnuUydE-2WzSQ_Z4khBqiU" 
@@ -951,6 +980,11 @@ class Game :
         self .clock =pygame .time .Clock ()
         self .running =True 
         self ._text_cache ={}
+        self ._tooltip_panels ={}
+        self .tooltip_items =[]
+        self .tooltip_key =None
+        self .tooltip_since =0
+        self .tooltip_state =None
         self .state =GAME_STATE_SPLASH
         self .splash_start =pygame .time .get_ticks ()
         self .splash_skip =False 
@@ -1421,7 +1455,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if normalize_story_entry (e ) .get ("type")=="level")
 
-        self .version ="1.5.0"
+        self .version ="1.5.1"
 
         self .profiles =[]
         self .current_profile =""
@@ -4494,6 +4528,94 @@ class Game :
             self ._text_cache [key ]=surf 
         return surf 
 
+    def _tooltip_begin (self ):
+        self .tooltip_items =[]
+        if self .tooltip_state !=self .state :
+            self .tooltip_state =self .state
+            self .tooltip_key =None
+            self .tooltip_since =0
+
+    def _tooltip_add (self ,key ,title ,rect ):
+        if key in OPTION_TOOLTIPS :
+            self .tooltip_items .append ((key ,title ,rect ))
+
+    def _tooltip_wrap (self ,text ,font ,max_width ):
+        lines =[]
+        current =""
+        for word in text .split ():
+            candidate =word if not current else current +" " +word
+            if not current or font .size (candidate )[0] <=max_width :
+                current =candidate
+            else :
+                lines .append (current )
+                current =word
+        if current :
+            lines .append (current )
+        return lines
+
+    def _tooltip_panel (self ,key ,title ):
+        panel =self ._tooltip_panels .get (key )
+        if panel is not None :
+            return panel
+        text =OPTION_TOOLTIPS .get (key ,"" )
+        if not text :
+            return None
+        font =self .font_tiny
+        lines =self ._tooltip_wrap (text ,font ,TOOLTIP_MAX_WIDTH -2 *TOOLTIP_PAD_X )
+        line_h =font .get_height ()+6
+        title_surf =self ._render_cached (font ,title ,GOLD ) if title else None
+        widths =[font .size (line )[0] for line in lines ]
+        if title_surf is not None :
+            widths .append (title_surf .get_width () )
+        w =max (widths )+2 *TOOLTIP_PAD_X
+        h =2 *TOOLTIP_PAD_Y +len (lines )*line_h
+        if title_surf is not None :
+            h +=title_surf .get_height ()+8
+        panel =pygame .Surface ((w ,h ),pygame .SRCALPHA )
+        panel .fill ((0 ,0 ,0 ,0 ))
+        pygame .draw .rect (panel ,(28 ,28 ,38 ,242 ),panel .get_rect () ,border_radius =10 )
+        pygame .draw .rect (panel ,GOLD ,panel .get_rect () ,2 ,border_radius =10 )
+        y =TOOLTIP_PAD_Y
+        if title_surf is not None :
+            panel .blit (title_surf ,(TOOLTIP_PAD_X ,y ))
+            y +=title_surf .get_height ()+8
+        for line in lines :
+            surf =self ._render_cached (font ,line ,WHITE )
+            panel .blit (surf ,(TOOLTIP_PAD_X ,y ))
+            y +=line_h
+        self ._tooltip_panels [key ]=panel
+        return panel
+
+    def _tooltip_draw (self ,key ,title ,anchor ):
+        panel =self ._tooltip_panel (key ,title )
+        if panel is None :
+            return
+        w ,h =panel .get_size ()
+        x =anchor .right +26
+        if x +w >CANVAS_WIDTH -24 :
+            x =anchor .left -26 -w
+        x =max (24 ,min (x ,CANVAS_WIDTH -w -24 ))
+        y =anchor .centery -h //2
+        y =max (24 ,min (y ,CANVAS_HEIGHT -h -24 ))
+        self .screen .blit (panel ,(x ,y ))
+
+    def _tooltip_end (self ,mx ,my ):
+        hit =None
+        for key ,title ,rect in self .tooltip_items :
+            if rect .inflate (TOOLTIP_HOVER_PAD_X ,TOOLTIP_HOVER_PAD_Y ) .collidepoint (mx ,my ):
+                hit =(key ,title ,rect )
+                break
+        key =hit [0]if hit else None
+        if key !=self .tooltip_key :
+            self .tooltip_key =key
+            self .tooltip_since =pygame .time .get_ticks ()
+            return
+        if hit is None :
+            return
+        if pygame .time .get_ticks () -self .tooltip_since <TOOLTIP_DELAY_MS :
+            return
+        self ._tooltip_draw (hit [0] ,hit [1] ,hit [2] )
+
     def draw_text_shadow (self ,font ,text ,color ,pos =None ,center =None ,midleft =None ,midright =None ,offset =2 ):
         ombra =self ._render_cached (font ,text ,(30 ,30 ,30 ))
         surf =self ._render_cached (font ,text ,color )
@@ -4931,6 +5053,7 @@ class Game :
 
     def draw_auto_options (self ):
         mx ,my =self ._mouse_pos ()
+        self ._tooltip_begin ()
         overlay =self ._overlay
         overlay .set_alpha (200 )
         overlay .fill (BG_DARK )
@@ -4948,6 +5071,7 @@ class Game :
         label_o =self ._render_cached (self .font_tiny ,"Operazione",WHITE )
         rect =label_o .get_rect (midleft =(120 ,y +25 ))
         self .screen .blit (label_o ,rect )
+        self ._tooltip_add ("operazione","Operazione",rect )
         ops_list =[("moltiplicazione","Moltiplicazione"),("addizione","Addizione"),("sottrazione","Sottrazione"),("divisione","Divisione")]
         bx =540
         self .opzioni_auto_op_buttons =[]
@@ -4981,6 +5105,7 @@ class Game :
         label_d =self ._render_cached (self .font_tiny ,"Difficoltà",WHITE )
         rect =label_d .get_rect (midleft =(120 ,y +25 ))
         self .screen .blit (label_d ,rect )
+        self ._tooltip_add ("difficolta","Difficoltà",rect )
         focused =self .options_cursor ==1
         bar_x =540
         bar_w =400
@@ -5037,6 +5162,7 @@ class Game :
         label_l =self ._render_cached (self .font_tiny ,"Livello iniziale",WHITE )
         rect =label_l .get_rect (midleft =(120 ,y +25 ))
         self .screen .blit (label_l ,rect )
+        self ._tooltip_add ("livello_iniziale","Livello iniziale",rect )
         focused =self .options_cursor ==2
         minus_rect2 =pygame .Rect (sx ,y ,lw ,51 )
         plus_rect2 =pygame .Rect (sx +lw +vw ,y ,rw ,51 )
@@ -5069,6 +5195,7 @@ class Game :
         label_t =self ._render_cached (self .font_tiny ,"Timeout (secondi)",WHITE )
         rect =label_t .get_rect (midleft =(120 ,y +25 ))
         self .screen .blit (label_t ,rect )
+        self ._tooltip_add ("timeout","Timeout (secondi)",rect )
         focused =self .options_cursor ==3
         minus_rect =pygame .Rect (sx ,y ,lw ,51 )
         plus_rect =pygame .Rect (sx +lw +vw ,y ,rw ,51 )
@@ -5101,9 +5228,11 @@ class Game :
         conf_txt =self ._render_cached (self .font_tiny ,"CONFERMA",WHITE )
         rect_c =conf_txt .get_rect (center =(CANVAS_WIDTH //2 ,y_conf +34 ))
         self .screen .blit (conf_txt ,rect_c )
+        self ._tooltip_end (mx ,my )
 
     def draw_config (self ):
         mx ,my =self ._mouse_pos ()
+        self ._tooltip_begin ()
         overlay =self ._overlay
         overlay .set_alpha (200 )
         overlay .fill (BG_DARK )
@@ -5138,6 +5267,7 @@ class Game :
         label_op =self ._render_cached (self .font_tiny ,"Operazione",WHITE )
         rect =label_op .get_rect (midleft =(120 ,y +25 ))
         self .screen .blit (label_op ,rect )
+        self ._tooltip_add ("operazione","Operazione",rect )
         opzioni_op =["Moltiplicazione","Addizione","Sottrazione","Divisione"]
         grid_w =10 *115 +9 *10
         btn_w =290
@@ -5166,6 +5296,7 @@ class Game :
             label =self ._render_cached (self .font_tiny ,labels [ri ],WHITE )
             rect =label .get_rect (midleft =(120 ,y_base +25 ))
             self .screen .blit (label ,rect )
+            self ._tooltip_add ("pool_a"if ri ==0 else "pool_b",labels [ri ],rect )
 
             items =20
             subrows =(items +cols_u -1 )//cols_u 
@@ -5204,6 +5335,7 @@ class Game :
         label_rm =self ._render_cached (self .font_tiny ,"Risultato Minimo",WHITE )
         rect =label_rm .get_rect (midleft =(120 ,y +25 ))
         self .screen .blit (label_rm ,rect )
+        self ._tooltip_add ("risultato_minimo","Risultato Minimo",rect )
         sx_min =540
         minus_rect_min =pygame .Rect (sx_min ,y ,lw ,51 )
         plus_rect_min =pygame .Rect (sx_min +lw +vw ,y ,rw ,51 )
@@ -5226,6 +5358,7 @@ class Game :
         label_rma =self ._render_cached (self .font_tiny ,"Risultato Massimo",WHITE )
         rect =label_rma .get_rect (midleft =(1020 ,y +25 ))
         self .screen .blit (label_rma ,rect )
+        self ._tooltip_add ("risultato_massimo","Risultato Massimo",rect )
         sx_max =1400
         minus_rect_max =pygame .Rect (sx_max ,y ,lw ,51 )
         plus_rect_max =pygame .Rect (sx_max +lw +vw ,y ,rw ,51 )
@@ -5250,6 +5383,7 @@ class Game :
             label_p =self ._render_cached (self .font_tiny ,"Prestito (%)",WHITE )
             rect =label_p .get_rect (midleft =(120 ,y +25 ))
             self .screen .blit (label_p ,rect )
+            self ._tooltip_add ("prestito","Prestito (%)",rect )
             lw ,vw ,rw =45 ,60 ,45
             px =540
             minus_rect_p =pygame .Rect (px ,y ,lw ,51 )
@@ -5274,6 +5408,7 @@ class Game :
             label_r =self ._render_cached (self .font_tiny ,"Risultato intero",WHITE )
             rect =label_r .get_rect (midleft =(120 ,y +25 ))
             self .screen .blit (label_r ,rect )
+            self ._tooltip_add ("risultato_intero","Risultato intero",rect )
             toggle_rect =pygame .Rect (540 ,y ,279 ,54 )
             pygame .draw .rect (self .screen ,locked_bg ,toggle_rect ,border_radius =9 )
             ri_txt ="ON (sempre)"
@@ -5284,6 +5419,7 @@ class Game :
             label_rp =self ._render_cached (self .font_tiny ,"Riporto (%)",WHITE )
             rect =label_rp .get_rect (midleft =(120 ,y +25 ))
             self .screen .blit (label_rp ,rect )
+            self ._tooltip_add ("riporto","Riporto (%)",rect )
             rx =540
             minus_rect =pygame .Rect (rx ,y ,lw ,51 )
             plus_rect =pygame .Rect (rx +lw +vw ,y ,rw ,51 )
@@ -5308,6 +5444,7 @@ class Game :
         label_q =self ._render_cached (self .font_tiny ,"Domande",WHITE )
         rect =label_q .get_rect (midleft =(120 ,y +25 ))
         self .screen .blit (label_q ,rect )
+        self ._tooltip_add ("domande","Domande",rect )
         qx =540 
         lw ,vw ,rw =45 ,60 ,45 
         minus_rect =pygame .Rect (qx ,y ,lw ,51 )
@@ -5349,6 +5486,7 @@ class Game :
         swap_label =self ._render_cached (self .font_tiny ,"Commuta A/B",WHITE )
         rect_sl =swap_label .get_rect (midleft =(120 ,y +27 ))
         self .screen .blit (swap_label ,rect_sl )
+        self ._tooltip_add ("swap","Commuta A/B",rect_sl )
         swap_val =self ._render_cached (self .font_tiny ,sw_txt ,WHITE )
         rect_sv =swap_val .get_rect (center =(679 ,y +27 ))
         self .screen .blit (swap_val ,rect_sv )
@@ -5359,6 +5497,7 @@ class Game :
         label_t =self ._render_cached (self .font_tiny ,"Timeout (secondi)",WHITE )
         rect =label_t .get_rect (midleft =(120 ,y +25 ))
         self .screen .blit (label_t ,rect )
+        self ._tooltip_add ("timeout","Timeout (secondi)",rect )
         tx =540 
         lw ,vw ,rw =45 ,60 ,45 
         minus_rect =pygame .Rect (tx ,y ,lw ,51 )
@@ -5391,9 +5530,11 @@ class Game :
         start_txt =self ._render_cached (self .font_tiny ,"CONFERMA",WHITE )
         rect_s =start_txt .get_rect (center =(CANVAS_WIDTH //2 ,y +34 ))
         self .screen .blit (start_txt ,rect_s )
+        self ._tooltip_end (mx ,my )
 
     def draw_config_plus (self ):
         mx ,my =self ._mouse_pos ()
+        self ._tooltip_begin ()
         overlay =self ._overlay
         overlay .set_alpha (200 )
         overlay .fill (BG_DARK )
@@ -5410,22 +5551,22 @@ class Game :
             show_btns =self .config_plus_mixed_operations
             row2_y =520 if show_c else 375
             rows =[
-            (225 ,"Operando Mancante",bool (self .config_plus_missing_operand ),0 ),
-            (300 ,"Tre Operandi",bool (self .config_plus_three_operands ),1 ),
-            (row2_y ,"Operazioni Miste",bool (self .config_plus_mixed_operations ),2 ),
+            (225 ,"Operando Mancante",bool (self .config_plus_missing_operand ),0 ,"missing_operand" ),
+            (300 ,"Tre Operandi",bool (self .config_plus_three_operands ),1 ,"three_operands" ),
+            (row2_y ,"Operazioni Miste",bool (self .config_plus_mixed_operations ),2 ,"mixed_ops" ),
             ]
         else :
             show_c =self .config_plus_three_operands
             show_btns =False
             row2_y =None
             rows =[
-            (340 ,"Operando Mancante",bool (self .config_plus_missing_operand ),0 ),
-            (490 ,"Tre Operandi",bool (self .config_plus_three_operands ),1 ),
+            (340 ,"Operando Mancante",bool (self .config_plus_missing_operand ),0 ,"missing_operand" ),
+            (490 ,"Tre Operandi",bool (self .config_plus_three_operands ),1 ,"three_operands" ),
             ]
         self .plus_toggle_rect =None
         self .plus_toggle_rect3 =None
         self .plus_toggle_rect_mixed =None
-        for y_tog ,label ,on ,idx in rows :
+        for y_tog ,label ,on ,idx ,tip_key in rows :
             toggle_rect =pygame .Rect (540 ,y_tog ,279 ,54 )
             if idx ==0 :
                 self .plus_toggle_rect =toggle_rect
@@ -5445,6 +5586,7 @@ class Game :
             lbl_tog =self ._render_cached (self .font_tiny ,label ,WHITE )
             rect_l =lbl_tog .get_rect (midleft =(120 ,y_tog +27 ))
             self .screen .blit (lbl_tog ,rect_l )
+            self ._tooltip_add (tip_key ,label ,rect_l )
             val_txt ="ON"if on else "OFF"
             val_surf =self ._render_cached (self .font_tiny ,val_txt ,WHITE )
             rect_v =val_surf .get_rect (center =(679 ,y_tog +27 ))
@@ -5457,6 +5599,7 @@ class Game :
                 label_c =self ._render_cached (self .font_tiny ,"Operando C",WHITE )
                 rect =label_c .get_rect (midleft =(120 ,y_pool_c +25 ))
                 self .screen .blit (label_c ,rect )
+                self ._tooltip_add ("pool_c","Operando C",rect )
                 multiplication =self .config_operation =="moltiplicazione"
                 items =20
                 cols_u =10
@@ -5524,9 +5667,11 @@ class Game :
         conf_txt =self ._render_cached (self .font_tiny ,"CONFERMA",WHITE )
         rect_c =conf_txt .get_rect (center =(CANVAS_WIDTH //2 ,y_conf +34 ))
         self .screen .blit (conf_txt ,rect_c )
+        self ._tooltip_end (mx ,my )
 
     def draw_challenge_config (self ):
         mx ,my =self ._mouse_pos ()
+        self ._tooltip_begin ()
         overlay =self ._overlay
         overlay .set_alpha (200 )
         overlay .fill (BG_DARK )
@@ -5547,9 +5692,10 @@ class Game :
         op_nomi =["Moltiplicazione","Addizione","Sottrazione","Divisione"]
         ops =["moltiplicazione","addizione","sottrazione","divisione"]
         y_op =340
-        lbl =self ._render_cached (self .font_medium ,"Operazione",WHITE )
+        lbl =self ._render_cached (self .font_tiny ,"Operazione",WHITE )
         rect =lbl .get_rect (midleft =(120 ,y_op +31 ))
         self .screen .blit (lbl ,rect )
+        self ._tooltip_add ("operazione","Operazione",rect )
         self .challenge_op_buttons =[]
         btn_w =295
         for i ,nome in enumerate (op_nomi ):
@@ -5566,9 +5712,10 @@ class Game :
             self .screen .blit (txt ,txt .get_rect (center =(sx +btn_w //2 ,y_op +31 )))
 
         y_tot =470
-        lbl =self ._render_cached (self .font_medium ,"Domande",WHITE )
+        lbl =self ._render_cached (self .font_tiny ,"Domande",WHITE )
         rect =lbl .get_rect (midleft =(120 ,y_tot +31 ))
         self .screen .blit (lbl ,rect )
+        self ._tooltip_add ("sfida_domande","Domande",rect )
         self .challenge_total_buttons =[]
         for i ,value in enumerate (CHALLENGE_TOTAL_OPTIONS ):
             sx =540 +i *(btn_w +20 )
@@ -5594,6 +5741,7 @@ class Game :
         conf_txt =self ._render_cached (self .font_tiny ,"CONFERMA",WHITE )
         self .screen .blit (conf_txt ,conf_txt .get_rect (center =(CANVAS_WIDTH //2 ,y_conf +34 )))
         self .challenge_confirm_rect =conf_rect 
+        self ._tooltip_end (mx ,my )
 
     def draw_leaderboard (self ):
         mx ,my =self ._mouse_pos ()
@@ -6761,7 +6909,6 @@ class Game :
         return list (reversed (ultime [-6 :]))
 
     def run (self ):
-        animated_states =("splash","profile_select","game","story","player_exit","loading","options","options_auto","config_fixed","celebration","challenge_config","challenge_result","leaderboard")
         while self .running :
             events =pygame .event .get ()
             for event in events :
@@ -6769,7 +6916,7 @@ class Game :
                     self .running =False 
                 else :
                     self .handle_input (event )
-            if events or self .state in animated_states or self .music_crossfade_target is not None or getattr (self ,'_opts_hold',None )is not None :
+            if events or self .state in ANIMATED_STATES or self .music_crossfade_target is not None or getattr (self ,'_opts_hold',None )is not None :
                 self .update ()
                 self .draw ()
                 self .clock .tick (FPS )
