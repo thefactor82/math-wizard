@@ -332,3 +332,93 @@ def test_mixed_triple_b_from_higher_precedence_pool():
         ok += 1
         assert b == pool_b_by_op[owner][0], (a, op1, b, op2, c, owner, fb)
     assert ok > 0
+
+
+def test_challenge_difficulty_step_depends_on_total():
+    assert MODULE.challenge_difficulty_step(50) == 1
+    assert MODULE.challenge_difficulty_step(100) == 2
+
+
+def test_challenge_level_index_ramps_and_clamps():
+    assert MODULE.challenge_level_index(0, 50, 50) == 0
+    assert MODULE.challenge_level_index(1, 50, 50) == 1
+    assert MODULE.challenge_level_index(49, 50, 50) == 49
+    assert MODULE.challenge_level_index(0, 100, 50) == 0
+    assert MODULE.challenge_level_index(1, 100, 50) == 0
+    assert MODULE.challenge_level_index(2, 100, 50) == 1
+    assert MODULE.challenge_level_index(98, 100, 50) == 49
+    assert MODULE.challenge_level_index(80, 50, 45) == 44
+    assert MODULE.challenge_level_index(10, 100, 45) == 5
+    assert MODULE.challenge_level_index(0, 50, 0) == 0
+
+
+def test_challenge_report_payload_fields():
+    payload = MODULE.build_challenge_report(
+        "Luca", "abc123", "M", "addizione", 50, 45, 5, 3.14159, 157.07963, "1.4.6",
+        created_at="2026-01-02T03:04:05",
+    )
+    assert payload == {
+        "created_at": "2026-01-02T03:04:05",
+        "name": "Luca",
+        "uuid": "abc123",
+        "character": "M",
+        "operation": "addizione",
+        "questions_total": 50,
+        "correct": 45,
+        "wrong": 5,
+        "average_time": 3.14,
+        "total_time": 157.08,
+        "version": "1.4.6",
+    }
+
+
+def test_post_challenge_report_without_url_is_graceful():
+    ok, message = MODULE.post_challenge_report("", {"name": "x"})
+    assert ok is False
+    assert "non configurata" in message
+
+
+def test_challenge_constants_match_spec():
+    assert MODULE.CHALLENGE_TIMEOUT == 12
+    assert MODULE.CHALLENGE_TOTAL_OPTIONS == (50, 100)
+    assert MODULE.WIZARD_LIVES == 3
+
+
+def _challenge_game(operation, total=50):
+    game = MODULE.Game()
+    game.current_profile = "TestSfida"
+    game.plus_unlocked = True
+    game.challenge_operation = operation
+    game.challenge_total = total
+    game.start_challenge()
+    game.state = MODULE.GAME_STATE_GAME
+    game.start_level()
+    game.character_entry = False
+    if game.level_scene_before:
+        game.start_scene(game.level_scene_before, "question")
+        game.finish_scene()
+    else:
+        game.new_question()
+    return game
+
+
+def test_challenge_fallback_does_not_use_fixed_only_attributes():
+    # il fallback per operands ripetuti deve usare i pool del livello Sfida,
+    # non gli attributi che esistono solo in modalita' fixed (max_sum, pool_a)
+    for operation in ("moltiplicazione", "addizione", "sottrazione", "divisione"):
+        game = _challenge_game(operation)
+        assert not hasattr(game, "max_sum"), operation
+        for _ in range(8):
+            if game.lives <= 0:
+                break
+            game.prev_a, game.prev_b, game.prev_c = game.a, game.b, game.c
+            game._from_queue = False
+            game._prev_from_queue = False
+            game.questions_asked += 1
+            game.new_question()
+            assert game.a is not None and game.b is not None, operation
+            if operation == "sottrazione":
+                assert game.a >= game.b, (game.a, game.b)
+            assert game.expected_result == MODULE.calculate_result(
+                game.a, game.b, operation, game.integer_result
+            ), (game.a, game.b, game.expected_result)

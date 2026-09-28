@@ -83,6 +83,7 @@ jobs:
           test -x dist/MathWizard.app/Contents/MacOS/MathWizard
           find dist/MathWizard.app -path '*/data/story.json' | grep -q . || { echo "manca data/story.json nel bundle"; exit 1; }
           find dist/MathWizard.app -path '*/data/levels.json' | grep -q . || { echo "manca data/levels.json nel bundle"; exit 1; }
+          find dist/MathWizard.app -path '*/data/challenge.json' | grep -q . || { echo "manca data/challenge.json nel bundle"; exit 1; }
           find dist/MathWizard.app -type d -path '*/fonts' | grep -q . || { echo "mancano fonts nel bundle"; exit 1; }
           find dist/MathWizard.app -type d -path '*/music' | grep -q . || { echo "manca music nel bundle"; exit 1; }
           codesign --verify --deep --strict dist/MathWizard.app

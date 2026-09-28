@@ -1,0 +1,75 @@
+[
+  {
+    "monsters": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+    ],
+    "flying": [
+      9,
+      10,
+      11
+    ],
+    "player_in": "sx",
+    "player_out": "dx",
+    "player_entrance": "y",
+    "monster_in": "dx",
+    "scenes": [
+      {
+        "when": "before",
+        "npcs": [
+          {
+            "id": "re",
+            "sheet": "king",
+            "pos": "right",
+            "in": "dx",
+            "out": "dx",
+            "y_off": 0
+          }
+        ],
+        "dialogues": [
+          {
+            "who": "re",
+            "frame": 0,
+            "text": "Ecco -il-la- nostr-o-a- coraggios-o-a- ero-e-ina-! Bentrovat-o-a-, NOMEPROFILOINUSO!"
+          },
+          {
+            "who": "re",
+            "frame": 1,
+            "text": "Vedo con piacere che hai scelto di affrontare questa SFIDA!"
+          },
+          {
+            "who": "re",
+            "frame": 2,
+            "text": "Arriveranno un sacco di Hop!"
+          },
+          {
+            "who": "re",
+            "frame": 0,
+            "text": "Ma so già che non ti lascerai sopraffare!"
+          },
+          {
+            "who": "re",
+            "frame": 1,
+            "text": "Una volta sconfitti, potrai decidere se pubblicare online il tuo risultato!"
+          },
+          {
+            "who": "re",
+            "frame": 1,
+            "text": "In questo modo potrai confrontarti con altri eroi come te. Buon combattimento! E che -il-la- migliore salga in cima alla classifica!"
+          }
+        ]
+      }
+    ],
+    "type": "level",
+    "background": "arena"
+  }
+]

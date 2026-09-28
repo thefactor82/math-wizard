@@ -49,6 +49,12 @@ PROFILES_DIR =resolve_profiles_dir ()
 
 WIZARD_LIVES =3 
 DEFAULT_TIMEOUT =12 
+CHALLENGE_TIMEOUT =12
+CHALLENGE_TOTAL_OPTIONS =(50 ,100 )
+CHALLENGE_OPERATION_SYMBOLS ={"addizione":"+","sottrazione":"-","moltiplicazione":"\u00d7","divisione":":"}
+LEADERBOARD_VISIBLE_ROWS =10
+CHALLENGE_LEADERBOARD_URL ="https://wqzeqsryoezralkbyfed.supabase.co/rest/v1/challenge_scores" 
+CHALLENGE_LEADERBOARD_ANON_KEY ="sb_publishable_NgdMeZ80IMnuUydE-2WzSQ_Z4khBqiU" 
 CANVAS_WIDTH =1920 
 CANVAS_HEIGHT =1080 
 WINDOWED_SIZES ={"1920x1080":(1920 ,1080 ),"1280x720":(1280 ,720 )}
@@ -116,6 +122,9 @@ GAME_STATE_STORY ="story"
 GAME_STATE_LOADING ="loading"
 GAME_STATE_TUTORIAL_PROMPT ="tutorial_prompt"
 GAME_STATE_CELEBRATION ="celebration"
+GAME_STATE_CHALLENGE_CONFIG ="challenge_config"
+GAME_STATE_CHALLENGE_RESULT ="challenge_result"
+GAME_STATE_LEADERBOARD ="leaderboard"
 
 
 def normalize_game_state (value ):
@@ -310,6 +319,101 @@ def format_total_time (seconds ):
     if total <60 :
         return f"{total }s"
     return f"{total //60 }m {total %60 }s"
+
+
+def new_profile_uuid ():
+    return os .urandom (16 ).hex ()
+
+
+def challenge_difficulty_step (total_questions ):
+    if total_questions <=CHALLENGE_TOTAL_OPTIONS [0]:
+        return 1 
+    return 2 
+
+
+def challenge_level_index (questions_asked ,total_questions ,levels_count ):
+    if levels_count <=0 :
+        return 0 
+    step =challenge_difficulty_step (total_questions )
+    return min (questions_asked //step ,levels_count -1 )
+
+
+def build_challenge_report (name ,profile_uuid ,character ,operation ,total_questions ,correct ,wrong ,average_time ,total_time ,version ,created_at =None ):
+    return {
+    "created_at":created_at or datetime .now ().isoformat (timespec ="seconds") ,
+    "name":name ,
+    "uuid":profile_uuid ,
+    "character":character ,
+    "operation":operation ,
+    "questions_total":int (total_questions ) ,
+    "correct":int (correct ) ,
+    "wrong":int (wrong ) ,
+    "average_time":round (float (average_time ) ,2 ) ,
+    "total_time":round (float (total_time ) ,2 ) ,
+    "version":version ,
+    }
+
+
+def post_challenge_report (url ,payload ,anon_key =CHALLENGE_LEADERBOARD_ANON_KEY ,timeout =10 ):
+    if not url :
+        return False ,"Leaderboard non configurata" 
+    body =json .dumps (payload ).encode ("utf-8")
+    headers ={"Content-Type":"application/json","Prefer":"return=minimal"}
+    if anon_key :
+        headers ["apikey"]=anon_key 
+        headers ["Authorization"]=f"Bearer {anon_key }"
+    req =urllib .request .Request (url ,data =body ,headers =headers ,method ="POST")
+    try :
+        with urllib .request .urlopen (req ,timeout =timeout )as resp :
+            if 200 <=resp .status <300 :
+                return True ,"Risultato pubblicato" 
+            return False ,f"Errore server ({resp .status })"
+    except urllib .error .HTTPError as e :
+        return False ,f"Errore server ({e .code })"
+    except Exception as e :
+        return False ,f"Invio non riuscito: {e }"
+
+
+def fetch_challenge_leaderboard (url ,anon_key =CHALLENGE_LEADERBOARD_ANON_KEY ,questions_total =50 ,limit =1000 ,timeout =10 ):
+    if not url :
+        return False ,"Leaderboard non configurata"
+    base =url .rstrip ("/")
+    q =urllib .parse .urlencode ({"select":"*","questions_total":f"eq.{questions_total }","order":"correct.desc,total_time.asc","limit":limit })
+    full =f"{base }?{q }"
+    headers ={}
+    if anon_key :
+        headers ["apikey"]=anon_key
+        headers ["Authorization"]=f"Bearer {anon_key }"
+    req =urllib .request .Request (full ,headers =headers ,method ="GET")
+    try :
+        with urllib .request .urlopen (req ,timeout =timeout )as resp :
+            if 200 <=resp .status <300 :
+                data =json .loads (resp .read ().decode ("utf-8"))
+                return True ,data if isinstance (data ,list )else []
+            return False ,f"Errore server ({resp .status })"
+    except urllib .error .HTTPError as e :
+        return False ,f"Errore server ({e .code })"
+    except Exception as e :
+        return False ,f"Lettura non riuscita: {e }"
+
+
+def dedupe_challenge_rows (rows ):
+    best ={}
+    for r in rows :
+        uid =str (r .get ("uuid")or "")
+        if not uid :
+            continue
+        cur =best .get (uid )
+        if cur is None :
+            best [uid ]=r
+            continue
+        rk =(r .get ("correct",0 ),-r .get ("total_time",0 ))
+        ck =(cur .get ("correct",0 ),-cur .get ("total_time",0 ))
+        if rk >ck :
+            best [uid ]=r
+    out =list (best .values ())
+    out .sort (key=lambda r :(-r .get ("correct",0 ),r .get ("total_time",0 ),r .get ("name","")))
+    return out
 
 
 def calculate_result (a ,b ,operation ,integer_result =True ):
@@ -1317,7 +1421,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if normalize_story_entry (e ) .get ("type")=="level")
 
-        self .version ="1.4.6"
+        self .version ="1.5.0"
 
         self .profiles =[]
         self .current_profile =""
@@ -1380,8 +1484,9 @@ class Game :
         self .config_plus_three_operands =False
         self .config_plus_mixed_operations =False
         self .config_plus_mixed_ops ={"moltiplicazione":False ,"addizione":False ,"sottrazione":False ,"divisione":False }
-        self .music_volume =20
-        self .sfx_volume =50
+        self .music_volume =20 
+        self .sfx_volume =50 
+        self .profile_uuid =new_profile_uuid ()
 
     def save_profiles (self ):
         path =os .path .join (PROFILES_DIR ,"profiles.json")
@@ -1448,6 +1553,7 @@ class Game :
         "window_mode":self .window_mode ,
         "music_volume":self .music_volume ,
         "effects_volume":self .sfx_volume ,
+        "uuid":self .profile_uuid ,
         }
         for op in ["moltiplicazione","addizione","sottrazione","divisione"]:
             canonical =normalize_operation_name (op )
@@ -1584,6 +1690,9 @@ class Game :
                 if not self .story_completed [op ]and self .story_progress .get (op ,0 )>=self .num_story_levels :
                     self .story_completed [op ]=True 
             self .plus_unlocked =bool (data .get ("plus_unlocked",False ))
+            saved_uuid =data .get ("uuid")
+            if isinstance (saved_uuid ,str )and saved_uuid .strip ():
+                self .profile_uuid =saved_uuid .strip ()
             self .config_plus_missing_operand =bool (data .get ("plus_missing_operand",data .get ("plus_operando_mancante",False )))
             self .config_plus_three_operands =bool (data .get ("plus_three_operands",data .get ("plus_tre_operandi",False )))
             self .config_plus_mixed_operations =bool (data .get ("plus_mixed_operations",False ))
@@ -1738,6 +1847,27 @@ class Game :
         self .reinforcement_queue =deque ()
         self .stats ={}
 
+        self .challenge_operation =legacy_operation_name (self .config_story_operation )
+        self .challenge_total =CHALLENGE_TOTAL_OPTIONS [0]
+        self .challenge_cursor =0
+        self .challenge_publish =False
+        self .challenge_uploading =False
+        self .challenge_upload_message =""
+        self .challenge_report =None
+        self .challenge_op_buttons =[]
+        self .challenge_total_buttons =[]
+        self .challenge_confirm_rect =None
+        self .challenge_yes_rect =None
+        self .challenge_no_rect =None
+
+        self .leaderboard_total =CHALLENGE_TOTAL_OPTIONS [0]
+        self .leaderboard_bg =None
+        self .leaderboard_rows =[]
+        self .leaderboard_loading =False
+        self .leaderboard_error =""
+        self .leaderboard_scroll =0
+        self .player_exit_to_menu =False
+
     def show_config (self ):
         self .set_state (GAME_STATE_CONFIG_FIXED ,reset_scene =True )
         self .config =self .config_by_operation [self .config_operation ]
@@ -1753,10 +1883,10 @@ class Game :
             self .start_game ()
 
     def _plus_three_active (self ):
-        return self .config_plus_three_operands and not self .tutorial_active
+        return self .config_plus_three_operands and not self .tutorial_active and self .mode !="challenge"
 
     def _mixed_active (self ):
-        return self .mode =="fixed"and self .config_plus_mixed_operations and not self .tutorial_active
+        return self .mode =="fixed"and self .config_plus_mixed_operations and not self .tutorial_active 
 
     def _enabled_mixed_ops (self ):
         if not self .config_plus_mixed_operations :
@@ -1765,7 +1895,7 @@ class Game :
         return [op for op in ["moltiplicazione","addizione","sottrazione","divisione"]if self .config_plus_mixed_ops .get (op )or op ==base ]or [base ]
 
     def _apply_missing_operand (self ):
-        if self .config_plus_missing_operand and not self .tutorial_active :
+        if self .config_plus_missing_operand and not self .tutorial_active and self .mode !="challenge":
             if self ._plus_three_active ():
                 self .missing_operand =random .choice (["a","b","c"])
                 self .expected_result =(self .a if self .missing_operand =="a"else self .b if self .missing_operand =="b"else self .c )
@@ -1774,6 +1904,175 @@ class Game :
                 self .expected_result =self .a if self .missing_operand =="a"else self .b 
         else :
             self .missing_operand =None 
+
+    def challenge_available (self ):
+        return bool (self .plus_unlocked )
+
+    def show_challenge_config (self ):
+        if not self .challenge_available ():
+            return 
+        self .challenge_cursor =0 
+        self .challenge_publish =False 
+        self .challenge_uploading =False 
+        self .challenge_upload_message ="" 
+        self .set_state (GAME_STATE_CHALLENGE_CONFIG ,reset_scene =True )
+
+    def cycle_challenge_operation (self ,step ):
+        ops =["moltiplicazione","addizione","sottrazione","divisione"]
+        idx =ops .index (self .challenge_operation )if self .challenge_operation in ops else 0 
+        self .challenge_operation =ops [(idx +step )%len (ops )]
+
+    def cycle_challenge_total (self ,step ):
+        opts =list (CHALLENGE_TOTAL_OPTIONS )
+        try :
+            idx =opts .index (self .challenge_total )
+        except ValueError :
+            idx =0 
+        self .challenge_total =opts [(idx +step )%len (opts )]
+
+    def start_challenge (self ):
+        entries =[]
+        for src in (data_path ,resource_path ):
+            path =src ("data/challenge.json")
+            if os .path .exists (path ):
+                loaded =load_json_file (path )
+                if isinstance (loaded ,list )and loaded :
+                    entries =loaded 
+                    break
+        if not entries :
+            entries =[{"type":"level","background":"arena","monsters":list (range (1 ,12 )),"flying":[9 ,10 ,11 ]}]
+        chosen_operation =self .challenge_operation 
+        chosen_total =self .challenge_total 
+        self .reset_game_state ()
+        self .mode ="challenge" 
+        self .challenge_operation =chosen_operation 
+        if chosen_total not in CHALLENGE_TOTAL_OPTIONS :
+            chosen_total =CHALLENGE_TOTAL_OPTIONS [0]
+        self .challenge_total =chosen_total 
+        self .challenge_publish =False 
+        self .challenge_uploading =False 
+        self .challenge_upload_message ="" 
+        self .challenge_report =None 
+        self .config_story_operation =chosen_operation 
+        self .operation =chosen_operation 
+        self .config =self .config_by_operation .get (chosen_operation ,self .config )
+        self .integer_result =True if chosen_operation =="divisione"else self .config .get ("risultato_intero",True )
+        self .levels =LEVELS .get (chosen_operation ,[])
+        self .difficulty_position =0 
+        self .level =0 
+        self .total_questions =chosen_total 
+        self .questions_per_level =chosen_total 
+        self .timeout_limit =CHALLENGE_TIMEOUT 
+        self .initial_timeout_limit =CHALLENGE_TIMEOUT 
+        self .lives =WIZARD_LIVES 
+        self .game_over =False 
+        self .is_correct =0 
+        self .questions_asked =0 
+        self .question_active =False 
+        self .feedback =None 
+        self .wait_for_enter =False 
+        self .consecutive_correct =0 
+        self .heart_reward_active =False 
+        self .heart_reward_start =0 
+        self .answer_times =[]
+        self .monster_times =[]
+        self .boss_times =[]
+        self .stats ={}
+        self .wrong_questions =[]
+        self .current_block =[]
+        self .reinforcement_queue .clear ()
+        self .story_entries =entries 
+        self .num_story_levels =sum (1 for e in entries if normalize_story_entry (e ) .get ("type")=="level")
+        self .story_idx =0 
+        self .story_is_level =False 
+        self .scene_phase =None 
+        self .scene_data =None 
+        self .scene_npcs =[]
+        self .scene_on_complete =None 
+        self .level_scene_before =None 
+        self .level_scene_after =None 
+        self .level_is_scene =False 
+        self .story_monsters =list (range (1 ,12 ))
+        self .story_flying_monsters =[]
+        self .return_to_game =False 
+        self .player_exit_retry =False 
+        self .story_fade_alpha =255 
+        self .story_fade_color =(0 ,0 ,0 )
+        self .game_bg =self .bg 
+        self .show_story ()
+
+    def challenge_level_data (self ):
+        return self .levels [challenge_level_index (self .questions_asked ,self .total_questions ,len (self .levels ))]
+
+    def challenge_report_payload (self ):
+        total_correct =sum (v ["corrette"]for v in self .stats .values ())
+        total_wrong =sum (v ["sbagliate"]for v in self .stats .values ())
+        average_time =sum (self .answer_times )/len (self .answer_times )if self .answer_times else 0 
+        return build_challenge_report (self .current_profile ,self .profile_uuid ,self .config_gender ,self .challenge_operation ,self .total_questions ,total_correct ,total_wrong ,average_time ,sum (self .answer_times ) ,self .version )
+
+    def upload_challenge_result (self ):
+        if self .challenge_uploading :
+            return 
+        self .challenge_report =self .challenge_report_payload ()
+        if not CHALLENGE_LEADERBOARD_URL :
+            self .challenge_publish =True 
+            self .challenge_upload_message ="Classifica online non configurata" 
+            print (f"Sfida: risultato non pubblicato ({self .challenge_upload_message })")
+            return 
+        self .challenge_publish =True 
+        self .challenge_uploading =True 
+        self .challenge_upload_message ="Pubblicazione in corso..." 
+        report =self .challenge_report 
+
+        def worker ():
+            ok ,message =post_challenge_report (CHALLENGE_LEADERBOARD_URL ,report )
+            self .challenge_uploading =False 
+            self .challenge_upload_message =message if ok else f"Pubblicazione non riuscita: {message }"
+            print (f"Sfida: {self .challenge_upload_message }")
+
+        threading .Thread (target =worker ,daemon =True ).start ()
+
+    def end_challenge (self ):
+        self .save_session ()
+        self .challenge_report =self .challenge_report_payload ()
+        self .challenge_publish =False 
+        self .challenge_uploading =False 
+        self .challenge_upload_message ="" 
+        self .set_state (GAME_STATE_CHALLENGE_RESULT ,reset_scene =True )
+
+    def show_leaderboard (self ,total =None ):
+        if total is not None :
+            if total not in CHALLENGE_TOTAL_OPTIONS :
+                total =CHALLENGE_TOTAL_OPTIONS [0]
+            self .leaderboard_total =total
+        self .leaderboard_scroll =0
+        self .leaderboard_rows =[]
+        self .leaderboard_error =""
+        self .leaderboard_loading =True
+        bg_path =resource_path ("graphics/misc/background_challenge.png")
+        if os .path .exists (bg_path ):
+            self .leaderboard_bg =safe_load_image (bg_path ,(CANVAS_WIDTH ,CANVAS_HEIGHT ),convert_alpha =False )
+        else :
+            self .leaderboard_bg =self ._get_bg ("arena")or self .bg
+        self .set_state (GAME_STATE_LEADERBOARD ,reset_scene =True )
+        total =self .leaderboard_total
+
+        def worker ():
+            ok ,result =fetch_challenge_leaderboard (CHALLENGE_LEADERBOARD_URL ,CHALLENGE_LEADERBOARD_ANON_KEY ,total )
+            if ok :
+                self .leaderboard_rows =dedupe_challenge_rows (result )
+            else :
+                self .leaderboard_error =result
+            self .leaderboard_loading =False
+
+        threading .Thread (target =worker ,daemon =True ).start ()
+
+    def _leaderboard_scroll (self ,delta ):
+        if not self .leaderboard_rows :
+            self .leaderboard_scroll =0
+            return
+        max_scroll =int ((len (self .leaderboard_rows )-LEADERBOARD_VISIBLE_ROWS ))if len (self .leaderboard_rows )>LEADERBOARD_VISIBLE_ROWS else 0
+        self .leaderboard_scroll =max (0 ,min (max_scroll ,self .leaderboard_scroll +delta ))
 
     def start_game (self ):
         self .set_state (GAME_STATE_GAME ,reset_scene =True )
@@ -2323,6 +2622,12 @@ class Game :
                 a ,b ,fb ,from_queue =select_operands (lv_data ["pool_a"],lv_data ["pool_b"],deque (),self .operation ,self .integer_result ,min_value =lv_data .get ("min_value"),max_value =lv_data .get ("max_value"),carry_prob =lv_data .get ("carry"),borrow_prob =lv_data .get ("borrow"))
                 if (a ,b )!=prev :
                     return a ,b ,fb
+        elif self .mode =="challenge":
+            lv_data =self .challenge_level_data ()
+            for _ in range (20 ):
+                a ,b ,fb ,from_queue =select_operands (lv_data ["pool_a"],lv_data ["pool_b"],deque (),self .operation ,self .integer_result ,min_value =lv_data .get ("min_value"),max_value =lv_data .get ("max_value"),carry_prob =lv_data .get ("carry"),borrow_prob =lv_data .get ("borrow"))
+                if (a ,b )!=prev :
+                    return a ,b ,fb
         else :
             for _ in range (20 ):
                 a ,b ,fb ,from_queue =select_operands (self .pool_a ,self .pool_b ,deque (),self .operation ,self .integer_result ,self .max_sum )
@@ -2409,7 +2714,20 @@ class Game :
             return 
 
         self .prev_a ,self .prev_b ,self .prev_c =self .a ,self .b ,self .c 
-        if self .mode =="auto":
+        if self .mode =="challenge":
+            if self .questions_asked >=self .total_questions :
+                self .end_challenge ()
+                return 
+            lv_data =self .challenge_level_data ()
+            self .operation =self .challenge_operation 
+            allow_queue =not self ._no_queue_next and not self ._prev_from_queue
+            self ._no_queue_next =False
+            self .a ,self .b ,self ._operands_fallback ,self ._from_queue =select_operands (lv_data ["pool_a"],lv_data ["pool_b"],self .reinforcement_queue if allow_queue else deque (),self .operation ,self .integer_result ,min_value =lv_data .get ("min_value"),max_value =lv_data .get ("max_value"),carry_prob =lv_data .get ("carry"),borrow_prob =lv_data .get ("borrow"))
+            if self .operation =="sottrazione"and self .a <self .b :
+                self .a ,self .b =self .b ,self .a 
+            self ._prev_from_queue =self ._from_queue
+            self .questions_asked +=1
+        elif self .mode =="auto":
             if self .questions_asked >=self .questions_per_level or (self .tutorial_active and self ._tutorial_passed ):
                 if self .boss_active :
                     lv =self .level 
@@ -2513,11 +2831,14 @@ class Game :
                         lv =self .effective_level ()
                         pool_a =self .levels [lv ]["pool_a"]
                         candidates =[n for n in pool_a if n !=self .a ]
+                    elif self .mode =="challenge":
+                        pool_a =self .challenge_level_data ()["pool_a"]
+                        candidates =[n for n in pool_a if n !=self .a ]
                     else :
                         candidates =[n for n in self .pool_a if n !=self .a ]
                     if candidates :
                         self .a =random .choice (candidates )
-                        self .b =random .choice (pool_a if self .mode =="auto"else self .pool_a )
+                        self .b =random .choice (pool_a if self .mode in ("auto","challenge")else self .pool_a )
                 else :
                     self .a ,self .b =self .b ,self .a 
                     if self .operation =="sottrazione":
@@ -2529,7 +2850,7 @@ class Game :
         else :
             self .expected_result =calculate_result3 (self .a ,self .b ,self .c ,self .operation ,self .integer_result )if three else calculate_result (self .a ,self .b ,self .operation ,self .integer_result )
         self ._apply_missing_operand ()
-        if self .mode =="auto":
+        if self .mode in ("auto","challenge"):
             wanted =self .story_monsters 
         else :
             wanted =self .training_monsters 
@@ -2541,7 +2862,7 @@ class Game :
             mostri_disponibili =[self .monsters [1 ]]
         scelto =random .choice ([m for m in mostri_disponibili if m is not self .previous_monster ])if len (mostri_disponibili )>1 else mostri_disponibili [0 ]
         self .previous_monster =scelto 
-        self .monster_type ="fly"if scelto ["idx"]in (self .story_flying_monsters if self .mode =="auto"else self .training_flying_monsters )else "walk"
+        self .monster_type ="fly"if scelto ["idx"]in (self .story_flying_monsters if self .mode in ("auto","challenge")else self .training_flying_monsters )else "walk"
         self .monster_y_offset =0 
         self .monster_frames =scelto ["frames"]
         self .monster_hit_img =scelto ["hit"]
@@ -2671,6 +2992,8 @@ class Game :
                     if self .menu_cursor ==0 :
                         self ._propose_initial_level ()
                         self .state =GAME_STATE_OPTIONS_AUTO
+                    elif self .menu_cursor ==2 :
+                        self .show_challenge_config ()
                     else :
                         self .show_config ()
                 elif event .key ==pygame .K_1 :
@@ -2678,6 +3001,8 @@ class Game :
                     self .state =GAME_STATE_OPTIONS_AUTO
                 elif event .key ==pygame .K_2 :
                     self .show_config ()
+                elif event .key ==pygame .K_3 :
+                    self .show_challenge_config ()
                 elif event .key ==pygame .K_o :
                     self .state =GAME_STATE_OPTIONS
                 elif event .key ==pygame .K_p :
@@ -2689,17 +3014,20 @@ class Game :
                 elif event .key ==pygame .K_ESCAPE :
                     self .running =False 
             elif self .state ==GAME_STATE_OPTIONS:
+                _ ,_ ,opt_idx =self ._options_layout ()
                 if event .key in (pygame .K_1 ,pygame .K_RETURN ):
-                    if self .options_cursor ==0 :
+                    if self .options_cursor ==opt_idx ["progress"]:
                         self .state =GAME_STATE_PROGRESS
-                    elif self .options_cursor ==1 :
+                    elif opt_idx ["classifica"]>=0 and self .options_cursor ==opt_idx ["classifica"]:
+                        self .show_leaderboard ()
+                    elif self .options_cursor ==opt_idx ["schermo"]:
                         self .fullscreen ,self .window_mode =self ._cycle_display_mode (True )
                         self ._apply_display_mode ()
                         self .setup_cursor ()
                         self .save_profile_config ()
-                    elif self .options_cursor ==4 :
+                    elif self .options_cursor ==opt_idx ["tutorial"]:
                         self .start_tutorial ()
-                    elif self .options_cursor ==5 :
+                    elif self .options_cursor ==opt_idx ["delete"]:
                         self .state =GAME_STATE_CONFIRM_DELETE
                 elif event .key ==pygame .K_2 :
                     self .fullscreen ,self .window_mode =self ._cycle_display_mode (True )
@@ -2710,15 +3038,18 @@ class Game :
                     self .start_tutorial ()
                 elif event .key ==pygame .K_5 :
                     self .state =GAME_STATE_CONFIRM_DELETE
+                elif event .key ==pygame .K_6 :
+                    if opt_idx ["classifica"]>=0 :
+                        self .show_leaderboard ()
                 elif event .key in (pygame .K_PLUS ,pygame .K_EQUALS ,pygame .K_KP_PLUS ):
-                    if self .options_cursor ==3 :
+                    if self .options_cursor ==opt_idx ["sfx"]:
                         self .sfx_volume =min (100 ,self .sfx_volume +5 )
                     else :
                         self .music_volume =min (100 ,self .music_volume +5 )
                         pygame .mixer .music .set_volume (self .music_volume /100 )
                     self .save_profile_config ()
                 elif event .key in (pygame .K_MINUS ,pygame .K_KP_MINUS ):
-                    if self .options_cursor ==3 :
+                    if self .options_cursor ==opt_idx ["sfx"]:
                         self .sfx_volume =max (0 ,self .sfx_volume -5 )
                     else :
                         self .music_volume =max (0 ,self .music_volume -5 )
@@ -2777,6 +3108,40 @@ class Game :
                     self .state =GAME_STATE_MENU
             elif self .state ==GAME_STATE_CONFIG_FIXED:
                 self .handle_config (event )
+            elif self .state ==GAME_STATE_CHALLENGE_CONFIG:
+                if event .key in (pygame .K_UP ,pygame .K_w ):
+                    self .challenge_cursor =(self .challenge_cursor -1 )%3
+                elif event .key in (pygame .K_DOWN ,pygame .K_s ):
+                    self .challenge_cursor =(self .challenge_cursor +1 )%3
+                elif event .key in (pygame .K_LEFT ,pygame .K_a ,pygame .K_MINUS ,pygame .K_KP_MINUS ):
+                    if self .challenge_cursor ==0 :
+                        self .cycle_challenge_operation (-1)
+                    else :
+                        self .cycle_challenge_total (-1)
+                elif event .key in (pygame .K_RIGHT ,pygame .K_d ,pygame .K_PLUS ,pygame .K_EQUALS ,pygame .K_KP_PLUS ):
+                    if self .challenge_cursor ==0 :
+                        self .cycle_challenge_operation (1)
+                    else :
+                        self .cycle_challenge_total (1)
+                elif event .key in (pygame .K_RETURN ,pygame .K_KP_ENTER ):
+                    self .start_challenge ()
+                elif event .key ==pygame .K_ESCAPE :
+                    self .state =GAME_STATE_MENU
+            elif self .state ==GAME_STATE_CHALLENGE_RESULT:
+                if event .key in (pygame .K_s ,pygame .K_RETURN ,pygame .K_KP_ENTER ):
+                    self .upload_challenge_result ()
+                self ._player_exit_to_menu ()
+            elif self .state ==GAME_STATE_LEADERBOARD:
+                if event .key in (pygame .K_UP ,pygame .K_w ):
+                    self ._leaderboard_scroll (-1 )
+                elif event .key in (pygame .K_DOWN ,pygame .K_s ):
+                    self ._leaderboard_scroll (1 )
+                elif event .key in (pygame .K_PAGEUP ,pygame .K_HOME ):
+                    self ._leaderboard_scroll (-10 )
+                elif event .key in (pygame .K_PAGEDOWN ,pygame .K_END ):
+                    self ._leaderboard_scroll (10 )
+                else :
+                    self .set_state (GAME_STATE_OPTIONS )
             elif self .state ==GAME_STATE_CONFIG_PLUS:
                 plus_cursor_max =4 if self .mode !="auto"else 3
                 if event .key in (pygame .K_UP ,pygame .K_w ):
@@ -2816,6 +3181,8 @@ class Game :
                     if event .key ==pygame .K_r :
                         if self .tutorial_active :
                             self .end_tutorial ()
+                        elif self .mode =="challenge":
+                            self .end_challenge ()
                         else :
                             self .start_game ()
                         return 
@@ -2834,9 +3201,16 @@ class Game :
                             self ._go_to_menu ()
                         return 
                 if event .key ==pygame .K_ESCAPE :
-                    self ._exit_to_menu ()
+                    if self .mode =="challenge":
+                        self .save_session ()
+                        self .state =GAME_STATE_MENU
+                    else :
+                        self ._exit_to_menu ()
                 elif self .wait_for_enter and event .key in (pygame .K_RETURN ,pygame .K_KP_ENTER ):
                     if self .game_over :
+                        if self .mode =="challenge":
+                            self .end_challenge ()
+                            return 
                         self .save_session ()
                         self .state =GAME_STATE_GAME_OVER
                     else :
@@ -2929,6 +3303,8 @@ class Game :
                         if i ==0 :
                             self ._propose_initial_level ()
                             self .state =GAME_STATE_OPTIONS_AUTO
+                        elif i ==2 :
+                            self .show_challenge_config ()
                         else :
                             self .show_config ()
                         return 
@@ -2997,18 +3373,21 @@ class Game :
                             self .state =GAME_STATE_TUTORIAL_PROMPT
                             break 
             elif self .state ==GAME_STATE_OPTIONS:
+                _ ,_ ,opt_idx =self ._options_layout ()
                 for idx ,hit in getattr (self ,'options_btn_rects',[ ]):
                     if hit .collidepoint (mx ,my ):
-                        if idx ==0 :
+                        if idx ==opt_idx ["progress"]:
                             self .state =GAME_STATE_PROGRESS
-                        elif idx ==1 :
+                        elif opt_idx ["classifica"]>=0 and idx ==opt_idx ["classifica"]:
+                            self .show_leaderboard ()
+                        elif idx ==opt_idx ["schermo"]:
                             self .fullscreen ,self .window_mode =self ._cycle_display_mode (True )
                             self ._apply_display_mode ()
                             self .setup_cursor ()
                             self .save_profile_config ()
-                        elif idx ==4 :
+                        elif idx ==opt_idx ["tutorial"]:
                             self .start_tutorial ()
-                        elif idx ==5 :
+                        elif idx ==opt_idx ["delete"]:
                             self .state =GAME_STATE_CONFIRM_DELETE
                         return
                 if getattr (self ,'opt_mus_minus',None )and self .opt_mus_minus .collidepoint (mx ,my ):
@@ -3124,6 +3503,48 @@ class Game :
                     print (f"config mouse error: {e }")
                     import traceback 
                     traceback .print_exc ()
+            elif self .state ==GAME_STATE_CHALLENGE_CONFIG:
+                if getattr (self ,'challenge_op_buttons',None ):
+                    ops =["moltiplicazione","addizione","sottrazione","divisione"]
+                    for i ,btn in enumerate (self .challenge_op_buttons ):
+                        if btn .collidepoint (mx ,my ):
+                            self .challenge_cursor =0 
+                            self .challenge_operation =ops [i ]
+                            return 
+                if getattr (self ,'challenge_total_buttons',None ):
+                    opts =list (CHALLENGE_TOTAL_OPTIONS )
+                    for i ,btn in enumerate (self .challenge_total_buttons ):
+                        if btn .collidepoint (mx ,my ):
+                            self .challenge_cursor =1 
+                            self .challenge_total =opts [i ]
+                            return 
+                if getattr (self ,'challenge_confirm_rect',None )and self .challenge_confirm_rect .collidepoint (mx ,my ):
+                    self .start_challenge ()
+                    return 
+            elif self .state ==GAME_STATE_CHALLENGE_RESULT:
+                if getattr (self ,'challenge_yes_rect',None )and self .challenge_yes_rect .collidepoint (mx ,my ):
+                    self .upload_challenge_result ()
+                    self ._player_exit_to_menu ()
+                    return
+                if getattr (self ,'challenge_no_rect',None )and self .challenge_no_rect .collidepoint (mx ,my ):
+                    self ._player_exit_to_menu ()
+                    return
+            elif self .state ==GAME_STATE_LEADERBOARD:
+                if getattr (event ,'button',None )==4 :
+                    self ._leaderboard_scroll (-1 )
+                    return
+                if getattr (event ,'button',None )==5 :
+                    self ._leaderboard_scroll (1 )
+                    return
+                if getattr (self ,'leaderboard_50_rect',None )and self .leaderboard_50_rect .collidepoint (mx ,my ):
+                    self .show_leaderboard (total =50 )
+                    return
+                if getattr (self ,'leaderboard_100_rect',None )and self .leaderboard_100_rect .collidepoint (mx ,my ):
+                    self .show_leaderboard (total =100 )
+                    return
+                if getattr (self ,'leaderboard_back_rect',None )and self .leaderboard_back_rect .collidepoint (mx ,my ):
+                    self .set_state (GAME_STATE_OPTIONS )
+                    return
             elif self .state ==GAME_STATE_CONFIG_PLUS:
                 if getattr (self ,'plus_toggle_rect',None )and self .plus_toggle_rect .collidepoint (mx ,my ):
                     self .config_plus_cursor =0
@@ -3547,7 +3968,7 @@ class Game :
         else :
             self .monster_times .append (elapsed_time )
 
-        level =0 if self .mode =="fixed"else self .level 
+        level =0 if self .mode in ("fixed","challenge")else self .level 
         self .stats .setdefault (level ,{"corrette":0 ,"sbagliate":0 ,"tempi":[]})
 
         text_value =self .input_utente .strip ()
@@ -3646,7 +4067,7 @@ class Game :
             self .boss_times .append (elapsed_time )
         else :
             self .monster_times .append (elapsed_time )
-        level =0 if self .mode =="fixed"else self .level 
+        level =0 if self .mode in ("fixed","challenge")else self .level 
         self .stats .setdefault (level ,{"corrette":0 ,"sbagliate":0 ,"tempi":[]})
         self .stats [level ]["sbagliate"]+=1 
         self .stats [level ]["tempi"].append (elapsed_time )
@@ -3762,6 +4183,10 @@ class Game :
         if self .state ==GAME_STATE_PLAYER_EXIT:
             elapsed =pygame .time .get_ticks ()-self .player_exit_start 
             if elapsed >=4000 :
+                if self .player_exit_to_menu :
+                    self .player_exit_to_menu =False
+                    self .state =GAME_STATE_MENU
+                    return 
                 if self .tutorial_active :
                     self .save_session ()
                     self .state =GAME_STATE_LEVEL_COMPLETE
@@ -3902,7 +4327,7 @@ class Game :
                         self .start_scene (self .level_scene_before ,"scena_end")
                     else :
                         self .end_scena ()
-                elif self .mode =="auto"and self .level_scene_before :
+                elif self .mode in ("auto","challenge")and self .level_scene_before :
                     self .start_scene (self .level_scene_before ,"question")
                 else :
                     self .new_question ()
@@ -3954,6 +4379,9 @@ class Game :
                 if not self .wait_for_enter :
                     if self .feedback is not None and pygame .time .get_ticks ()-self .feedback_timer >1500 :
                         if self .game_over :
+                            if self .mode =="challenge":
+                                self .end_challenge ()
+                                return 
                             self .save_session ()
                             self .state =GAME_STATE_GAME_OVER
                         else :
@@ -3993,6 +4421,9 @@ class Game :
                 return 
             if self .feedback is not None and pygame .time .get_ticks ()-self .feedback_timer >1500 :
                 if self .game_over :
+                    if self .mode =="challenge":
+                        self .end_challenge ()
+                        return 
                     self .save_session ()
                     self .state =GAME_STATE_GAME_OVER
                 else :
@@ -4016,9 +4447,13 @@ class Game :
             self .draw_story ()
         elif self .state ==GAME_STATE_LOADING:
             self .draw_loading ()
+        elif self .state ==GAME_STATE_LEADERBOARD:
+            self .draw_leaderboard ()
         else :
-            if self .state in (GAME_STATE_OPTIONS,GAME_STATE_OPTIONS_AUTO,GAME_STATE_CONFIG_FIXED,GAME_STATE_CONFIG_PLUS,GAME_STATE_CONFIRM_DELETE,GAME_STATE_PROGRESS):
+            if self .state in (GAME_STATE_OPTIONS,GAME_STATE_OPTIONS_AUTO,GAME_STATE_CONFIG_FIXED,GAME_STATE_CONFIG_PLUS,GAME_STATE_CONFIRM_DELETE,GAME_STATE_PROGRESS,GAME_STATE_CHALLENGE_CONFIG):
                 self .screen .blit (self .bg_options ,(0 ,0 ))
+            elif self .state in (GAME_STATE_CHALLENGE_RESULT,):
+                self .screen .blit (self .game_bg if getattr (self ,'game_bg',None )else self .bg_menu ,(0 ,0 ))
             else :
                 self .screen .blit (self .bg_menu ,(0 ,0 ))
             if self .state ==GAME_STATE_MENU:
@@ -4035,6 +4470,10 @@ class Game :
                 self .draw_config ()
             elif self .state ==GAME_STATE_CONFIG_PLUS:
                 self .draw_config_plus ()
+            elif self .state ==GAME_STATE_CHALLENGE_CONFIG:
+                self .draw_challenge_config ()
+            elif self .state ==GAME_STATE_CHALLENGE_RESULT:
+                self .draw_challenge_result ()
             elif self .state ==GAME_STATE_PROGRESS:
                 self .draw_progress ()
             elif self .state in (GAME_STATE_GAME,GAME_STATE_GAME_OVER):
@@ -4207,21 +4646,27 @@ class Game :
         opzioni =[
         ("Storia","Affronta un'avventura nel regno di Math, con incremento automatico della difficoltà."),
         ("Allenamento","Scegli le varie impostazioni per una sfida breve a difficoltà costante"),
+        ("Sfida","Sfida online: 50 o 100 domande a difficoltà crescente in 10 secondi."),
         ]
         self .menu_btn_rects =[ ]
         for i ,(tit ,desc )in enumerate (opzioni ):
             y =420 +i *150 
-            opt =self ._render_cached (self .font_medium ,tit ,WHITE )
+            bloccata =tit =="Sfida"and not self .challenge_available ()
+            opt =self ._render_cached (self .font_medium ,tit ,GRAY if bloccata else WHITE )
             rect =opt .get_rect (midleft =(CANVAS_WIDTH //2 -450 ,y ))
             hit =rect .inflate (30 ,15 )
             self .menu_btn_rects .append (hit )
-            if hit .collidepoint (mx ,my ):
+            if hit .collidepoint (mx ,my )and not bloccata :
                 self .menu_cursor =i 
                 opt =self ._render_cached (self .font_medium ,tit ,GOLD )
             self .screen .blit (opt ,rect )
             desc_surf =self ._render_cached (self .font_tiny ,desc ,GRAY )
             rect =desc_surf .get_rect (midleft =(CANVAS_WIDTH //2 -450 ,y +50 ))
             self .screen .blit (desc_surf ,rect )
+            if bloccata :
+                lock =self ._render_cached (self .font_tiny ,"Completa tutte le storie per sbloccare",GOLD )
+                rect =lock .get_rect (midleft =(CANVAS_WIDTH //2 +180 ,y ))
+                self .screen .blit (lock ,rect )
 
             # gear icon
         cx ,cy =CANVAS_WIDTH -67 ,67 
@@ -4270,6 +4715,18 @@ class Game :
         self .screen .blit (coffee_txt ,coffee_rect )
         self .coffee_menu_rect =coffee_rect .union (coffee_icon_rect )
 
+    def _options_layout (self ):
+        plus =bool (self .plus_unlocked )
+        schermo ="Schermo: " +("intero"if self .fullscreen else ("finestra " +self .window_mode ))
+        if plus :
+            voci =["Progressi","Classifica Online",schermo ,None ,None ,"Tutorial","Elimina profilo attuale"]
+            idx ={"progress":0 ,"classifica":1 ,"schermo":2 ,"mus":3 ,"sfx":4 ,"tutorial":5 ,"delete":6 }
+        else :
+            voci =["Progressi",schermo ,None ,None ,"Tutorial","Elimina profilo attuale"]
+            idx ={"progress":0 ,"classifica":-1 ,"schermo":1 ,"mus":2 ,"sfx":3 ,"tutorial":4 ,"delete":5 }
+        voci_y =[280 ,360 ,440 ,520 ,600 ,680 ,760 ][:len (voci )]
+        return voci ,voci_y ,idx
+
     def draw_options (self ):
         mx ,my =self ._mouse_pos ()
         overlay =self ._overlay
@@ -4281,14 +4738,13 @@ class Game :
         rect =title .get_rect (center =(CANVAS_WIDTH //2 ,120 ))
         self .screen .blit (title ,rect )
 
-        voci =["Progressi","Schermo: " +("intero"if self .fullscreen else ("finestra " +self .window_mode )),None ,None ,"Tutorial","Elimina profilo attuale"]
-        voci_y =[300 ,390 ,480 ,570 ,660 ,750 ]
+        voci ,voci_y ,opt_idx =self ._options_layout ()
         self .options_btn_rects =[ ]
         for i ,voce in enumerate (voci ):
             if voce is None :
                 continue
             y =voci_y [i ]
-            color =RED if i ==5 else WHITE
+            color =RED if i ==opt_idx ["delete"]else WHITE
             txt =self ._render_cached (self .font_medium ,voce ,color )
             rect =txt .get_rect (center =(CANVAS_WIDTH //2 ,y +31 ))
             hit =rect .inflate (30 ,15 )
@@ -4298,7 +4754,7 @@ class Game :
                 txt =self ._render_cached (self .font_medium ,voce ,GOLD )
             self .screen .blit (txt ,rect )
 
-        mus_y =voci_y [2 ]
+        mus_y =voci_y [opt_idx ["mus"]]
         mus_lbl =self ._render_cached (self .font_medium ,"Musica:",WHITE )
         mus_rect =mus_lbl .get_rect (midright =(CANVAS_WIDTH //2 -15 ,mus_y +25 ))
         self .screen .blit (mus_lbl ,mus_rect )
@@ -4320,7 +4776,7 @@ class Game :
         mus_val =self ._render_cached (self .font_tiny ,str (self .music_volume ),WHITE )
         self .screen .blit (mus_val ,mus_val .get_rect (center =(sx_m +lw +vw //2 ,mus_y +25 )))
 
-        sfx_y =voci_y [3 ]
+        sfx_y =voci_y [opt_idx ["sfx"]]
         sfx_lbl =self ._render_cached (self .font_medium ,"Effetti sonori:",WHITE )
         sfx_lbl_w =sfx_lbl .get_width ()
         sfx_block_w =sfx_lbl_w +15 +lw +vw +rw 
@@ -5069,6 +5525,260 @@ class Game :
         rect_c =conf_txt .get_rect (center =(CANVAS_WIDTH //2 ,y_conf +34 ))
         self .screen .blit (conf_txt ,rect_c )
 
+    def draw_challenge_config (self ):
+        mx ,my =self ._mouse_pos ()
+        overlay =self ._overlay
+        overlay .set_alpha (200 )
+        overlay .fill (BG_DARK )
+        self .screen .blit (overlay ,(0 ,0 ))
+
+        title =self ._render_cached (self .font_large ,"SFIDA",GOLD )
+        rect =title .get_rect (center =(CANVAS_WIDTH //2 ,120 ))
+        self .screen .blit (title ,rect )
+
+        sub =self ._render_cached (self .font_small ,"Scegli operazione e numero di domande",WHITE )
+        rect =sub .get_rect (center =(CANVAS_WIDTH //2 ,205 ))
+        self .screen .blit (sub ,rect )
+
+        note =self ._render_cached (self .font_tiny ,f"Timeout: {CHALLENGE_TIMEOUT } secondi (fisso) - difficoltà crescente fino a completare le domande",GRAY )
+        rect =note .get_rect (center =(CANVAS_WIDTH //2 ,262 ))
+        self .screen .blit (note ,rect )
+
+        op_nomi =["Moltiplicazione","Addizione","Sottrazione","Divisione"]
+        ops =["moltiplicazione","addizione","sottrazione","divisione"]
+        y_op =340
+        lbl =self ._render_cached (self .font_medium ,"Operazione",WHITE )
+        rect =lbl .get_rect (midleft =(120 ,y_op +31 ))
+        self .screen .blit (lbl ,rect )
+        self .challenge_op_buttons =[]
+        btn_w =295
+        for i ,nome in enumerate (op_nomi ):
+            sx =540 +i *(btn_w +20 )
+            btn_rect =pygame .Rect (sx ,y_op ,btn_w ,62 )
+            self .challenge_op_buttons .append (btn_rect )
+            selected =ops [i ]==self .challenge_operation
+            hovered =btn_rect .collidepoint (mx ,my )
+            bg_col =SEL_BLUE if selected else (80 ,80 ,90 )if hovered else (60 ,60 ,70 )
+            pygame .draw .rect (self .screen ,bg_col ,btn_rect ,border_radius =6 )
+            if selected or hovered or self .challenge_cursor ==0 :
+                pygame .draw .rect (self .screen ,GOLD ,btn_rect ,2 if (selected or hovered)else 1 ,border_radius =6 )
+            txt =self ._render_cached (self .font_small ,nome ,WHITE )
+            self .screen .blit (txt ,txt .get_rect (center =(sx +btn_w //2 ,y_op +31 )))
+
+        y_tot =470
+        lbl =self ._render_cached (self .font_medium ,"Domande",WHITE )
+        rect =lbl .get_rect (midleft =(120 ,y_tot +31 ))
+        self .screen .blit (lbl ,rect )
+        self .challenge_total_buttons =[]
+        for i ,value in enumerate (CHALLENGE_TOTAL_OPTIONS ):
+            sx =540 +i *(btn_w +20 )
+            btn_rect =pygame .Rect (sx ,y_tot ,btn_w ,62 )
+            self .challenge_total_buttons .append (btn_rect )
+            selected =value ==self .challenge_total
+            hovered =btn_rect .collidepoint (mx ,my )
+            bg_col =SEL_BLUE if selected else (80 ,80 ,90 )if hovered else (60 ,60 ,70 )
+            pygame .draw .rect (self .screen ,bg_col ,btn_rect ,border_radius =6 )
+            if selected or hovered or self .challenge_cursor ==1 :
+                pygame .draw .rect (self .screen ,GOLD ,btn_rect ,2 if (selected or hovered)else 1 ,border_radius =6 )
+            txt =self ._render_cached (self .font_small ,str (value ),WHITE )
+            self .screen .blit (txt ,txt .get_rect (center =(sx +btn_w //2 ,y_tot +31 )))
+
+        y_conf =620
+        if self .challenge_cursor ==2 :
+            pygame .draw .rect (self .screen ,(255 ,255 ,100 ),(CANVAS_WIDTH //2 -168 ,y_conf -3 ,336 ,75 ),3 ,border_radius =12 )
+        conf_rect =pygame .Rect (CANVAS_WIDTH //2 -165 ,y_conf ,330 ,69 )
+        hover_conf =conf_rect .collidepoint (mx ,my )
+        pygame .draw .rect (self .screen ,(50 ,140 ,50 )if hover_conf else (40 ,120 ,40 ),conf_rect ,border_radius =12 )
+        if hover_conf :
+            pygame .draw .rect (self .screen ,GOLD ,(CANVAS_WIDTH //2 -168 ,y_conf -3 ,336 ,75 ),3 ,border_radius =12 )
+        conf_txt =self ._render_cached (self .font_tiny ,"CONFERMA",WHITE )
+        self .screen .blit (conf_txt ,conf_txt .get_rect (center =(CANVAS_WIDTH //2 ,y_conf +34 )))
+        self .challenge_confirm_rect =conf_rect 
+
+    def draw_leaderboard (self ):
+        mx ,my =self ._mouse_pos ()
+        self .screen .blit (self .leaderboard_bg ,(0 ,0 ))
+        overlay =self ._overlay
+        overlay .set_alpha (150 )
+        overlay .fill (BG_DARK )
+        self .screen .blit (overlay ,(0 ,0 ))
+
+        title =self ._render_cached (self .font_title ,"CLASSIFICA ONLINE",GOLD )
+        self .screen .blit (title ,title .get_rect (center =(CANVAS_WIDTH //2 ,90 )))
+        sub =self ._render_cached (self .font_small ,f"Sfide da {self .leaderboard_total } domande",WHITE )
+        self .screen .blit (sub ,sub .get_rect (center =(CANVAS_WIDTH //2 ,190 )))
+
+        self .leaderboard_50_rect =None
+        self .leaderboard_100_rect =None
+        self .leaderboard_back_rect =None
+        btn_y =CANVAS_HEIGHT -120
+        btn_w ,btn_h =240 ,70
+        for i ,(label ,total )in enumerate ([("50",50 ),("100",100 )]):
+            rect =pygame .Rect (80 +i *(btn_w +20 ),btn_y ,btn_w ,btn_h )
+            hovered =rect .collidepoint (mx ,my )
+            selected =self .leaderboard_total ==total
+            pygame .draw .rect (self .screen ,(90 ,100 ,110 )if hovered or selected else (60 ,60 ,70 ),rect ,border_radius =9 )
+            pygame .draw .rect (self .screen ,GOLD ,rect ,3 if selected else (2 if hovered else 1 ),border_radius =9 )
+            txt =self ._render_cached (self .font_small ,label ,WHITE )
+            self .screen .blit (txt ,txt .get_rect (center =rect .center ))
+            if total ==50 :
+                self .leaderboard_50_rect =rect
+            else :
+                self .leaderboard_100_rect =rect
+
+        back_txt =self ._render_cached (self .font_small ,"INDIETRO",WHITE )
+        back_rect =pygame .Rect (CANVAS_WIDTH -80 -btn_w ,btn_y ,btn_w ,btn_h )
+        hovered_b =back_rect .collidepoint (mx ,my )
+        pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hovered_b else (60 ,60 ,70 ),back_rect ,border_radius =9 )
+        pygame .draw .rect (self .screen ,GOLD ,back_rect ,2 if hovered_b else 1 ,border_radius =9 )
+        back_txt_h =back_txt .get_rect (center =back_rect .center )
+        self .screen .blit (back_txt ,back_txt_h )
+        self .leaderboard_back_rect =back_rect
+
+        pane_w =CANVAS_WIDTH -300
+        pane_x =(CANVAS_WIDTH -pane_w )//2
+        pane_top =250
+        pane_h =btn_y -pane_top -40
+        pane_bottom =pane_top +pane_h
+
+        if self .leaderboard_loading :
+            load_txt =self ._render_cached (self .font_medium ,"Caricamento classifica...",WHITE )
+            self .screen .blit (load_txt ,load_txt .get_rect (center =(CANVAS_WIDTH //2 ,CANVAS_HEIGHT //2 )))
+            return
+        if self .leaderboard_error :
+            msg =self ._render_cached (self .font_medium ,self .leaderboard_error ,RED )
+            self .screen .blit (msg ,msg .get_rect (center =(CANVAS_WIDTH //2 ,CANVAS_HEIGHT //2 )))
+            return
+
+        rows =self .leaderboard_rows
+        headers =["Pos.","Giocatore","Operazione","C/S","T. medio","T. tot."]
+        col_ratios =[0.08 ,0.32 ,0.16 ,0.16 ,0.14 ,0.14 ]
+        col_xs =[]
+        acc =pane_x
+        for ratio in col_ratios :
+            col_w =int (pane_w *ratio )
+            col_xs .append (acc )
+            acc +=col_w
+
+        header_y =pane_top +10
+        for i ,h in enumerate (headers ):
+            surf =self ._render_cached (self .font_small ,h ,GOLD )
+            rect =surf .get_rect (midleft =(col_xs [i ]+15 ,header_y +20 ))
+            self .screen .blit (surf ,rect )
+        line_y =header_y +48
+        pygame .draw .line (self .screen ,GOLD ,(pane_x +10 ,line_y ),(pane_x +pane_w -10 ,line_y ),2 )
+
+        row_h =56
+        vis =int (pane_h //row_h )
+        vis =min (vis ,LEADERBOARD_VISIBLE_ROWS )
+        start =self .leaderboard_scroll
+        my_uuid =getattr (self ,'profile_uuid',None )
+        for idx in range (start ,min (start +vis ,len (rows ))):
+            r =rows [idx ]
+            y =line_y +20 +(idx -start )*row_h
+            if y +row_h -6 >pane_bottom :
+                break
+            is_me =str (r .get ("uuid")or "")==str (my_uuid or "")
+            row_rect =pygame .Rect (pane_x +10 ,y ,pane_w -20 ,row_h -6 )
+            if is_me :
+                pygame .draw .rect (self .screen ,(120 ,100 ,30 ),row_rect ,border_radius =6 )
+            else :
+                if idx %2 ==0 :
+                    pygame .draw .rect (self .screen ,(40 ,40 ,50 ),row_rect ,border_radius =6 )
+            name =str (r .get ("name")or "?")
+            try :
+                avg =float (r .get ("average_time")or 0 )
+            except (TypeError ,ValueError ):
+                avg =0
+            try :
+                total_time =float (r .get ("total_time")or 0 )
+            except (TypeError ,ValueError ):
+                total_time =0
+            op =str (r .get ("operation")or "")
+            symbol =CHALLENGE_OPERATION_SYMBOLS .get (op ,"?")
+            c_s =f"{r .get ('correct')or 0 }/{r .get ('wrong')or 0 }"
+            fields =[str (idx +1 ),name ,symbol ,c_s ,f"{avg :.1f}s",format_total_time (total_time )]
+            for i ,val in enumerate (fields ):
+                if i ==1 :
+                    val =val [ :32 ]
+                surf =self ._render_cached (self .font_tiny ,val ,GOLD if is_me else WHITE )
+                rect =surf .get_rect (midleft =(col_xs [i ]+15 ,y +row_h //2 -3 ))
+                self .screen .blit (surf ,rect )
+            if is_me :
+                me_txt =self ._render_cached (self .font_tiny ,"TU",GOLD )
+                self .screen .blit (me_txt ,me_txt .get_rect (midright =(pane_x +pane_w -20 ,y +row_h //2 -3 )))
+
+        if len (rows )==0 :
+            empty_txt =self ._render_cached (self .font_medium ,"Nessun risultato ancora.",WHITE )
+            self .screen .blit (empty_txt ,empty_txt .get_rect (center =(CANVAS_WIDTH //2 ,CANVAS_HEIGHT //2 )))
+
+        if len (rows )>vis :
+            bar_h =max (40 ,pane_h *vis //len (rows ))
+            bar_y =pane_top +pane_h *(self .leaderboard_scroll )//max (1 ,len (rows )-vis )
+            pygame .draw .rect (self .screen ,(70 ,70 ,85 ),(pane_x +pane_w -16 ,pane_top ,8 ,pane_h ),border_radius =4 )
+            pygame .draw .rect (self .screen ,GOLD ,(pane_x +pane_w -16 ,bar_y ,8 ,bar_h ),border_radius =4 )
+
+        hint =self ._render_cached (self .font_tiny ,"Usa la rotellina del mouse o le frecce per scorrere.",GRAY )
+        self .screen .blit (hint ,hint .get_rect (center =(CANVAS_WIDTH //2 ,pane_bottom +40 )))
+
+    def draw_challenge_result (self ):
+        mx ,my =self ._mouse_pos ()
+        overlay =self ._overlay
+        overlay .set_alpha (200 )
+        overlay .fill (BG_DARK )
+        self .screen .blit (overlay ,(0 ,0 ))
+
+        self .challenge_yes_rect =None
+        self .challenge_no_rect =None
+
+        if self .lives <=0 :
+            self .draw_text_shadow (self .font_title ,"GAME OVER",RED ,center =(CANVAS_WIDTH //2 ,80 ))
+        else :
+            self .draw_text_shadow (self .font_title ,"SFIDA COMPLETATA",GOLD ,center =(CANVAS_WIDTH //2 ,80 ))
+
+        total_correct =sum (v ["corrette"]for v in self .stats .values ())
+        total_wrong =sum (v ["sbagliate"]for v in self .stats .values ())
+        average_time =sum (self .answer_times )/len (self .answer_times )if self .answer_times else 0 
+
+        lines =[
+        (f"Operazione: {self .challenge_operation .capitalize ()}",WHITE ),
+        (f"Corrette: {total_correct }",GREEN ),
+        (f"Sbagliate: {total_wrong }",RED ),
+        (f"Domande: {self .questions_asked }/{self .total_questions }",WHITE ),
+        (f"Tempo medio: {average_time :.1f}s",WHITE ),
+        (f"Tempo totale: {format_total_time (sum (self .answer_times ))}",WHITE ),
+        ]
+        y =175 
+        for text_value ,colore in lines :
+            self .draw_text_shadow (self .font_medium ,text_value ,colore ,center =(CANVAS_WIDTH //2 ,y ))
+            y +=60 
+
+        y_publish =y +15 
+        domanda =self ._render_cached (self .font_medium ,"Vuoi pubblicare questo risultato sulla classifica online?",WHITE )
+        self .screen .blit (domanda ,domanda .get_rect (center =(CANVAS_WIDTH //2 ,y_publish )))
+        nota =self ._render_cached (self .font_tiny ,f"* Verranno pubblicati solo il nome del profilo ({self .current_profile }) e il personaggio scelto.",GRAY )
+        self .screen .blit (nota ,nota .get_rect (center =(CANVAS_WIDTH //2 ,y_publish +42 )))
+
+        y_btn =y_publish +100 
+        btn_w =340 
+        gap =60 
+        start_x =CANVAS_WIDTH //2 -(btn_w *2 +gap )//2 
+        for i ,(label ,action )in enumerate ([("SÌ, PUBBLICA","yes"),("NO","no")]):
+            bx =start_x +i *(btn_w +gap )
+            btn_rect =pygame .Rect (bx ,y_btn ,btn_w ,70 )
+            hovered =btn_rect .collidepoint (mx ,my )
+            pygame .draw .rect (self .screen ,(80 ,90 ,100 )if hovered else (60 ,60 ,70 ),btn_rect ,border_radius =9 )
+            pygame .draw .rect (self .screen ,GOLD ,btn_rect ,2 if hovered else 1 ,border_radius =9 )
+            txt =self ._render_cached (self .font_small ,label ,WHITE )
+            self .screen .blit (txt ,txt .get_rect (center =btn_rect .center ))
+            if action =="yes":
+                self .challenge_yes_rect =btn_rect 
+            else :
+                self .challenge_no_rect =btn_rect 
+
+        hint =self ._render_cached (self .font_tiny ,"Dopo la scelta tornerai al menu principale.",GRAY )
+        self .screen .blit (hint ,hint .get_rect (center =(CANVAS_WIDTH //2 ,y_btn +112 )))
+
     def draw_game (self ):
         shake =(0 ,0 )
         boss_shaking =self .boss_active and self .boss_phase =="shake"
@@ -5533,6 +6243,17 @@ class Game :
         else :
             self .state =GAME_STATE_MENU
 
+    def _player_exit_to_menu (self ):
+        self .player_out_dir ="dx"
+        self .player_exit_retry =False
+        self .player_exit_to_menu =True
+        self .player_exit_start =pygame .time .get_ticks ()
+        if hasattr (self ,'player_stand_x'):
+            self .player_exit_x =self .player_stand_x
+        else :
+            self .player_exit_x =112
+        self .state =GAME_STATE_PLAYER_EXIT
+
     def start_celebration (self ):
         self .plus_unlocked =True
         self .save_profile_config ()
@@ -5847,6 +6568,8 @@ class Game :
 
         if self .mode =="auto":
             self .draw_gameover_story ()
+        elif self .mode =="challenge":
+            self .draw_challenge_result ()
         else :
             self .draw_gameover_fixed ()
 
@@ -6003,6 +6726,8 @@ class Game :
             errori_txt =" | Errori: "+errori_txt 
         if self .mode =="auto":
             line_text =f"{now } | Storia | {self .config_story_operation .capitalize ()} | Corrette: {total_correct } | Sbagliate: {total_wrong } | Livello: {self .effective_level ()+1 }/{len (self .levels )} | Tempo medio: {average_time :.1f}s | Tempo totale: {format_total_time (sum (self .answer_times ))}{errori_txt }"
+        elif self .mode =="challenge":
+            line_text =f"{now } | Sfida | {self .challenge_operation .capitalize ()} | Corrette: {total_correct } | Sbagliate: {total_wrong } | Domande: {self .questions_asked }/{self .total_questions } | Livello: {challenge_level_index (self .questions_asked ,self .total_questions ,len (self .levels ))+1 }/{len (self .levels )} | Tempo medio: {average_time :.1f}s | Tempo totale: {format_total_time (sum (self .answer_times ))}{errori_txt }"
         else :
             if self ._mixed_active ():
                 segni =",".join (get_operation_symbol (op )for op in self ._enabled_mixed_ops ())
@@ -6036,7 +6761,7 @@ class Game :
         return list (reversed (ultime [-6 :]))
 
     def run (self ):
-        animated_states =("splash","profile_select","game","story","player_exit","loading","options","options_auto","config_fixed","celebration")
+        animated_states =("splash","profile_select","game","story","player_exit","loading","options","options_auto","config_fixed","celebration","challenge_config","challenge_result","leaderboard")
         while self .running :
             events =pygame .event .get ()
             for event in events :
