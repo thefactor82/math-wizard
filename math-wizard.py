@@ -82,6 +82,12 @@ OPTION_TOOLTIPS ={
 "sfida_domande":"Determina quante domande proporre per la sfida",
 }
 LEADERBOARD_VISIBLE_ROWS =10
+LEADERBOARD_PANE_W =1280
+LEADERBOARD_ROW_H =46
+LEADERBOARD_HEADER_H =44
+LEADERBOARD_COL_RATIOS =(0.07 ,0.33 ,0.14 ,0.16 ,0.15 ,0.15 )
+LEADERBOARD_FILTER_ORDER =("addizione","sottrazione","moltiplicazione","divisione")
+LEADERBOARD_DEFAULT_OPERATION ="moltiplicazione"
 CHALLENGE_LEADERBOARD_URL ="https://wqzeqsryoezralkbyfed.supabase.co/rest/v1/challenge_scores" 
 CHALLENGE_LEADERBOARD_ANON_KEY ="sb_publishable_NgdMeZ80IMnuUydE-2WzSQ_Z4khBqiU" 
 CANVAS_WIDTH =1920 
@@ -403,11 +409,14 @@ def post_challenge_report (url ,payload ,anon_key =CHALLENGE_LEADERBOARD_ANON_KE
         return False ,f"Invio non riuscito: {e }"
 
 
-def fetch_challenge_leaderboard (url ,anon_key =CHALLENGE_LEADERBOARD_ANON_KEY ,questions_total =50 ,limit =1000 ,timeout =10 ):
+def fetch_challenge_leaderboard (url ,anon_key =CHALLENGE_LEADERBOARD_ANON_KEY ,questions_total =50 ,operation =None ,limit =1000 ,timeout =10 ):
     if not url :
         return False ,"Leaderboard non configurata"
     base =url .rstrip ("/")
-    q =urllib .parse .urlencode ({"select":"*","questions_total":f"eq.{questions_total }","order":"correct.desc,total_time.asc","limit":limit })
+    params ={"select":"*","questions_total":f"eq.{questions_total }","order":"correct.desc,total_time.asc","limit":limit }
+    if operation :
+        params ["operation"] =f"eq.{operation }"
+    q =urllib .parse .urlencode (params )
     full =f"{base }?{q }"
     headers ={}
     if anon_key :
@@ -1455,7 +1464,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if normalize_story_entry (e ) .get ("type")=="level")
 
-        self .version ="1.5.1"
+        self .version ="1.5.2"
 
         self .profiles =[]
         self .current_profile =""
@@ -1895,6 +1904,7 @@ class Game :
         self .challenge_no_rect =None
 
         self .leaderboard_total =CHALLENGE_TOTAL_OPTIONS [0]
+        self .leaderboard_operation =LEADERBOARD_DEFAULT_OPERATION
         self .leaderboard_bg =None
         self .leaderboard_rows =[]
         self .leaderboard_loading =False
@@ -2090,9 +2100,10 @@ class Game :
             self .leaderboard_bg =self ._get_bg ("arena")or self .bg
         self .set_state (GAME_STATE_LEADERBOARD ,reset_scene =True )
         total =self .leaderboard_total
+        operation =self .leaderboard_operation
 
         def worker ():
-            ok ,result =fetch_challenge_leaderboard (CHALLENGE_LEADERBOARD_URL ,CHALLENGE_LEADERBOARD_ANON_KEY ,total )
+            ok ,result =fetch_challenge_leaderboard (CHALLENGE_LEADERBOARD_URL ,CHALLENGE_LEADERBOARD_ANON_KEY ,total ,operation )
             if ok :
                 self .leaderboard_rows =dedupe_challenge_rows (result )
             else :
@@ -2101,11 +2112,28 @@ class Game :
 
         threading .Thread (target =worker ,daemon =True ).start ()
 
+    def _leaderboard_pick_operation (self ,operation ):
+        if operation ==self .leaderboard_operation :
+            operation =None
+        self .leaderboard_operation =operation
+        self .show_leaderboard ()
+
+    def _leaderboard_layout (self ):
+        vis =LEADERBOARD_VISIBLE_ROWS
+        pane_h =LEADERBOARD_HEADER_H +vis *LEADERBOARD_ROW_H
+        pane_w =LEADERBOARD_PANE_W
+        pane_x =(CANVAS_WIDTH -pane_w )//2
+        top =170
+        limit =CANVAS_HEIGHT -160
+        pane_top =top +max (0 ,(limit -top -pane_h )//2 )
+        return pane_x ,pane_w ,pane_top ,pane_h ,vis
+
     def _leaderboard_scroll (self ,delta ):
         if not self .leaderboard_rows :
             self .leaderboard_scroll =0
             return
-        max_scroll =int ((len (self .leaderboard_rows )-LEADERBOARD_VISIBLE_ROWS ))if len (self .leaderboard_rows )>LEADERBOARD_VISIBLE_ROWS else 0
+        vis =self ._leaderboard_layout ()[4]
+        max_scroll =max (0 ,len (self .leaderboard_rows )-vis )
         self .leaderboard_scroll =max (0 ,min (max_scroll ,self .leaderboard_scroll +delta ))
 
     def start_game (self ):
@@ -3570,6 +3598,10 @@ class Game :
                 if getattr (event ,'button',None )==5 :
                     self ._leaderboard_scroll (1 )
                     return
+                for operation ,rect in (getattr (self ,'leaderboard_op_rects',None )or []):
+                    if rect .collidepoint (mx ,my ):
+                        self ._leaderboard_pick_operation (operation )
+                        return
                 if getattr (self ,'leaderboard_50_rect',None )and self .leaderboard_50_rect .collidepoint (mx ,my ):
                     self .show_leaderboard (total =50 )
                     return
@@ -5751,83 +5783,105 @@ class Game :
         overlay .fill (BG_DARK )
         self .screen .blit (overlay ,(0 ,0 ))
 
-        title =self ._render_cached (self .font_title ,"CLASSIFICA ONLINE",GOLD )
-        self .screen .blit (title ,title .get_rect (center =(CANVAS_WIDTH //2 ,90 )))
-        sub =self ._render_cached (self .font_small ,f"Sfide da {self .leaderboard_total } domande",WHITE )
-        self .screen .blit (sub ,sub .get_rect (center =(CANVAS_WIDTH //2 ,190 )))
+        title =self ._render_cached (self .font_large ,"CLASSIFICA ONLINE",GOLD )
+        self .screen .blit (title ,title .get_rect (center =(CANVAS_WIDTH //2 ,74 )))
+        op_name =CHALLENGE_OPERATION_SYMBOLS .get (self .leaderboard_operation )
+        sub_text =f"Sfide da {self .leaderboard_total } domande"
+        if op_name :
+            sub_text +=f" - solo {op_name }"
+        sub =self ._render_cached (self .font_tiny ,sub_text ,WHITE )
+        self .screen .blit (sub ,sub .get_rect (center =(CANVAS_WIDTH //2 ,132 )))
 
         self .leaderboard_50_rect =None
         self .leaderboard_100_rect =None
         self .leaderboard_back_rect =None
-        btn_y =CANVAS_HEIGHT -120
-        btn_w ,btn_h =240 ,70
+        self .leaderboard_op_rects =[]
+
+        btn_y =CANVAS_HEIGHT -134
+        btn_h =58
+        op_w =68
+        op_gap =10
+        op_sep =28
+        cnt_w =200
+        cnt_gap =20
+        back_w =180
+        ops =list (LEADERBOARD_FILTER_ORDER )
+        ops_w =len (ops )*op_w +(len (ops )-1 )*op_gap
+        group_w =ops_w +op_sep +2 *cnt_w +2 *cnt_gap +back_w
+        gx =(CANVAS_WIDTH -group_w )//2
+
+        for operation in ops :
+            symbol =CHALLENGE_OPERATION_SYMBOLS .get (operation ,"?")
+            rect =pygame .Rect (gx ,btn_y ,op_w ,btn_h )
+            gx +=op_w +op_gap
+            selected =self .leaderboard_operation ==operation
+            hovered =rect .collidepoint (mx ,my )
+            pygame .draw .rect (self .screen ,SEL_BLUE if selected else (80 ,80 ,90 )if hovered else (60 ,60 ,70 ),rect ,border_radius =9 )
+            pygame .draw .rect (self .screen ,GOLD ,rect ,2 if (selected or hovered )else 1 ,border_radius =9 )
+            txt =self ._render_cached (self .font_small ,symbol ,WHITE )
+            self .screen .blit (txt ,txt .get_rect (center =rect .center ))
+            self .leaderboard_op_rects .append ((operation ,rect ))
+
+        gx +=op_sep -op_gap
         for i ,(label ,total )in enumerate ([("50",50 ),("100",100 )]):
-            rect =pygame .Rect (80 +i *(btn_w +20 ),btn_y ,btn_w ,btn_h )
+            rect =pygame .Rect (gx +i *(cnt_w +cnt_gap ),btn_y ,cnt_w ,btn_h )
             hovered =rect .collidepoint (mx ,my )
             selected =self .leaderboard_total ==total
-            pygame .draw .rect (self .screen ,(90 ,100 ,110 )if hovered or selected else (60 ,60 ,70 ),rect ,border_radius =9 )
-            pygame .draw .rect (self .screen ,GOLD ,rect ,3 if selected else (2 if hovered else 1 ),border_radius =9 )
-            txt =self ._render_cached (self .font_small ,label ,WHITE )
+            pygame .draw .rect (self .screen ,SEL_BLUE if selected else (80 ,80 ,90 )if hovered else (60 ,60 ,70 ),rect ,border_radius =9 )
+            pygame .draw .rect (self .screen ,GOLD ,rect ,2 if (selected or hovered )else 1 ,border_radius =9 )
+            txt =self ._render_cached (self .font_tiny ,label ,WHITE )
             self .screen .blit (txt ,txt .get_rect (center =rect .center ))
             if total ==50 :
                 self .leaderboard_50_rect =rect
             else :
                 self .leaderboard_100_rect =rect
-
-        back_txt =self ._render_cached (self .font_small ,"INDIETRO",WHITE )
-        back_rect =pygame .Rect (CANVAS_WIDTH -80 -btn_w ,btn_y ,btn_w ,btn_h )
+        back_rect =pygame .Rect (gx +2 *cnt_w +2 *cnt_gap ,btn_y ,back_w ,btn_h )
         hovered_b =back_rect .collidepoint (mx ,my )
         pygame .draw .rect (self .screen ,(90 ,90 ,100 )if hovered_b else (60 ,60 ,70 ),back_rect ,border_radius =9 )
         pygame .draw .rect (self .screen ,GOLD ,back_rect ,2 if hovered_b else 1 ,border_radius =9 )
-        back_txt_h =back_txt .get_rect (center =back_rect .center )
-        self .screen .blit (back_txt ,back_txt_h )
+        back_txt =self ._render_cached (self .font_tiny ,"INDIETRO",WHITE )
+        self .screen .blit (back_txt ,back_txt .get_rect (center =back_rect .center ))
         self .leaderboard_back_rect =back_rect
 
-        pane_w =CANVAS_WIDTH -300
-        pane_x =(CANVAS_WIDTH -pane_w )//2
-        pane_top =250
-        pane_h =btn_y -pane_top -40
+        pane_x ,pane_w ,pane_top ,pane_h ,vis =self ._leaderboard_layout ()
         pane_bottom =pane_top +pane_h
 
         if self .leaderboard_loading :
-            load_txt =self ._render_cached (self .font_medium ,"Caricamento classifica...",WHITE )
+            load_txt =self ._render_cached (self .font_small ,"Caricamento classifica...",WHITE )
             self .screen .blit (load_txt ,load_txt .get_rect (center =(CANVAS_WIDTH //2 ,CANVAS_HEIGHT //2 )))
             return
         if self .leaderboard_error :
-            msg =self ._render_cached (self .font_medium ,self .leaderboard_error ,RED )
+            msg =self ._render_cached (self .font_small ,self .leaderboard_error ,RED )
             self .screen .blit (msg ,msg .get_rect (center =(CANVAS_WIDTH //2 ,CANVAS_HEIGHT //2 )))
             return
 
         rows =self .leaderboard_rows
         headers =["Pos.","Giocatore","Operazione","C/S","T. medio","T. tot."]
-        col_ratios =[0.08 ,0.32 ,0.16 ,0.16 ,0.14 ,0.14 ]
         col_xs =[]
         acc =pane_x
-        for ratio in col_ratios :
+        for ratio in LEADERBOARD_COL_RATIOS :
             col_w =int (pane_w *ratio )
             col_xs .append (acc )
             acc +=col_w
 
-        header_y =pane_top +10
+        header_y =pane_top +6
         for i ,h in enumerate (headers ):
-            surf =self ._render_cached (self .font_small ,h ,GOLD )
-            rect =surf .get_rect (midleft =(col_xs [i ]+15 ,header_y +20 ))
+            surf =self ._render_cached (self .font_tiny ,h ,GOLD )
+            rect =surf .get_rect (midleft =(col_xs [i ]+14 ,header_y +14 ))
             self .screen .blit (surf ,rect )
-        line_y =header_y +48
-        pygame .draw .line (self .screen ,GOLD ,(pane_x +10 ,line_y ),(pane_x +pane_w -10 ,line_y ),2 )
+        line_y =header_y +LEADERBOARD_HEADER_H -14
+        pygame .draw .line (self .screen ,GOLD ,(pane_x +12 ,line_y ),(pane_x +pane_w -12 ,line_y ),2 )
 
-        row_h =56
-        vis =int (pane_h //row_h )
-        vis =min (vis ,LEADERBOARD_VISIBLE_ROWS )
+        row_h =LEADERBOARD_ROW_H
         start =self .leaderboard_scroll
         my_uuid =getattr (self ,'profile_uuid',None )
         for idx in range (start ,min (start +vis ,len (rows ))):
             r =rows [idx ]
-            y =line_y +20 +(idx -start )*row_h
-            if y +row_h -6 >pane_bottom :
+            y =line_y +4 +(idx -start )*row_h
+            if y +row_h -4 >pane_bottom :
                 break
             is_me =str (r .get ("uuid")or "")==str (my_uuid or "")
-            row_rect =pygame .Rect (pane_x +10 ,y ,pane_w -20 ,row_h -6 )
+            row_rect =pygame .Rect (pane_x +12 ,y ,pane_w -24 ,row_h -6 )
             if is_me :
                 pygame .draw .rect (self .screen ,(120 ,100 ,30 ),row_rect ,border_radius =6 )
             else :
@@ -5848,26 +5902,27 @@ class Game :
             fields =[str (idx +1 ),name ,symbol ,c_s ,f"{avg :.1f}s",format_total_time (total_time )]
             for i ,val in enumerate (fields ):
                 if i ==1 :
-                    val =val [ :32 ]
-                surf =self ._render_cached (self .font_tiny ,val ,GOLD if is_me else WHITE )
-                rect =surf .get_rect (midleft =(col_xs [i ]+15 ,y +row_h //2 -3 ))
+                    val =val [:30 ]
+                surf =self ._render_cached (self .font_log ,val ,GOLD if is_me else WHITE )
+                rect =surf .get_rect (midleft =(col_xs [i ]+14 ,y +row_h //2 -3 ))
                 self .screen .blit (surf ,rect )
             if is_me :
-                me_txt =self ._render_cached (self .font_tiny ,"TU",GOLD )
-                self .screen .blit (me_txt ,me_txt .get_rect (midright =(pane_x +pane_w -20 ,y +row_h //2 -3 )))
+                me_txt =self ._render_cached (self .font_log ,"TU",GOLD )
+                self .screen .blit (me_txt ,me_txt .get_rect (midright =(pane_x +pane_w -22 ,y +row_h //2 -3 )))
 
         if len (rows )==0 :
-            empty_txt =self ._render_cached (self .font_medium ,"Nessun risultato ancora.",WHITE )
-            self .screen .blit (empty_txt ,empty_txt .get_rect (center =(CANVAS_WIDTH //2 ,CANVAS_HEIGHT //2 )))
+            empty_txt =self ._render_cached (self .font_small ,"Nessun risultato ancora.",WHITE )
+            self .screen .blit (empty_txt ,empty_txt .get_rect (center =(pane_x +pane_w //2 ,pane_top +pane_h //2 )))
 
         if len (rows )>vis :
-            bar_h =max (40 ,pane_h *vis //len (rows ))
-            bar_y =pane_top +pane_h *(self .leaderboard_scroll )//max (1 ,len (rows )-vis )
+            bar_h =max (30 ,pane_h *vis //len (rows ))
+            bar_y =pane_top +(pane_h -bar_h )*(self .leaderboard_scroll )//max (1 ,len (rows )-vis )
             pygame .draw .rect (self .screen ,(70 ,70 ,85 ),(pane_x +pane_w -16 ,pane_top ,8 ,pane_h ),border_radius =4 )
             pygame .draw .rect (self .screen ,GOLD ,(pane_x +pane_w -16 ,bar_y ,8 ,bar_h ),border_radius =4 )
 
-        hint =self ._render_cached (self .font_tiny ,"Usa la rotellina del mouse o le frecce per scorrere.",GRAY )
-        self .screen .blit (hint ,hint .get_rect (center =(CANVAS_WIDTH //2 ,pane_bottom +40 )))
+        hint =self ._render_cached (self .font_log ,"Usa la rotellina del mouse o le frecce per scorrere; riclicca l'operazione selezionata per togliere il filtro.",GRAY )
+        self .screen .blit (hint ,hint .get_rect (center =(CANVAS_WIDTH //2 ,pane_bottom +42 )))
+
 
     def draw_challenge_result (self ):
         mx ,my =self ._mouse_pos ()
