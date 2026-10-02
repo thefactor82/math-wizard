@@ -5920,9 +5920,6 @@ class Game :
             pygame .draw .rect (self .screen ,(70 ,70 ,85 ),(pane_x +pane_w -16 ,pane_top ,8 ,pane_h ),border_radius =4 )
             pygame .draw .rect (self .screen ,GOLD ,(pane_x +pane_w -16 ,bar_y ,8 ,bar_h ),border_radius =4 )
 
-        hint =self ._render_cached (self .font_log ,"Usa la rotellina del mouse o le frecce per scorrere; riclicca l'operazione selezionata per togliere il filtro.",GRAY )
-        self .screen .blit (hint ,hint .get_rect (center =(CANVAS_WIDTH //2 ,pane_bottom +42 )))
-
 
     def draw_challenge_result (self ):
         mx ,my =self ._mouse_pos ()
