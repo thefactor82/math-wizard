@@ -1473,7 +1473,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if normalize_story_entry (e ) .get ("type")=="level")
 
-        self .version ="1.5.4"
+        self .version ="1.5.5"
 
         self .profiles =[]
         self .current_profile =""
@@ -6834,9 +6834,6 @@ class Game :
 
         data =self .char_data .get (self .config_gender ,self .char_data ["F"])
         char_img =data ["hit"]if (self .lives <=0 or (self .boss_active and self .boss_phase =="fight"))else data ["idle"][0 ]
-        char_x =CANVAS_WIDTH //2 -char_img .get_width ()//2 
-        char_y =y +30 
-        self .screen .blit (char_img ,(char_x ,char_y ))
 
         if self .lives <=0 or (self .boss_active and self .boss_phase =="fight"):
             text_value =f"{self .current_profile } si è impegnat-o-a- parecchio, ma gli Hop diventano man mano più impegnativi. Serve più allenamento!"
@@ -6856,13 +6853,35 @@ class Game :
                 else :
                     lines [-1 ]=test 
 
-        y_text =char_y +char_img .get_height ()+20 
+        msg_step =40 
+        btn_h =54 
+        char_y =y +30 
+        char_h =char_img .get_height ()
+        y_text =char_y +char_h +20 
+        y_btn =y_text +(len (lines )-1 )*msg_step +60 
+        bottom_limit =CANVAS_HEIGHT -24 
+        if y_btn +btn_h >bottom_limit :
+            shift =y_btn +btn_h -bottom_limit 
+            char_y -=shift 
+            y_text -=shift 
+            y_btn -=shift 
+            min_char_y =y -40 
+            if char_y <min_char_y :
+                reduce =min_char_y -char_y 
+                char_y =min_char_y 
+                char_h =max (1 ,char_h -reduce )
+                new_w =max (1 ,int (char_img .get_width ()*char_h /char_img .get_height ()))
+                char_img =pygame .transform .smoothscale (char_img ,(new_w ,char_h ))
+                y_text =char_y +char_h +20 
+                y_btn =y_text +(len (lines )-1 )*msg_step +60 
+
+        char_x =CANVAS_WIDTH //2 -char_img .get_width ()//2 
+        self .screen .blit (char_img ,(char_x ,char_y ))
         for line in lines :
             self .draw_text_shadow (self .font_tiny ,line ,WHITE ,center =(CANVAS_WIDTH //2 ,y_text ))
-            y_text +=40 
+            y_text +=msg_step 
 
         mx ,my =self ._mouse_pos ()
-        y_btn =y_text +20 
         self .gameover_buttons ={}
         completato =not (self .lives <=0 or (self .boss_active and self .boss_phase =="fight"))
         if self .tutorial_active :
