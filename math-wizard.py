@@ -50,6 +50,8 @@ PROFILES_DIR =resolve_profiles_dir ()
 WIZARD_LIVES =3 
 DEFAULT_TIMEOUT =12 
 CHALLENGE_TIMEOUT =12
+# limite minimo a cui il timeout puo' scendere nella modalita' storia/auto
+MIN_STORY_TIMEOUT =5 
 CHALLENGE_TOTAL_OPTIONS =(50 ,100 )
 CHALLENGE_OPERATION_SYMBOLS ={"addizione":"+","sottrazione":"-","moltiplicazione":"\u00d7","divisione":":"}
 # stati ridisegnati a ogni frame: senza eventi di input devono comunque animarsi
@@ -1464,7 +1466,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if normalize_story_entry (e ) .get ("type")=="level")
 
-        self .version ="1.5.2"
+        self .version ="1.5.3"
 
         self .profiles =[]
         self .current_profile =""
@@ -6342,13 +6344,27 @@ class Game :
                 self .screen .blit (surf ,rect )
                 dy +=24 
 
+    def _story_timeout_would_drop (self ):
+        # True se, al termine di questo livello, il timeout va abbassato di 1s.
+        # Condivisa da disegno e avanzamento per tenere allineati messaggio ed effetto.
+        if self .tutorial_active or self .is_last_story_level ():
+            return False 
+        if self .timeout_limit <=MIN_STORY_TIMEOUT :
+            return False 
+        if self .level +1 <=self .story_progress .get (self .config_story_operation ,0 ):
+            return False 
+        richieste =5 +self .level 
+        recent_times =self .monster_times [-richieste :]
+        if not recent_times :
+            return False 
+        average =sum (recent_times )/len (recent_times )
+        return average <self .timeout_limit /2 
+
     def _advance_level_complete (self ):
         if self .tutorial_active :
             self .end_tutorial ()
             return 
-        richieste =5 +self .level 
-        recent_times =self .monster_times [-richieste :]
-        average =sum (recent_times )/len (recent_times )if recent_times else 0 
+        drop_timeout =self ._story_timeout_would_drop ()
         if self .is_last_story_level ():
             next_lv =self .num_story_levels 
             self .story_completed [self .config_story_operation ]=True 
@@ -6360,8 +6376,8 @@ class Game :
             self .story_progress [op ]=next_lv 
             self .set_initial_level (self .initial_level )
             self .save_profile_config ()
-            if average <self .timeout_limit /2 :
-                self .timeout_limit =max (3 ,self .timeout_limit -1 )
+            if drop_timeout :
+                self .timeout_limit =max (MIN_STORY_TIMEOUT ,self .timeout_limit -1 )
         self .return_to_game =True 
         self .player_exit_start =pygame .time .get_ticks ()
         self .player_exit_x =112 
@@ -6637,10 +6653,7 @@ class Game :
         (f"Tempo medio: {average :.1f}s",WHITE ),
         (f"Tempo totale: {format_total_time (sum (self .monster_times ))}",WHITE ),
         ]
-        richieste =5 +self .level 
-        recent_times =self .monster_times [-richieste :]
-        recent_average =sum (recent_times )/len (recent_times )if recent_times else 0 
-        if recent_average <self .timeout_limit /2 and not self .is_last_story_level ():
+        if self ._story_timeout_would_drop ():
             lines .append (("Tempo medio eccellente! Timeout ridotto di 1s",YELLOW ))
 
         y =270 
