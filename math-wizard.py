@@ -991,6 +991,11 @@ class Game :
         self .clock =pygame .time .Clock ()
         self .running =True 
         self ._text_cache ={}
+        self ._scaled =None 
+        self ._glow_cache ={}
+        self ._last_update_ms =pygame .time .get_ticks ()
+        self ._dt =1.0 /FPS 
+        self .story_typing_accum =0.0 
         self ._tooltip_panels ={}
         self .tooltip_items =[]
         self .tooltip_key =None
@@ -1371,6 +1376,7 @@ class Game :
             self ._monitor_w ,self ._monitor_h =self ._display .get_size ()
         self .screen =self ._make_canvas ()
         self ._overlay =pygame .Surface ((CANVAS_WIDTH ,CANVAS_HEIGHT ))
+        self ._scaled =None 
         self ._update_fit ()
 
     def _cycle_display_mode (self ,full_cycle ):
@@ -1390,6 +1396,7 @@ class Game :
         self ._monitor_w ,self ._monitor_h =self ._display .get_size ()
         self .screen =self ._make_canvas ()
         self ._overlay =pygame .Surface ((CANVAS_WIDTH ,CANVAS_HEIGHT ))
+        self ._scaled =None 
         self ._update_fit ()
 
     def _reconvert_alpha_surfaces (self ):
@@ -1466,7 +1473,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if normalize_story_entry (e ) .get ("type")=="level")
 
-        self .version ="1.5.3"
+        self .version ="1.5.4"
 
         self .profiles =[]
         self .current_profile =""
@@ -2414,7 +2421,7 @@ class Game :
             m =self .config_gender =="M"
             self .story_text_full =re .sub (r'-([^-]+)-([^-]+)-',lambda g :g .group (1 )if m else g .group (2 ),raw_text )
             self .story_characters_shown =0 
-            self .story_typing_frame =0 
+            self .story_typing_accum =0.0 
             obj_file =entry .get ("object")
             self .story_object_img =None 
             self .story_object_alpha =0 
@@ -4173,6 +4180,9 @@ class Game :
             self .game_over =True 
 
     def update (self ):
+        now_ms =pygame .time .get_ticks ()
+        self ._dt =max (0.0 ,min ((now_ms -self ._last_update_ms )/1000.0 ,0.1 ))
+        self ._last_update_ms =now_ms 
         if hasattr (self ,'music_fade_start')and self .music_fade_start is not None :
             fade_elapsed =pygame .time .get_ticks ()-self .music_fade_start
             vol =min (1.0 ,fade_elapsed /2000.0 )*self .music_volume /100
@@ -4308,8 +4318,8 @@ class Game :
             return 
         if self .state ==GAME_STATE_STORY:
             if self .story_phase =="enter":
-                self .story_fade_alpha =max (0 ,self .story_fade_alpha -self .story_fade_speed )
-                if self .story_fade_alpha ==0 :
+                self .story_fade_alpha =max (0.0 ,self .story_fade_alpha -self .story_fade_speed *60.0 *self ._dt )
+                if self .story_fade_alpha <=0 :
                     if self .story_is_level :
                         self .story_is_level =False 
                         self .state =GAME_STATE_GAME
@@ -4318,14 +4328,14 @@ class Game :
                     self .story_phase ="show"
             elif self .story_phase =="show":
                 if self .story_characters_shown <len (self .story_text_full ):
-                    self .story_typing_frame +=1 
-                    if self .story_typing_frame >=2 :
-                        self .story_typing_frame =0 
+                    self .story_typing_accum +=self ._dt *30.0 
+                    while self .story_typing_accum >=1.0 and self .story_characters_shown <len (self .story_text_full ):
+                        self .story_typing_accum -=1.0 
                         self .story_characters_shown +=1 
                 elif self .story_object_img is not None and self .story_object_alpha >0 and self .story_object_alpha <255 :
-                    self .story_object_alpha =min (255 ,self .story_object_alpha +3 )
+                    self .story_object_alpha =min (255.0 ,self .story_object_alpha +3.0 *60.0 *self ._dt )
             elif self .story_phase =="exit":
-                self .story_fade_alpha =min (255 ,self .story_fade_alpha +self .story_fade_speed )
+                self .story_fade_alpha =min (255.0 ,self .story_fade_alpha +self .story_fade_speed *60.0 *self ._dt )
                 if self .story_fade_alpha >=255 :
                     if self .story_is_level :
                         self .game_bg =self .story_next_bg 
@@ -4547,9 +4557,12 @@ class Game :
             elif self .state in (GAME_STATE_GAME,GAME_STATE_GAME_OVER):
                 self .draw_gameover ()
 
+        size =(self ._fit_w ,self ._fit_h )
+        if self ._scaled is None or self ._scaled .get_size ()!=size :
+            self ._scaled =pygame .Surface (size ).convert ()
+        pygame .transform .scale (self .screen ,size ,self ._scaled )
         self ._display .fill ((0 ,0 ,0 ))
-        scaled =pygame .transform .scale (self .screen ,(self ._fit_w ,self ._fit_h ))
-        self ._display .blit (scaled ,(self ._fit_x ,self ._fit_y ))
+        self ._display .blit (self ._scaled ,(self ._fit_x ,self ._fit_y ))
         pygame .display .flip ()
 
     def _render_cached (self ,font ,text ,color ):
@@ -4561,6 +4574,21 @@ class Game :
             surf =font .render (text ,True ,color )
             self ._text_cache [key ]=surf 
         return surf 
+
+    def _get_glow (self ,radius ,base_col ):
+        key =(radius ,base_col )
+        layers =self ._glow_cache .get (key )
+        if layers is None :
+            layers =[]
+            for r in range (radius ,0 ,-3 ):
+                alpha =max (0 ,200 -int (200 *(radius -r )/radius ))
+                ratio =(radius -r )/radius 
+                col =tuple (max (0 ,int (c *(1 -ratio *0.3 )))for c in base_col )
+                surf =pygame .Surface ((r *2 ,r *2 ),pygame .SRCALPHA )
+                pygame .draw .circle (surf ,(*col ,alpha ),(r ,r ),r )
+                layers .append ((surf ,r ))
+            self ._glow_cache [key ]=layers 
+        return layers 
 
     def _tooltip_begin (self ):
         self .tooltip_items =[]
@@ -6021,13 +6049,13 @@ class Game :
             self .screen .blit (char_img ,(self .character_entry_x ,wy ))
             if self .story_fade_alpha >0 :
                 fade_surf =self ._overlay
-                fade_surf .set_alpha (self .story_fade_alpha )
+                fade_surf .set_alpha (int (self .story_fade_alpha ))
                 fade_surf .fill (self .story_fade_color )
                 self .screen .blit (fade_surf ,(0 ,0 ))
             return 
         if self .story_fade_alpha >0 :
             fade_surf =self ._overlay
-            fade_surf .set_alpha (self .story_fade_alpha )
+            fade_surf .set_alpha (int (self .story_fade_alpha ))
             fade_surf .fill (self .story_fade_color )
             self .screen .blit (fade_surf ,(0 ,0 ))
             return 
@@ -6061,16 +6089,12 @@ class Game :
             base_col =(235 ,220 ,255 )if self .config_gender =="F"else (220 ,255 ,220 )
             t =pygame .time .get_ticks ()
             radius =18 +int (6 *abs ((t %600 )/300 -1 ))
-            for r in range (radius ,0 ,-3 ):
-                alpha =max (0 ,200 -int (200 *(radius -r )/radius ))
-                ratio =(radius -r )/radius 
-                col =tuple (max (0 ,int (c *(1 -ratio *0.3 )))for c in base_col )
-                surf =pygame .Surface ((r *2 ,r *2 ),pygame .SRCALPHA )
-                pygame .draw .circle (surf ,(*col ,alpha ),(r ,r ),r )
-                self .screen .blit (surf ,(glow_x -r ,glow_y -r ))
+            for layer ,r in self ._get_glow (radius ,base_col ):
+                self .screen .blit (layer ,(glow_x -r ,glow_y -r ))
 
         if self .scene_phase is None and self .boss_active and self .boss_phase in ("entrance","fight","defeated"):
             boss_img =None 
+            boss_alpha =None 
             if self .boss_phase =="defeated":
                 elapsed_def =pygame .time .get_ticks ()-self .boss_defeated_start 
                 if elapsed_def <1500 :
@@ -6079,8 +6103,8 @@ class Game :
                     fade_elapsed =elapsed_def -1500 
                     alpha =max (0 ,255 -int (fade_elapsed /1500 *255 ))
                     if alpha >0 :
-                        boss_img =self .boss_defeated_img .copy ()
-                        boss_img .set_alpha (alpha )
+                        boss_img =self .boss_defeated_img 
+                        boss_alpha =alpha 
             elif self .boss_hit :
                 boss_img =self .boss_hit_img 
             else :
@@ -6089,7 +6113,11 @@ class Game :
                 bw ,bh =boss_img .get_size ()
                 boss_draw_x =self .boss_x +shake [0 ]
                 boss_draw_y =wy_monster -(bh -322 )+28 
+                if boss_alpha is not None :
+                    boss_img .set_alpha (boss_alpha )
                 self .screen .blit (boss_img ,(boss_draw_x ,boss_draw_y ))
+                if boss_alpha is not None :
+                    boss_img .set_alpha (None )
         elif self .scene_phase is None and self .monster_hit :
             elapsed =pygame .time .get_ticks ()-self .monster_fade_start 
             if elapsed <self .monster_hit_delay :
@@ -6098,9 +6126,9 @@ class Game :
                 fade_elapsed =elapsed -self .monster_hit_delay 
                 alpha =max (0 ,255 -int (fade_elapsed /500 *255 ))
                 if alpha >0 :
-                    faded =self .monster_img .copy ()
-                    faded .set_alpha (alpha )
-                    self .screen .blit (faded ,(self .monster_x +shake [0 ],wy_monster ))
+                    self .monster_img .set_alpha (alpha )
+                    self .screen .blit (self .monster_img ,(self .monster_x +shake [0 ],wy_monster ))
+                    self .monster_img .set_alpha (None )
         elif self .scene_phase is None :
             n_frames =len (self .monster_frames )
             self .monster_anim_frame =(pygame .time .get_ticks ()//self .monster_anim_speed )%n_frames 
@@ -6286,11 +6314,11 @@ class Game :
                 progress =elapsed /duration 
                 alpha =int (255 *min (1.0 ,progress *4 )*max (0 ,1.0 -progress ))
                 rise =int (180 *progress )
-                heart_img =self .heart_red .copy ()
-                heart_img .set_alpha (alpha )
                 hx =self .monster_x +97 
                 hy =wy_monster -rise 
-                self .screen .blit (heart_img ,(hx ,hy ))
+                self .heart_red .set_alpha (alpha )
+                self .screen .blit (self .heart_red ,(hx ,hy ))
+                self .heart_red .set_alpha (None )
             else :
                 self .heart_reward_active =False 
 
@@ -6542,13 +6570,8 @@ class Game :
             glow_x ,glow_y =wx +45 ,wy +60
             base_col =(235 ,220 ,255 )if self .config_gender =="F"else (220 ,255 ,220 )
             radius =18 +int (6 *abs ((now %600 )/300 -1 ))
-            for r in range (radius ,0 ,-3 ):
-                alpha =max (0 ,200 -int (200 *(radius -r )/radius ))
-                ratio =(radius -r )/radius
-                col =tuple (max (0 ,int (c *(1 -ratio *0.3 )))for c in base_col )
-                surf =pygame .Surface ((r *2 ,r *2 ),pygame .SRCALPHA )
-                pygame .draw .circle (surf ,(*col ,alpha ),(r ,r ),r )
-                self .screen .blit (surf ,(glow_x -r ,glow_y -r ))
+            for layer ,r in self ._get_glow (radius ,base_col ):
+                self .screen .blit (layer ,(glow_x -r ,glow_y -r ))
 
         if t >=2200 :
             order_keys =["moltiplicazione","addizione","sottrazione","divisione"]
@@ -6571,14 +6594,12 @@ class Game :
                     base_x ,base_y =center
                     scale =max (0.05 ,1 -fuse )
                     img =pygame .transform .scale (img ,(max (1 ,int (img .get_width ()*scale )),max (1 ,int (img .get_height ()*scale ))))
-                    img =img .copy ()
                     img .set_alpha (int (255 *(1 -fuse )))
                 self .screen .blit (img ,img .get_rect (center =(base_x ,base_y )))
             if t >=5000 :
                 fuse =min ((t -5000 )/1400 ,1.0 )
                 size =max (1 ,int (180 *(0.4 +0.6 *fuse )))
                 scaled =pygame .transform .scale (self ._celeb_pendant_big ,(size ,size ))
-                scaled =scaled .copy ()
                 scaled .set_alpha (int (255 *min (1 ,fuse *1.2 )))
                 self .screen .blit (scaled ,scaled .get_rect (center =center ))
 
@@ -6707,13 +6728,14 @@ class Game :
             self .draw_text_shadow (self .font_small ,"Premi INVIO per continuare",WHITE ,center =(CANVAS_WIDTH //2 ,CANVAS_HEIGHT -90 ),offset =1 )
 
         if self .story_object_img is not None and self .story_object_alpha >0 :
-            obj =self .story_object_img .copy ()
-            obj .set_alpha (self .story_object_alpha )
+            obj =self .story_object_img 
+            obj .set_alpha (int (self .story_object_alpha ))
             self .screen .blit (obj ,obj .get_rect (center =(CANVAS_WIDTH //2 ,CANVAS_HEIGHT //2 )))
+            obj .set_alpha (None )
 
         if self .story_fade_alpha >0 :
             fade_surf =self ._overlay
-            fade_surf .set_alpha (self .story_fade_alpha )
+            fade_surf .set_alpha (int (self .story_fade_alpha ))
             fade_surf .fill (self .story_fade_color )
             self .screen .blit (fade_surf ,(0 ,0 ))
 
@@ -6986,6 +7008,7 @@ class Game :
                 self .draw ()
                 self .clock .tick (FPS )
             else :
+                self ._last_update_ms =pygame .time .get_ticks ()
                 pygame .time .delay (5 )
 
         pygame .quit ()
