@@ -17,5 +17,7 @@ Riduzione del timeout in Storia (v1.5.6): il timeout si abbassa di 1 secondo ogn
 
 ## 🛠️ DevOps
 
+Build (v1.5.6): la versione dell'applicazione viene ora letta da un'unica fonte (math-wizard.py) da entrambi gli spec PyInstaller. Il bundle macOS la usa nell'Info.plist come prima; l'eseguibile Windows la incorpora come risorsa VERSIONINFO (visibile in Proprietà → Dettagli), che prima era del tutto assente.
+
 
 ## 🎨 Grafica

@@ -20,6 +20,28 @@
 
 import os
 import platform
+import re
+
+
+def _read_app_version():
+    """Versione unica, letta da math-wizard.py (self .version = "...")."""
+    search_dirs = [os.getcwd()]
+    spec_dir = globals().get('SPECPATH')
+    if spec_dir:
+        search_dirs.append(spec_dir)
+    for base in search_dirs:
+        candidate = os.path.join(base, 'math-wizard.py')
+        if not os.path.exists(candidate):
+            continue
+        with open(candidate, encoding='utf-8') as fp:
+            source = fp.read()
+        match = re.search(r'self\s*\.\s*version\s*=\s*["\']([^"\']+)["\']', source)
+        if match:
+            return match.group(1)
+    raise RuntimeError("Versione non trovata in math-wizard.py")
+
+
+APP_VERSION = _read_app_version()
 
 target_arch = os.environ.get('TARGET_ARCH') or platform.machine()
 
@@ -71,8 +93,8 @@ app = BUNDLE(
     icon='MathWizard.icns',
     bundle_identifier='com.thefactor82.mathwizard',
     info_plist={
-        'CFBundleShortVersionString': '1.5.6',
-        'CFBundleVersion': '1.5.6',
+        'CFBundleShortVersionString': APP_VERSION,
+        'CFBundleVersion': APP_VERSION,
         'NSHighResolutionCapable': True,
     },
 )
