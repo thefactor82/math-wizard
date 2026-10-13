@@ -1005,6 +1005,7 @@ class Game :
         self .splash_start =pygame .time .get_ticks ()
         self .splash_skip =False 
         self .player_exit_retry =False 
+        self .player_exit_reset_timeout =False 
         self .return_to_game =False 
         self .character_entry =False 
         self .character_entry_start =0 
@@ -1473,7 +1474,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if normalize_story_entry (e ) .get ("type")=="level")
 
-        self .version ="1.5.5"
+        self .version ="1.5.6"
 
         self .profiles =[]
         self .current_profile =""
@@ -2049,6 +2050,7 @@ class Game :
         self .story_flying_monsters =[]
         self .return_to_game =False 
         self .player_exit_retry =False 
+        self .player_exit_reset_timeout =False 
         self .story_fade_alpha =255 
         self .story_fade_color =(0 ,0 ,0 )
         self .game_bg =self .bg 
@@ -3361,9 +3363,17 @@ class Game :
                 if hasattr (self ,'gameover_buttons'):
                     if self .gameover_buttons .get ("restart")and self .gameover_buttons ["restart"].collidepoint (mx ,my ):
                         self .player_exit_retry =True 
+                        self .player_exit_reset_timeout =False 
                         self .player_exit_start =pygame .time .get_ticks ()
                         self .player_exit_x =112 
-                        self .state =GAME_STATE_PLAYER_EXIT
+                        self .state =GAME_STATE_PLAYER_EXIT 
+                        return 
+                    if self .gameover_buttons .get ("restart_orig")and self .gameover_buttons ["restart_orig"].collidepoint (mx ,my ):
+                        self .player_exit_retry =True 
+                        self .player_exit_reset_timeout =True 
+                        self .player_exit_start =pygame .time .get_ticks ()
+                        self .player_exit_x =112 
+                        self .state =GAME_STATE_PLAYER_EXIT 
                         return 
                     if self .gameover_buttons .get ("menu")and self .gameover_buttons ["menu"].collidepoint (mx ,my ):
                         self ._go_to_menu ()
@@ -4275,7 +4285,9 @@ class Game :
                     self .game_over =False 
                     self .is_correct =0 
                     self .stats ={}
-                    self .timeout_limit =self .auto_timeout if self .mode =="auto"else self .config ["timeout"]
+                    if self .player_exit_reset_timeout or self .mode !="auto":
+                        self .timeout_limit =self .auto_timeout if self .mode =="auto"else self .config ["timeout"]
+                    self .player_exit_reset_timeout =False 
                     self .boss_phase =None 
                     self .boss_hit =False 
                     self .boss_progress =0.0 
@@ -6379,8 +6391,6 @@ class Game :
             return False 
         if self .timeout_limit <=MIN_STORY_TIMEOUT :
             return False 
-        if self .level +1 <=self .story_progress .get (self .config_story_operation ,0 ):
-            return False 
         richieste =5 +self .level 
         recent_times =self .monster_times [-richieste :]
         if not recent_times :
@@ -6404,8 +6414,8 @@ class Game :
             self .story_progress [op ]=next_lv 
             self .set_initial_level (self .initial_level )
             self .save_profile_config ()
-            if drop_timeout :
-                self .timeout_limit =max (MIN_STORY_TIMEOUT ,self .timeout_limit -1 )
+        if drop_timeout :
+            self .timeout_limit =max (MIN_STORY_TIMEOUT ,self .timeout_limit -1 )
         self .return_to_game =True 
         self .player_exit_start =pygame .time .get_ticks ()
         self .player_exit_x =112 
@@ -6456,6 +6466,7 @@ class Game :
         self .story_idx =0 
         self .return_to_game =False 
         self .player_exit_retry =False 
+        self .player_exit_reset_timeout =False 
         self .story_fade_alpha =255 
         self .story_fade_color =(0 ,0 ,0 ) 
         self .game_bg =self .bg 
@@ -6490,6 +6501,7 @@ class Game :
     def _player_exit_to_menu (self ):
         self .player_out_dir ="dx"
         self .player_exit_retry =False
+        self .player_exit_reset_timeout =False
         self .player_exit_to_menu =True
         self .player_exit_start =pygame .time .get_ticks ()
         if hasattr (self ,'player_stand_x'):
@@ -6889,19 +6901,27 @@ class Game :
         elif completato :
             btns =[("MENU PRINCIPALE","menu")]
         else :
-            btns =[("RIPROVA","restart"),("MENU PRINCIPALE","menu")]
-        btn_w =350 
-        total_w =len (btns )*btn_w +(len (btns )-1 )*45 
+            btns =[("RIPROVA","restart"),("RIPROVA TIMEOUT ORIG","restart_orig"),("MENU PRINCIPALE","menu")]
+        gap =45 
+        pad =30 
+        font_btn =self .font_small 
+        max_label_w =max (font_btn .size (label )[0 ]for label ,_ in btns )
+        btn_w =max (350 ,max_label_w +2 *pad )
+        if len (btns )*btn_w +(len (btns )-1 )*gap >CANVAS_WIDTH -120 :
+            font_btn =self .font_tiny 
+            max_label_w =max (font_btn .size (label )[0 ]for label ,_ in btns )
+            btn_w =max (350 ,max_label_w +2 *pad )
+        total_w =len (btns )*btn_w +(len (btns )-1 )*gap 
         start_x =CANVAS_WIDTH //2 -total_w //2 
         for i ,(label ,action )in enumerate (btns ):
-            bx =start_x +i *(btn_w +45 )
+            bx =start_x +i *(btn_w +gap )
             btn_rect =pygame .Rect (bx ,y_btn ,btn_w ,54 )
             hovered =btn_rect .collidepoint (mx ,my )
             bg_col =(80 ,90 ,100 )if hovered else (60 ,60 ,70 )
             pygame .draw .rect (self .screen ,bg_col ,btn_rect ,border_radius =9 )
             if hovered :
                 pygame .draw .rect (self .screen ,GOLD ,btn_rect ,2 ,border_radius =9 )
-            self .draw_text_shadow (self .font_small ,label ,WHITE ,center =btn_rect .center )
+            self .draw_text_shadow (font_btn ,label ,WHITE ,center =btn_rect .center )
             self .gameover_buttons [action ]=btn_rect 
 
     def draw_gameover_fixed (self ):

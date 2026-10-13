@@ -44,9 +44,9 @@ def test_would_drop_false_on_last_level():
     assert game._story_timeout_would_drop() is False
 
 
-def test_would_drop_false_when_replaying_old_level():
+def test_would_drop_true_when_replaying_old_level():
     game = make_game(level=1, timeout_limit=6, recent_times=[0.5] * 16, progress=5)
-    assert game._story_timeout_would_drop() is False
+    assert game._story_timeout_would_drop() is True
 
 
 def test_would_drop_false_when_answers_slow():
@@ -65,3 +65,10 @@ def test_advance_keeps_five_when_already_at_floor():
     game = make_game(level=1, timeout_limit=5, recent_times=[0.5] * 16, progress=1)
     game._advance_level_complete()
     assert game.timeout_limit == 5
+
+
+def test_advance_lowers_timeout_when_replaying_old_level():
+    game = make_game(level=1, timeout_limit=6, recent_times=[0.5] * 16, progress=5)
+    game._advance_level_complete()
+    assert game.timeout_limit == 5
+    assert game.story_progress["moltiplicazione"] == 5
