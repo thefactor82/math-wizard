@@ -1475,7 +1475,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if normalize_story_entry (e ) .get ("type")=="level")
 
-        self .version ="1.5.7"
+        self .version ="1.5.8"
 
         self .profiles =[]
         self .current_profile =""
@@ -4708,6 +4708,11 @@ class Game :
             self ._text_cache [key ]=surf 
         return surf 
 
+    def _blit_faded (self ,surf ,pos ,alpha ):
+        faded =surf .copy ()
+        faded .set_alpha (max (0 ,min (255 ,int (alpha ))))
+        self .screen .blit (faded ,pos )
+
     def _get_glow (self ,radius ,base_col ):
         key =(radius ,base_col )
         layers =self ._glow_cache .get (key )
@@ -6288,10 +6293,9 @@ class Game :
                 boss_draw_x =self .boss_x +shake [0 ]
                 boss_draw_y =wy_monster -(bh -322 )+28 
                 if boss_alpha is not None :
-                    boss_img .set_alpha (boss_alpha )
-                self .screen .blit (boss_img ,(boss_draw_x ,boss_draw_y ))
-                if boss_alpha is not None :
-                    boss_img .set_alpha (None )
+                    self ._blit_faded (boss_img ,(boss_draw_x ,boss_draw_y ),boss_alpha )
+                else :
+                    self .screen .blit (boss_img ,(boss_draw_x ,boss_draw_y ))
         elif self .scene_phase is None and self .monster_hit :
             elapsed =pygame .time .get_ticks ()-self .monster_fade_start 
             if elapsed <self .monster_hit_delay :
@@ -6300,9 +6304,7 @@ class Game :
                 fade_elapsed =elapsed -self .monster_hit_delay 
                 alpha =max (0 ,255 -int (fade_elapsed /500 *255 ))
                 if alpha >0 :
-                    self .monster_img .set_alpha (alpha )
-                    self .screen .blit (self .monster_img ,(self .monster_x +shake [0 ],wy_monster ))
-                    self .monster_img .set_alpha (None )
+                    self ._blit_faded (self .monster_img ,(self .monster_x +shake [0 ],wy_monster ),alpha )
         elif self .scene_phase is None :
             n_frames =len (self .monster_frames )
             self .monster_anim_frame =(pygame .time .get_ticks ()//self .monster_anim_speed )%n_frames 
@@ -6504,9 +6506,7 @@ class Game :
                 rise =int (180 *progress )
                 hx =self .monster_x +97 
                 hy =wy_monster -rise 
-                self .heart_red .set_alpha (alpha )
-                self .screen .blit (self .heart_red ,(hx ,hy ))
-                self .heart_red .set_alpha (None )
+                self ._blit_faded (self .heart_red ,(hx ,hy ),alpha )
             else :
                 self .heart_reward_active =False 
 
@@ -6916,10 +6916,8 @@ class Game :
             self .draw_text_shadow (self .font_small ,"Premi INVIO per continuare",WHITE ,center =(CANVAS_WIDTH //2 ,CANVAS_HEIGHT -90 ),offset =1 )
 
         if self .story_object_img is not None and self .story_object_alpha >0 :
-            obj =self .story_object_img 
-            obj .set_alpha (int (self .story_object_alpha ))
-            self .screen .blit (obj ,obj .get_rect (center =(CANVAS_WIDTH //2 ,CANVAS_HEIGHT //2 )))
-            obj .set_alpha (None )
+            obj_rect =self .story_object_img .get_rect (center =(CANVAS_WIDTH //2 ,CANVAS_HEIGHT //2 ))
+            self ._blit_faded (self .story_object_img ,obj_rect .topleft ,self .story_object_alpha )
 
         if self .story_fade_alpha >0 :
             fade_surf =self ._overlay
