@@ -81,6 +81,7 @@ OPTION_TOOLTIPS ={
 "missing_operand":"Invece di chiedere il risultato dell'operazione, mostra il risultato ma chiede uno degli operandi.",
 "three_operands":"Tre operandi invece di due, con la precedenza normale: prima moltiplicazione e divisione, poi addizione e sottrazione.",
 "mixed_ops":"Permette di richiedere operazioni con altri segni mischiate a quello scelto in precedenza.",
+"inequalities":"Al posto del risultato mostra un confronto con < o >, a cui rispondere con Vero o Falso.",
 "sfida_domande":"Determina quante domande proporre per la sfida",
 }
 LEADERBOARD_VISIBLE_ROWS =10
@@ -1474,7 +1475,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if normalize_story_entry (e ) .get ("type")=="level")
 
-        self .version ="1.5.6"
+        self .version ="1.5.7"
 
         self .profiles =[]
         self .current_profile =""
@@ -1536,6 +1537,7 @@ class Game :
         self .config_plus_missing_operand =False
         self .config_plus_three_operands =False
         self .config_plus_mixed_operations =False
+        self .config_plus_inequalities =False
         self .config_plus_mixed_ops ={"moltiplicazione":False ,"addizione":False ,"sottrazione":False ,"divisione":False }
         self .music_volume =20 
         self .sfx_volume =50 
@@ -1601,6 +1603,7 @@ class Game :
         "plus_missing_operand":bool (self .config_plus_missing_operand ),
         "plus_three_operands":bool (self .config_plus_three_operands ),
         "plus_mixed_operations":bool (self .config_plus_mixed_operations ),
+        "plus_inequalities":bool (self .config_plus_inequalities ),
         "plus_mixed_ops":{normalize_operation_name (k ):bool (v )for k ,v in self .config_plus_mixed_ops .items ()},
         "fullscreen":self .fullscreen ,
         "window_mode":self .window_mode ,
@@ -1749,6 +1752,9 @@ class Game :
             self .config_plus_missing_operand =bool (data .get ("plus_missing_operand",data .get ("plus_operando_mancante",False )))
             self .config_plus_three_operands =bool (data .get ("plus_three_operands",data .get ("plus_tre_operandi",False )))
             self .config_plus_mixed_operations =bool (data .get ("plus_mixed_operations",False ))
+            self .config_plus_inequalities =bool (data .get ("plus_inequalities",False ))
+            if self .config_plus_inequalities :
+                self .config_plus_missing_operand =False
             mm =data .get ("plus_mixed_ops")
             if isinstance (mm ,dict ):
                 for k ,v in mm .items ():
@@ -1839,6 +1845,11 @@ class Game :
         self .heart_reward_start =0 
 
         self .missing_operand =None 
+        self .inequality_symbol =None 
+        self .inequality_value =None 
+        self .expected_choice =None 
+        self .choice_cursor =None 
+        self .choice_rects =[ ]
         self .boss_active =False 
         self .boss_phase =None 
         self .boss_x =0.0 
@@ -1958,6 +1969,62 @@ class Game :
                 self .expected_result =self .a if self .missing_operand =="a"else self .b 
         else :
             self .missing_operand =None 
+
+    def _inequality_active (self ):
+        return bool (self .config_plus_inequalities )and not self .tutorial_active and self .mode !="challenge"
+
+    def _choice_mode_active (self ):
+        return self ._inequality_active ()and self .expected_choice is not None
+
+    def _choice_options (self ):
+        return [("VERO",True ),("FALSO",False )]
+
+    def _inequality_pool_a (self ):
+        if self .mode =="auto":
+            return list (self .levels [self .effective_level ()]["pool_a"])
+        return list (getattr (self ,"pool_a",[0 ]))
+
+    def _inequality_result_range (self ):
+        if self .mode =="auto":
+            lv =self .levels [self .effective_level ()]
+            return lv .get ("min_value"),lv .get ("max_value")
+        return self .config .get ("risultato_minimo",0 ),self .config .get ("risultato_massimo",199 )
+
+    def _apply_inequality (self ):
+        self .inequality_symbol =None 
+        self .inequality_value =None 
+        self .expected_choice =None 
+        if not self ._inequality_active ():
+            return 
+        correct =self .expected_result 
+        if isinstance (correct ,float ):
+            if not correct .is_integer ():
+                return 
+            correct =int (correct )
+        correct =int (correct )
+        lo ,hi =self ._inequality_result_range ()
+        if lo is None :
+            lo =0 
+        if hi is None :
+            hi =199 
+        pool =self ._inequality_pool_a ()or [0 ]
+        candidates =[ ]
+        seen =set ()
+        for x in pool :
+            for sign in (1 ,-1 ):
+                v =correct +sign *x 
+                if v <0 or v <lo or v >hi :
+                    continue 
+                if v not in seen :
+                    seen .add (v )
+                    candidates .append (v )
+        if not candidates :
+            candidates =[correct ]
+        value =random .choice (candidates )
+        symbol =random .choice (["<",">"])
+        self .inequality_symbol =symbol 
+        self .inequality_value =value 
+        self .expected_choice =(correct <value )if symbol =="<"else (correct >value )
 
     def challenge_available (self ):
         return bool (self .plus_unlocked )
@@ -2765,9 +2832,11 @@ class Game :
                         self .a ,self .b =self .b ,self .a 
             self .expected_result =calculate_result3 (self .a ,self .b ,self .c ,self .operation ,self .integer_result )if three else calculate_result (self .a ,self .b ,self .operation ,self .integer_result )
             self ._apply_missing_operand ()
-            self .boss_questions_asked +=1
+            self ._apply_inequality ()
+            self .boss_questions_asked +=1 
             self .question_active =True 
             self .input_utente =""
+            self .choice_cursor =None 
             self .wait_for_enter =False 
             self .monster_hit =False 
             self .boss_hit =False 
@@ -2923,6 +2992,7 @@ class Game :
         else :
             self .expected_result =calculate_result3 (self .a ,self .b ,self .c ,self .operation ,self .integer_result )if three else calculate_result (self .a ,self .b ,self .operation ,self .integer_result )
         self ._apply_missing_operand ()
+        self ._apply_inequality ()
         if self .mode in ("auto","challenge"):
             wanted =self .story_monsters 
         else :
@@ -2944,6 +3014,7 @@ class Game :
             self .monster_hit_img =pygame .transform .flip (self .monster_hit_img ,True ,False )
         self .monster_img =self .monster_frames [0 ]
         self .input_utente =""
+        self .choice_cursor =None 
         self .monster_progress =0.0 
         if self .monster_in_dir =="dx":
             self .monster_start_x =CANVAS_WIDTH +15 
@@ -3216,23 +3287,40 @@ class Game :
                 else :
                     self .set_state (GAME_STATE_OPTIONS )
             elif self .state ==GAME_STATE_CONFIG_PLUS:
-                plus_cursor_max =4 if self .mode !="auto"else 3
+                plus_cursor_max =5 if self .mode !="auto"else 4
+                disabled_idx =0 if self .config_plus_missing_operand else (1 if self .config_plus_inequalities else None )
+                step =0 
                 if event .key in (pygame .K_UP ,pygame .K_w ):
-                    self .config_plus_cursor =(self .config_plus_cursor -1 )%plus_cursor_max
+                    step =-1 
                 elif event .key in (pygame .K_DOWN ,pygame .K_s ):
-                    self .config_plus_cursor =(self .config_plus_cursor +1 )%plus_cursor_max
+                    step =1 
+                if step !=0 :
+                    self .config_plus_cursor =(self .config_plus_cursor +step )%plus_cursor_max
+                    if self .config_plus_cursor ==disabled_idx :
+                        self .config_plus_cursor =(self .config_plus_cursor +step )%plus_cursor_max
                 elif event .key in (pygame .K_RETURN ,pygame .K_KP_ENTER ,pygame .K_SPACE ):
                     if self .config_plus_cursor ==0 :
                         self .config_plus_missing_operand =not self .config_plus_missing_operand
+                        if self .config_plus_missing_operand :
+                            self .config_plus_inequalities =False
                         self .save_profile_config ()
                         if event .key in (pygame .K_RETURN ,pygame .K_KP_ENTER ):
                             self .start_game ()
                     elif self .config_plus_cursor ==1 :
+                        if self .config_plus_missing_operand :
+                            return 
+                        self .config_plus_inequalities =not self .config_plus_inequalities
+                        if self .config_plus_inequalities :
+                            self .config_plus_missing_operand =False
+                        self .save_profile_config ()
+                        if event .key in (pygame .K_RETURN ,pygame .K_KP_ENTER ):
+                            self .start_game ()
+                    elif self .config_plus_cursor ==2 :
                         self .config_plus_three_operands =not self .config_plus_three_operands
                         self .save_profile_config ()
                         if event .key in (pygame .K_RETURN ,pygame .K_KP_ENTER ):
                             self .start_game ()
-                    elif self .mode !="auto"and self .config_plus_cursor ==2 :
+                    elif self .mode !="auto"and self .config_plus_cursor ==3 :
                         self .config_plus_mixed_operations =not self .config_plus_mixed_operations
                         self .save_profile_config ()
                         if event .key in (pygame .K_RETURN ,pygame .K_KP_ENTER ):
@@ -3289,7 +3377,14 @@ class Game :
                     else :
                         self .new_question ()
                 elif self .question_active :
-                    if event .key in (pygame .K_RETURN ,pygame .K_KP_ENTER )and self .input_utente :
+                    if self ._choice_mode_active ():
+                        if event .key ==pygame .K_v :
+                            self .choice_cursor =0 
+                        elif event .key ==pygame .K_f :
+                            self .choice_cursor =1 
+                        elif event .key in (pygame .K_RETURN ,pygame .K_KP_ENTER )and self .choice_cursor is not None :
+                            self .check_answer ()
+                    elif event .key in (pygame .K_RETURN ,pygame .K_KP_ENTER )and self .input_utente :
                         self .check_answer ()
                     elif event .key ==pygame .K_BACKSPACE :
                         self .input_utente =self .input_utente [:-1 ]
@@ -3342,6 +3437,13 @@ class Game :
                 return 
             if self .state ==GAME_STATE_GAME and self .scene_phase =="dialogue":
                 self .advance_scene_dialogue ()
+                return 
+            if self .state ==GAME_STATE_GAME and self .question_active and self ._choice_mode_active ():
+                for i ,crect in enumerate (self .choice_rects ):
+                    if crect .collidepoint (mx ,my ):
+                        self .choice_cursor =i 
+                        self .check_answer ()
+                        return 
                 return 
             if self .state ==GAME_STATE_LEVEL_COMPLETE:
                 self ._advance_level_complete ()
@@ -3634,22 +3736,33 @@ class Game :
                 if getattr (self ,'plus_toggle_rect',None )and self .plus_toggle_rect .collidepoint (mx ,my ):
                     self .config_plus_cursor =0
                     self .config_plus_missing_operand =not self .config_plus_missing_operand
+                    if self .config_plus_missing_operand :
+                        self .config_plus_inequalities =False
+                    self .save_profile_config ()
+                    return
+                if getattr (self ,'plus_toggle_rect_ineq',None )and self .plus_toggle_rect_ineq .collidepoint (mx ,my ):
+                    if self .config_plus_missing_operand :
+                        return
+                    self .config_plus_cursor =1
+                    self .config_plus_inequalities =not self .config_plus_inequalities
+                    if self .config_plus_inequalities :
+                        self .config_plus_missing_operand =False
                     self .save_profile_config ()
                     return
                 if getattr (self ,'plus_toggle_rect3',None )and self .plus_toggle_rect3 .collidepoint (mx ,my ):
-                    self .config_plus_cursor =1
+                    self .config_plus_cursor =2
                     self .config_plus_three_operands =not self .config_plus_three_operands
                     self .save_profile_config ()
                     return
                 if getattr (self ,'plus_toggle_rect_mixed',None )and self .plus_toggle_rect_mixed .collidepoint (mx ,my ):
-                    self .config_plus_cursor =2
+                    self .config_plus_cursor =3
                     self .config_plus_mixed_operations =not self .config_plus_mixed_operations
                     self .save_profile_config ()
                     return
                 if self .config_plus_mixed_operations and getattr (self ,'plus_mixed_op_rects',None ):
                     for op ,op_rect in self .plus_mixed_op_rects .items ():
                         if op !=self .config_operation and op_rect .collidepoint (mx ,my ):
-                            self .config_plus_cursor =2
+                            self .config_plus_cursor =3
                             self .config_plus_mixed_ops [op ]=not self .config_plus_mixed_ops .get (op )
                             self .save_profile_config ()
                             return
@@ -3663,7 +3776,7 @@ class Game :
                         cell_w ,cell_h =115 ,45
                         gap =10
                         grid_x =540
-                        y_pool_c =375 if self .mode !="auto"else 590
+                        y_pool_c =425 if self .mode !="auto"else 590
                         for sr in range (subrows ):
                             sy =y_pool_c +sr *(cell_h +gap )
                             for c in range (cols_u ):
@@ -4056,24 +4169,32 @@ class Game :
         level =0 if self .mode in ("fixed","challenge")else self .level 
         self .stats .setdefault (level ,{"corrette":0 ,"sbagliate":0 ,"tempi":[]})
 
-        text_value =self .input_utente .strip ()
-        risposta =None 
-        try :
-            if "."in text_value :
-                risposta =float (text_value )
-            else :
-                risposta =int (text_value )
-        except ValueError :
-            risposta =None 
-
         three_now =self ._plus_three_active ()
         mixed_three =three_now and self ._mixed_active ()
-        zero_ops =(self .op1 ,self .op2 )if mixed_three else (self .operation ,)
-        zero_mult =getattr (self ,'missing_operand',None )in ("a","b","c")and "moltiplicazione"in zero_ops and ((three_now and (self .a ==0 or self .b ==0 or self .c ==0 ))or (not three_now and (self .a ==0 or self .b ==0 )))
-        if zero_mult and text_value != "":
-            corretto =True 
+        if self ._choice_mode_active ():
+            options =self ._choice_options ()
+            risposta =None 
+            if self .choice_cursor is not None and 0 <=self .choice_cursor <len (options ):
+                risposta =bool (options [self .choice_cursor ][1 ])
+            text_value ="" if risposta is None else ("Vero"if risposta else "Falso")
+            corretto =risposta is not None and risposta ==bool (self .expected_choice )
         else :
-            corretto =risposta is not None and is_answer_correct (risposta ,self .expected_result )
+            text_value =self .input_utente .strip ()
+            risposta =None 
+            try :
+                if "."in text_value :
+                    risposta =float (text_value )
+                else :
+                    risposta =int (text_value )
+            except ValueError :
+                risposta =None 
+
+            zero_ops =(self .op1 ,self .op2 )if mixed_three else (self .operation ,)
+            zero_mult =getattr (self ,'missing_operand',None )in ("a","b","c")and "moltiplicazione"in zero_ops and ((three_now and (self .a ==0 or self .b ==0 or self .c ==0 ))or (not three_now and (self .a ==0 or self .b ==0 )))
+            if zero_mult and text_value != "":
+                corretto =True 
+            else :
+                corretto =risposta is not None and is_answer_correct (risposta ,self .expected_result )
 
         if corretto :
             self .is_correct =True 
@@ -5623,21 +5744,26 @@ class Game :
         if is_fixed :
             show_c =self .config_plus_three_operands
             show_btns =self .config_plus_mixed_operations
-            row2_y =520 if show_c else 375
+            row2_y =560 if show_c else 425
+            grid_y =425
             rows =[
-            (225 ,"Operando Mancante",bool (self .config_plus_missing_operand ),0 ,"missing_operand" ),
-            (300 ,"Tre Operandi",bool (self .config_plus_three_operands ),1 ,"three_operands" ),
-            (row2_y ,"Operazioni Miste",bool (self .config_plus_mixed_operations ),2 ,"mixed_ops" ),
+            (200 ,"Operando Mancante",bool (self .config_plus_missing_operand ),0 ,"missing_operand" ),
+            (275 ,"Disuguaglianze",bool (self .config_plus_inequalities ),1 ,"inequalities" ),
+            (350 ,"Tre Operandi",bool (self .config_plus_three_operands ),2 ,"three_operands" ),
+            (row2_y ,"Operazioni Miste",bool (self .config_plus_mixed_operations ),3 ,"mixed_ops" ),
             ]
         else :
             show_c =self .config_plus_three_operands
             show_btns =False
             row2_y =None
+            grid_y =590
             rows =[
             (340 ,"Operando Mancante",bool (self .config_plus_missing_operand ),0 ,"missing_operand" ),
-            (490 ,"Tre Operandi",bool (self .config_plus_three_operands ),1 ,"three_operands" ),
+            (420 ,"Disuguaglianze",bool (self .config_plus_inequalities ),1 ,"inequalities" ),
+            (500 ,"Tre Operandi",bool (self .config_plus_three_operands ),2 ,"three_operands" ),
             ]
         self .plus_toggle_rect =None
+        self .plus_toggle_rect_ineq =None
         self .plus_toggle_rect3 =None
         self .plus_toggle_rect_mixed =None
         for y_tog ,label ,on ,idx ,tip_key in rows :
@@ -5645,31 +5771,37 @@ class Game :
             if idx ==0 :
                 self .plus_toggle_rect =toggle_rect
             elif idx ==1 :
+                self .plus_toggle_rect_ineq =toggle_rect
+            elif idx ==2 :
                 self .plus_toggle_rect3 =toggle_rect
             else :
                 self .plus_toggle_rect_mixed =toggle_rect
-            hover_tog =toggle_rect .collidepoint (mx ,my )
-            focus =getattr (self ,'config_plus_cursor',0 )==idx
-            if on :
+            disabled =(idx ==0 and self .config_plus_inequalities )or (idx ==1 and self .config_plus_missing_operand )
+            hover_tog =toggle_rect .collidepoint (mx ,my )and not disabled
+            focus =getattr (self ,'config_plus_cursor',0 )==idx and not disabled
+            if disabled :
+                bg_tog =(170 ,170 ,180 )
+            elif on :
                 bg_tog =(100 ,150 ,220 )if hover_tog else SEL_BLUE
             else :
                 bg_tog =(80 ,80 ,90 )if hover_tog else (60 ,60 ,70 )
             pygame .draw .rect (self .screen ,bg_tog ,toggle_rect ,border_radius =9 )
             if hover_tog or focus :
                 pygame .draw .rect (self .screen ,GOLD ,toggle_rect ,2 ,border_radius =9 )
-            lbl_tog =self ._render_cached (self .font_tiny ,label ,WHITE )
+            txt_col =GRAY if disabled else WHITE
+            lbl_tog =self ._render_cached (self .font_tiny ,label ,txt_col )
             rect_l =lbl_tog .get_rect (midleft =(120 ,y_tog +27 ))
             self .screen .blit (lbl_tog ,rect_l )
             self ._tooltip_add (tip_key ,label ,rect_l )
             val_txt ="ON"if on else "OFF"
-            val_surf =self ._render_cached (self .font_tiny ,val_txt ,WHITE )
+            val_surf =self ._render_cached (self .font_tiny ,val_txt ,txt_col )
             rect_v =val_surf .get_rect (center =(679 ,y_tog +27 ))
             self .screen .blit (val_surf ,rect_v )
 
         if show_c :
             pool_c =self .config .get ("pool_c")
             if pool_c is not None :
-                y_pool_c =375 if is_fixed else 590
+                y_pool_c =grid_y 
                 label_c =self ._render_cached (self .font_tiny ,"Operando C",WHITE )
                 rect =label_c .get_rect (midleft =(120 ,y_pool_c +25 ))
                 self .screen .blit (label_c ,rect )
@@ -5729,7 +5861,7 @@ class Game :
         else :
             self .plus_mixed_op_rects ={}
 
-        if getattr (self ,'config_plus_cursor',0 )==(3 if is_fixed else 2 ):
+        if getattr (self ,'config_plus_cursor',0 )==(4 if is_fixed else 3 ):
             pygame .draw .rect (self .screen ,(255 ,255 ,100 ),(CANVAS_WIDTH //2 -168 ,714 ,336 ,75 ),3 ,border_radius =12 )
         y_conf =717
         conf_rect =pygame .Rect (CANVAS_WIDTH //2 -165 ,y_conf ,330 ,69 )
@@ -6021,6 +6153,36 @@ class Game :
         hint =self ._render_cached (self .font_tiny ,"Dopo la scelta tornerai al menu principale.",GRAY )
         self .screen .blit (hint ,hint .get_rect (center =(CANVAS_WIDTH //2 ,y_btn +112 )))
 
+    def _choice_button_rects (self ):
+        options =self ._choice_options ()
+        n =len (options )
+        btn_w ,btn_h ,gap =240 ,92 ,60 
+        total =n *btn_w +(n -1 )*gap 
+        x0 =(CANVAS_WIDTH -total )//2 
+        y0 =232 -btn_h //2 
+        return [pygame .Rect (x0 +i *(btn_w +gap ),y0 ,btn_w ,btn_h )for i in range (n )]
+
+    def _draw_choice_buttons (self ):
+        mx ,my =self ._mouse_pos ()
+        options =self ._choice_options ()
+        rects =self ._choice_button_rects ()
+        self .choice_rects =rects 
+        for i ,(label ,_value )in enumerate (options ):
+            r =rects [i ]
+            selected =self .choice_cursor ==i 
+            hovered =r .collidepoint (mx ,my )
+            if selected :
+                bg =(100 ,150 ,220 )
+            elif hovered :
+                bg =(80 ,80 ,90 )
+            else :
+                bg =(60 ,60 ,70 )
+            pygame .draw .rect (self .screen ,bg ,r ,border_radius =12 )
+            if selected or hovered :
+                pygame .draw .rect (self .screen ,GOLD ,r ,3 ,border_radius =12 )
+            txt =self ._render_cached (self .font_medium ,label ,WHITE )
+            self .screen .blit (txt ,txt .get_rect (center =r .center ))
+
     def draw_game (self ):
         shake =(0 ,0 )
         boss_shaking =self .boss_active and self .boss_phase =="shake"
@@ -6176,7 +6338,18 @@ class Game :
         three =self ._plus_three_active ()
         if self .scene_phase is None :
             missing =getattr (self ,'missing_operand',None )
-            if three :
+            if getattr (self ,'inequality_value',None )is not None :
+                sym =self .inequality_symbol 
+                ineq_val =self .inequality_value 
+                if three and self ._mixed_active ():
+                    s1 =get_operation_symbol (self .op1 )
+                    s2 =get_operation_symbol (self .op2 )
+                    domanda_text =f"{self .a }  {s1 }  {self .b }  {s2 }  {self .c }  {sym }  {ineq_val }"
+                elif three :
+                    domanda_text =f"{self .a }  {segno }  {self .b }  {segno }  {self .c }  {sym }  {ineq_val }"
+                else :
+                    domanda_text =f"{self .a }  {segno }  {self .b }  {sym }  {ineq_val }"
+            elif three :
                 if self ._mixed_active ():
                     s1 =get_operation_symbol (self .op1 )
                     s2 =get_operation_symbol (self .op2 )
@@ -6217,6 +6390,9 @@ class Game :
         self .screen .blit (domanda ,rect )
 
         if self .question_active :
+            if self ._choice_mode_active ():
+                self ._draw_choice_buttons ()
+        if self .question_active and not self ._choice_mode_active ():
             txt_only =self ._render_cached (self .font_input ,self .input_utente ,WHITE )
             tw =txt_only .get_width ()
             cursor_visible =pygame .time .get_ticks ()%1000 <500

@@ -1,23 +1,19 @@
 # Math Wizard — Release Notes
 
-Release note della v1.5.6 (rilascio attuale).
+Release note della v1.5.7 (rilascio attuale).
 
 ## 🚀 Novità
 
-Pulsante "RIPROVA TIMEOUT ORIG" (v1.5.6): nella schermata di fine partita della Storia ora puoi ricominciare il livello mantenendo il timeout attuale (RIPROVA) oppure riportandolo al valore iniziale impostato (RIPROVA TIMEOUT ORIG). I tre pulsanti (RIPROVA, RIPROVA TIMEOUT ORIG, MENU PRINCIPALE) si adattano in larghezza alla scritta più lunga e restano sempre interamente visibili.
+Opzione "Disuguaglianze" (v1.5.7): in Allenamento e Storia puoi trasformare le domande in confronti. Al posto di "=" compare un simbolo casuale "<" o ">" e al posto del risultato un valore vicino a quello corretto; si risponde con i pulsanti VERO/FALSO (col mouse) oppure con i tasti V/F e Invio. La nuova opzione è subito dopo "Operando Mancante", con cui è in mutua esclusione (attivandone una l'altra si disattiva e appare in grigio), e funziona anche insieme a "Tre Operandi" e "Operazioni Miste".
 
 
 ## 🐛 Fix
-
-Riduzione del timeout in Storia (v1.5.6): il timeout si abbassa di 1 secondo ogni volta che completi un livello con tempo medio delle risposte inferiore alla metà del timeout, anche rigiocando una storia già completata (prima la riduzione era consentita solo sui livelli nuovi, quindi con una storia finita il timeout non scendeva mai). Il timeout non scende comunque mai sotto i 5 secondi.
 
 
 ## ✨ Miglioramenti
 
 
 ## 🛠️ DevOps
-
-Build (v1.5.6): la versione dell'applicazione viene ora letta da un'unica fonte (math-wizard.py) da entrambi gli spec PyInstaller. Il bundle macOS la usa nell'Info.plist come prima; l'eseguibile Windows la incorpora come risorsa VERSIONINFO (visibile in Proprietà → Dettagli), che prima era del tutto assente.
 
 
 ## 🎨 Grafica
