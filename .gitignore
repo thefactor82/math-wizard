@@ -19,3 +19,7 @@ archived/
 profiles/
 ToDo.txt
 MathWizard.ico
+
+# Log del gioco
+*.log
+*.log.old

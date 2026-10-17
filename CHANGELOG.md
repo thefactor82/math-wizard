@@ -2,6 +2,10 @@
 
 Changelog cumulativo dalla v1.5.3 alla v1.5.8.
 
+## v1.5.9
+### 🐛 Fix
+- Classifica online: messaggio semplificato in caso di errore di connessione; aggiunto log generico mathwizard.log (rotazione 512 KB, ignorato da git).
+
 ## v1.5.8
 
 ### 🐛 Fix

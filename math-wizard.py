@@ -32,6 +32,23 @@ def app_base_dir ():
 def data_path (relative ):
     return os .path .join (app_base_dir (),relative )
 
+LOG_FILE =data_path ("mathwizard.log")
+LOG_MAX_BYTES =512 *1024
+
+def log_message (text ):
+    # log generico del gioco: mai far esplodere il gioco per un problema di log
+    try :
+        if os .path .exists (LOG_FILE )and os .path .getsize (LOG_FILE )>LOG_MAX_BYTES :
+            try :
+                os .replace (LOG_FILE ,LOG_FILE +".old" )
+            except OSError :
+                pass
+        stamp =datetime .now ().strftime ("%Y-%m-%d %H:%M:%S" )
+        with open (LOG_FILE ,"a",encoding ="utf-8" )as f :
+            f .write (f"[{stamp }] {text }\n" )
+    except Exception :
+        pass
+
 def resolve_profiles_dir ():
     candidates =[os .path .join (app_base_dir (),"profiles")]
     if getattr (sys ,"frozen",False )and sys .platform =="darwin":
@@ -433,8 +450,13 @@ def fetch_challenge_leaderboard (url ,anon_key =CHALLENGE_LEADERBOARD_ANON_KEY ,
                 return True ,data if isinstance (data ,list )else []
             return False ,f"Errore server ({resp .status })"
     except urllib .error .HTTPError as e :
+        log_message (f"leaderboard HTTP {e .code }: {e }" )
         return False ,f"Errore server ({e .code })"
     except Exception as e :
+        msg =str (e )
+        log_message (f"leaderboard errore: {type (e ).__name__}: {msg }" )
+        if "getaddrinfo" in msg .lower ()or "connection error" in msg .lower ()or "errno 11001" in msg .lower ():
+            return False ,"Connessione al server classifica non riuscita."
         return False ,f"Lettura non riuscita: {e }"
 
 
@@ -1475,7 +1497,7 @@ class Game :
         self .story_idx =0 
         self .num_story_levels =sum (1 for e in self .story_entries if normalize_story_entry (e ) .get ("type")=="level")
 
-        self .version ="1.5.8"
+        self .version ="1.5.9"
 
         self .profiles =[]
         self .current_profile =""
@@ -6030,7 +6052,11 @@ class Game :
             self .screen .blit (load_txt ,load_txt .get_rect (center =(CANVAS_WIDTH //2 ,CANVAS_HEIGHT //2 )))
             return
         if self .leaderboard_error :
-            msg =self ._render_cached (self .font_small ,self .leaderboard_error ,RED )
+            msg_text =self .leaderboard_error
+            low =msg_text .lower ()
+            if "getaddrinfo" in low or "connection error" in low or "errno 11001" in low or "name or service not known" in low or "temporarily unavailable" in low :
+                msg_text ="Connessione al server classifica non riuscita."
+            msg =self ._render_cached (self .font_small ,msg_text ,RED )
             self .screen .blit (msg ,msg .get_rect (center =(CANVAS_WIDTH //2 ,CANVAS_HEIGHT //2 )))
             return
 
