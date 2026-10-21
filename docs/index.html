@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#17152f">
+  <meta name="description" content="Math Wizard: un gioco fantasy per allenare la matematica, una missione alla volta. Gratis, senza pubblicità e open source.">
+  <meta property="og:title" content="Math Wizard — La matematica diventa un'avventura">
+  <meta property="og:description" content="Quattro operazioni, una piccola strega e tante sfide. Gratis, senza pubblicità e open source.">
+  <meta property="og:type" content="website">
+  <title>Math Wizard — La matematica diventa un'avventura</title>
+  <style>
+    :root{color-scheme:dark;--bg:#111126;--panel:#1c1b3b;--panel2:#25234b;--ink:#fff8e8;--muted:#c9c5e8;--gold:#ffd166;--pink:#ff78b7;--cyan:#7be7f2;--green:#8df0b2;--line:#47416f}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(ellipse at 80% 0%,#38265f 0,transparent 36%),radial-gradient(ellipse at 5% 30%,#183d59 0,transparent 34%),var(--bg);color:var(--ink);font-family:ui-rounded,"Trebuchet MS",system-ui,sans-serif;line-height:1.6}
+    a{color:inherit} .wrap{width:min(1120px,calc(100% - 36px));margin:auto}.topbar{display:flex;justify-content:space-between;align-items:center;gap:18px;padding:22px 0}.brand{font-weight:900;letter-spacing:.03em;text-decoration:none;font-size:1.1rem;display:flex;gap:10px;align-items:center}.brand-mark{display:grid;place-items:center;width:42px;height:42px;border-radius:14px;background:linear-gradient(145deg,#8c5cff,#ff78b7);box-shadow:0 6px 24px #8c5cff44;font-size:1.5rem}.controls{display:flex;gap:10px;align-items:center}.lang{border:1px solid var(--line);background:#1d1b3d;color:var(--ink);padding:8px 12px;border-radius:999px;font-weight:800;cursor:pointer}.lang[aria-pressed=true]{background:var(--gold);color:#241b40;border-color:var(--gold)}.github{color:var(--muted);font-size:.92rem;text-decoration:none}.github:hover{color:var(--gold)}
+    .hero{display:grid;grid-template-columns:1fr .95fr;gap:42px;align-items:center;padding:52px 0 68px}.eyebrow{display:inline-flex;align-items:center;gap:8px;color:var(--gold);font-size:.82rem;font-weight:900;text-transform:uppercase;letter-spacing:.12em}.hero h1{font-size:clamp(2.7rem,6vw,5.2rem);line-height:.98;letter-spacing:-.055em;margin:18px 0}.hero h1 span{color:var(--gold);text-shadow:0 5px 0 #9c5d42}.lead{font-size:1.18rem;color:var(--muted);max-width:580px}.actions{display:flex;flex-wrap:wrap;gap:12px;margin:26px 0 14px}.btn{display:inline-flex;justify-content:center;align-items:center;gap:9px;text-decoration:none;border:1px solid transparent;border-radius:14px;padding:13px 18px;font-weight:900;transition:transform .15s,filter .15s}.btn:hover{transform:translateY(-2px);filter:brightness(1.08)}.primary{background:linear-gradient(120deg,#ffd166,#ffb454);color:#2a1b3d;box-shadow:0 8px 28px #ffb4542b}.secondary{background:#27244b;border-color:#5b5487}.smallnote{font-size:.83rem;color:#aaa5d0}
+    .art{position:relative;padding:14px;border:1px solid #655b90;border-radius:26px;background:linear-gradient(145deg,#33285eaa,#17152fdd);box-shadow:0 28px 70px #05051180;transform:rotate(1deg)}.art:before{content:"✦";position:absolute;top:-26px;right:22px;font-size:3rem;color:var(--gold);text-shadow:0 0 22px #ffd16688}.art img{display:block;width:100%;height:auto;border-radius:16px;border:1px solid #ffffff26}.art-caption{display:flex;justify-content:space-between;gap:12px;padding:12px 4px 2px;color:var(--muted);font-size:.86rem}.pill{white-space:nowrap;color:#251d40;background:var(--cyan);font-weight:900;border-radius:999px;padding:3px 10px}
+    .ribbon{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:0 0 76px}.ribbon div{background:#1b1a38bd;border:1px solid var(--line);border-radius:16px;padding:15px;text-align:center}.ribbon strong{display:block;font-size:1.05rem}.ribbon span{font-size:.86rem;color:var(--muted)}
+    section{padding:46px 0}.section-head{text-align:center;max-width:720px;margin:0 auto 30px}.kicker{color:var(--pink);font-size:.82rem;text-transform:uppercase;letter-spacing:.14em;font-weight:900}.section-head h2{font-size:clamp(2rem,4vw,3.2rem);line-height:1.08;margin:8px 0 12px;letter-spacing:-.04em}.section-head p{color:var(--muted);margin:0}.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.card{background:linear-gradient(150deg,#242148,#191832);border:1px solid var(--line);border-radius:20px;padding:24px}.icon{width:52px;height:52px;display:grid;place-items:center;background:#3b3269;border-radius:16px;font-size:1.7rem;margin-bottom:15px}.card h3{margin:0 0 8px;font-size:1.18rem}.card p{margin:0;color:var(--muted);font-size:.96rem}
+    .modes{display:grid;grid-template-columns:1fr 1fr;gap:18px}.mode{border-radius:22px;padding:25px;border:1px solid var(--line);background:linear-gradient(140deg,#29254f,#1a1936)}.mode h3{font-size:1.35rem;margin:0 0 8px}.mode p{color:var(--muted);margin:0}.mode .emoji{font-size:2rem}
+    .download{margin:54px 0 70px;padding:clamp(26px,5vw,52px);border:1px solid #6c5d9d;border-radius:28px;background:radial-gradient(ellipse at 100% 0%,#61409b66,transparent 48%),linear-gradient(135deg,#29234f,#191832);text-align:center}.download h2{font-size:clamp(2rem,4vw,3.2rem);line-height:1.08;margin:8px 0 12px}.download p{color:var(--muted);max-width:650px;margin:0 auto 22px}.download .actions{justify-content:center}.asset-links{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-top:10px}.asset-links a{font-size:.9rem;color:var(--cyan)}.story{max-width:780px;margin:auto;background:#191832bb;border:1px solid var(--line);border-radius:22px;padding:26px}.story p{color:var(--muted)}.story strong{color:var(--ink)}footer{border-top:1px solid #373255;padding:28px 0 40px;color:var(--muted);font-size:.88rem}.footer-inner{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}.footer-links{display:flex;gap:18px;flex-wrap:wrap}.footer-links a{color:var(--muted)}.footer-links a:hover{color:var(--gold)}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+    @media(max-width:800px){.hero{grid-template-columns:1fr;gap:30px;padding:30px 0 48px}.art{max-width:650px;margin:auto}.ribbon{grid-template-columns:repeat(2,1fr);margin-bottom:42px}.cards{grid-template-columns:1fr}.modes{grid-template-columns:1fr}.topbar{padding:14px 0}.github{display:none}}
+    @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*:before,*:after{transition:none!important}}
+  </style>
+</head>
+<body>
+  <header class="wrap topbar">
+    <a class="brand" href="#top" aria-label="Math Wizard home"><span class="brand-mark" aria-hidden="true">🪄</span><span>Math Wizard</span></a>
+    <div class="controls">
+      <a class="github" href="https://github.com/thefactor82/math-wizard" data-i18n="navGithub">Codice open source ↗</a>
+      <div aria-label="Language" role="group">
+        <button class="lang" id="itBtn" type="button" aria-pressed="true">IT</button>
+        <button class="lang" id="enBtn" type="button" aria-pressed="false">EN</button>
+      </div>
+    </div>
+  </header>
+  <main id="top">
+    <div class="wrap">
+      <section class="hero" aria-labelledby="hero-title">
+        <div>
+          <div class="eyebrow"><span aria-hidden="true">✦</span><span data-i18n="eyebrow">Un'avventura fatta di numeri e magia</span></div>
+          <h1 id="hero-title"><span data-i18n="heroLine1">La matematica</span><br><span data-i18n="heroLine2">diventa magia.</span></h1>
+          <p class="lead" data-i18n="lead">Aiuta la piccola strega a lanciare incantesimi, risolvere operazioni e diventare sempre più veloce. Una missione alla volta.</p>
+          <div class="actions">
+            <a class="btn primary" id="downloadBtn" href="https://github.com/thefactor82/math-wizard/releases/latest"><span aria-hidden="true">⬇</span><span data-i18n="download">Scarica gratis per Windows</span></a>
+            <a class="btn secondary" href="#features"><span data-i18n="discover">Scopri il gioco</span><span aria-hidden="true">↓</span></a>
+          </div>
+          <div class="smallnote" data-i18n="note">Gratis · Senza pubblicità · Open source</div>
+        </div>
+        <div class="art">
+          <img src="../screenshot.png" alt="Schermata di Math Wizard: una piccola strega affronta un mostriciattolo risolvendo una moltiplicazione" fetchpriority="high">
+          <div class="art-caption"><span data-i18n="caption">Una domanda, un incantesimo, avanti così!</span><span class="pill" data-i18n="pill">PC game</span></div>
+        </div>
+      </section>
+
+      <div class="ribbon" aria-label="Caratteristiche principali">
+        <div><strong>➕ ➖</strong><span data-i18n="fact1">Addizioni e sottrazioni</span></div>
+        <div><strong>✖️ ➗</strong><span data-i18n="fact2">Moltiplicazioni e divisioni</span></div>
+        <div><strong>❤️ ✨</strong><span data-i18n="fact3">Vite e ricompense</span></div>
+        <div><strong>🧙 🐲</strong><span data-i18n="fact4">Storia e personaggi</span></div>
+      </div>
+    </div>
+
+    <section id="features">
+      <div class="wrap">
+        <div class="section-head">
+          <div class="kicker" data-i18n="featuresKicker">Il grimorio delle funzionalità</div>
+          <h2 data-i18n="featuresTitle">Imparare giocando, senza distrazioni.</h2>
+          <p data-i18n="featuresIntro">Math Wizard nasce per rendere l'allenamento matematico coinvolgente, rapido e adatto a sessioni brevi.</p>
+        </div>
+        <div class="cards">
+          <article class="card"><div class="icon" aria-hidden="true">📚</div><h3 data-i18n="card1Title">Quattro operazioni</h3><p data-i18n="card1Text">Allenati con addizione, sottrazione, moltiplicazione e divisione, con opzioni per personalizzare i calcoli.</p></article>
+          <article class="card"><div class="icon" aria-hidden="true">🪄</div><h3 data-i18n="card2Title">Difficoltà progressiva</h3><p data-i18n="card2Text">Nella modalità Storia, i livelli diventano gradualmente più impegnativi e la velocità di risposta conta.</p></article>
+          <article class="card"><div class="icon" aria-hidden="true">💖</div><h3 data-i18n="card3Title">Vite e ricompense</h3><p data-i18n="card3Text">Parti con tre vite e recuperane una dopo una serie di 25 risposte corrette consecutive.</p></article>
+          <article class="card"><div class="icon" aria-hidden="true">🧑‍🎓</div><h3 data-i18n="card4Title">Profili personali</h3><p data-i18n="card4Text">Ogni profilo conserva personaggio, progressi, impostazioni e sessioni precedenti in modo indipendente.</p></article>
+          <article class="card"><div class="icon" aria-hidden="true">📈</div><h3 data-i18n="card5Title">Statistiche di gioco</h3><p data-i18n="card5Text">Rivedi le prestazioni e i tempi di risposta per capire come stai migliorando.</p></article>
+          <article class="card"><div class="icon" aria-hidden="true">🚫📢</div><h3 data-i18n="card6Title">Niente pubblicità</h3><p data-i18n="card6Text">Un progetto indipendente, gratuito e open source, nato in famiglia per imparare con più serenità.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section id="modes">
+      <div class="wrap">
+        <div class="section-head">
+          <div class="kicker" data-i18n="modesKicker">Scegli la tua missione</div>
+          <h2 data-i18n="modesTitle">Due modi per allenare i tuoi poteri.</h2>
+        </div>
+        <div class="modes">
+          <article class="mode"><div class="emoji" aria-hidden="true">🗺️</div><h3 data-i18n="storyTitle">Modalità Storia</h3><p data-i18n="storyText">Avanza tra i livelli, affronta domande sempre più impegnative e preparati al boss finale. Puoi riprendere la storia dal punto raggiunto.</p></article>
+          <article class="mode"><div class="emoji" aria-hidden="true">🎯</div><h3 data-i18n="trainingTitle">Modalità Allenamento</h3><p data-i18n="trainingText">Scegli i parametri e concentrati sui calcoli che vuoi ripassare, senza dover affrontare una progressione di livelli.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="wrap">
+        <div class="section-head">
+          <div class="kicker" data-i18n="originKicker">Una piccola storia vera</div>
+          <h2 data-i18n="originTitle">Nato per trasformare le tabelline in un'avventura.</h2>
+        </div>
+        <div class="story">
+          <p data-i18n="originP1">Math Wizard è nato da un'idea semplice: aiutare le mie figlie ad allenarsi con le tabelline in un modo più divertente. Il progetto è cresciuto insieme a loro, tra personaggi, sfondi e idee per rendere il gioco più coinvolgente.</p>
+          <p data-i18n="originP2">Il risultato è un gioco per PC che mette la matematica al centro: poche distrazioni, risposte rapide e una piccola avventura da portare avanti un livello alla volta.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="download">
+      <div class="wrap">
+        <div class="download">
+          <div class="kicker" data-i18n="downloadKicker">Pronto a lanciare il primo incantesimo?</div>
+          <h2 data-i18n="downloadTitle">La tua prossima missione comincia qui.</h2>
+          <p data-i18n="downloadText">Scarica l'ultima release stabile dalla pagina ufficiale. Troverai gli archivi Windows disponibili e le note della versione.</p>
+          <div class="actions">
+            <a class="btn primary" id="downloadBtnBottom" href="https://github.com/thefactor82/math-wizard/releases/latest"><span aria-hidden="true">⬇</span><span data-i18n="download">Scarica gratis per Windows</span></a>
+            <a class="btn secondary" href="https://github.com/thefactor82/math-wizard" data-i18n="source">Visita il progetto su GitHub ↗</a>
+          </div>
+          <div class="asset-links" id="assetLinks" aria-live="polite"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+  <footer>
+    <div class="wrap footer-inner">
+      <div><strong>Math Wizard</strong> <span data-i18n="footerTag">— un progetto indipendente, fatto con cura.</span><br><span>© <span id="year"></span> · <span data-i18n="footerOpen">Open source</span></span></div>
+      <nav class="footer-links" aria-label="Link">
+        <a href="https://github.com/thefactor82/math-wizard" data-i18n="footerRepo">Repository</a>
+        <a href="https://github.com/thefactor82/math-wizard/releases/latest" data-i18n="footerReleases">Tutte le release</a>
+        <a href="https://github.com/thefactor82/math-wizard/issues" data-i18n="footerIssues">Segnala un problema</a>
+      </nav>
+    </div>
+  </footer>
+<script>
+const copy = {
+ it: {
+  eyebrow:"Un'avventura fatta di numeri e magia", heroLine1:"La matematica",heroLine2:"diventa magia.",lead:"Aiuta la piccola strega a lanciare incantesimi, risolvere operazioni e diventare sempre più veloce. Una missione alla volta.",download:"Scarica gratis per Windows",discover:"Scopri il gioco",note:"Gratis · Senza pubblicità · Open source",caption:"Una domanda, un incantesimo, avanti così!",pill:"Gioco per PC",navGithub:"Codice open source ↗",fact1:"Addizioni e sottrazioni",fact2:"Moltiplicazioni e divisioni",fact3:"Vite e ricompense",fact4:"Storia e personaggi",featuresKicker:"Il grimorio delle funzionalità",featuresTitle:"Imparare giocando, senza distrazioni.",featuresIntro:"Math Wizard nasce per rendere l'allenamento matematico coinvolgente, rapido e adatto a sessioni brevi.",card1Title:"Quattro operazioni",card1Text:"Allenati con addizione, sottrazione, moltiplicazione e divisione, con opzioni per personalizzare i calcoli.",card2Title:"Difficoltà progressiva",card2Text:"Nella modalità Storia, i livelli diventano gradualmente più impegnativi e la velocità di risposta conta.",card3Title:"Vite e ricompense",card3Text:"Parti con tre vite e recuperane una dopo una serie di 25 risposte corrette consecutive.",card4Title:"Profili personali",card4Text:"Ogni profilo conserva personaggio, progressi, impostazioni e sessioni precedenti in modo indipendente.",card5Title:"Statistiche di gioco",card5Text:"Rivedi le prestazioni e i tempi di risposta per capire come stai migliorando.",card6Title:"Niente pubblicità",card6Text:"Un progetto indipendente, gratuito e open source, nato in famiglia per imparare con più serenità.",modesKicker:"Scegli la tua missione",modesTitle:"Due modi per allenare i tuoi poteri.",storyTitle:"Modalità Storia",storyText:"Avanza tra i livelli, affronta domande sempre più impegnative e preparati al boss finale. Puoi riprendere la storia dal punto raggiunto.",trainingTitle:"Modalità Allenamento",trainingText:"Scegli i parametri e concentrati sui calcoli che vuoi ripassare, senza dover affrontare una progressione di livelli.",originKicker:"Una piccola storia vera",originTitle:"Nato per trasformare le tabelline in un'avventura.",originP1:"Math Wizard è nato da un'idea semplice: aiutare le mie figlie ad allenarsi con le tabelline in un modo più divertente. Il progetto è cresciuto insieme a loro, tra personaggi, sfondi e idee per rendere il gioco più coinvolgente.",originP2:"Il risultato è un gioco per PC che mette la matematica al centro: poche distrazioni, risposte rapide e una piccola avventura da portare avanti un livello alla volta.",downloadKicker:"Pronto a lanciare il primo incantesimo?",downloadTitle:"La tua prossima missione comincia qui.",downloadText:"Scarica l'ultima release stabile dalla pagina ufficiale. Troverai gli archivi Windows disponibili e le note della versione.",source:"Visita il progetto su GitHub ↗",footerTag:"— un progetto indipendente, fatto con cura.",footerOpen:"Open source",footerRepo:"Repository",footerReleases:"Tutte le release",footerIssues:"Segnala un problema",x64:"Windows 64-bit",x86:"Windows 32-bit",release:"Altre opzioni e note della release ↗",releaseLabel:"Release più recente"
+ },
+ en: {
+  eyebrow:"An adventure of numbers and magic",heroLine1:"Math can",heroLine2:"feel like magic.",lead:"Help a little witch cast spells, solve math problems and get faster with every challenge. One quest at a time.",download:"Download free for Windows",discover:"Explore the game",note:"Free · Ad-free · Open source",caption:"One question, one spell, onward!",pill:"PC game",navGithub:"Open-source code ↗",fact1:"Addition & subtraction",fact2:"Multiplication & division",fact3:"Lives & rewards",fact4:"Story & characters",featuresKicker:"The spellbook of features",featuresTitle:"Learn through play, without distractions.",featuresIntro:"Math Wizard makes math practice engaging, focused and easy to fit into short sessions.",card1Title:"The four operations",card1Text:"Practice addition, subtraction, multiplication and division, with options to customise the calculations.",card2Title:"Progressive difficulty",card2Text:"In Story mode, levels gradually become more challenging, and response speed matters.",card3Title:"Lives and rewards",card3Text:"Start with three lives and earn one back after a streak of 25 consecutive correct answers.",card4Title:"Personal profiles",card4Text:"Each profile independently saves its character, progress, settings and previous sessions.",card5Title:"Game statistics",card5Text:"Review performance and response times to see how your skills are improving.",card6Title:"No ads",card6Text:"An independent, free and open-source project, created by a family to make learning a little more enjoyable.",modesKicker:"Choose your quest",modesTitle:"Two ways to train your powers.",storyTitle:"Story mode",storyText:"Move through the levels, tackle increasingly challenging questions and prepare for the final boss. You can resume the story from your latest progress.",trainingTitle:"Training mode",trainingText:"Choose the settings and focus on the calculations you want to practise, without a level-by-level progression.",originKicker:"A little true story",originTitle:"Created to turn times tables into an adventure.",originP1:"Math Wizard started with a simple idea: help my daughters practise their times tables in a more enjoyable way. The project grew alongside them, with characters, backgrounds and ideas to make the game more engaging.",originP2:"The result is a PC game that keeps maths at its heart: fewer distractions, quick answers and a little adventure to progress through one level at a time.",downloadKicker:"Ready to cast your first spell?",downloadTitle:"Your next quest starts here.",downloadText:"Get the latest stable release from the official page. You'll find the available Windows archives and release notes there.",source:"Visit the project on GitHub ↗",footerTag:"— an independent project, made with care.",footerOpen:"Open source",footerRepo:"Repository",footerReleases:"All releases",footerIssues:"Report an issue",x64:"Windows 64-bit",x86:"Windows 32-bit",release:"More downloads and release notes ↗",releaseLabel:"Latest release"
+ }
+};
+let lang="it";
+function setLanguage(next){
+ lang=next;document.documentElement.lang=next;
+ document.querySelectorAll("[data-i18n]").forEach(el=>{const k=el.dataset.i18n;if(copy[next][k])el.textContent=copy[next][k]});
+ document.getElementById("itBtn").setAttribute("aria-pressed",String(next==="it"));
+ document.getElementById("enBtn").setAttribute("aria-pressed",String(next==="en"));
+ document.title=next==="it"?"Math Wizard — La matematica diventa un'avventura":"Math Wizard — Make maths an adventure";
+ document.querySelector('meta[name="description"]').content=next==="it"?copy.it.lead:copy.en.lead;
+}
+document.getElementById("itBtn").addEventListener("click",()=>setLanguage("it"));
+document.getElementById("enBtn").addEventListener("click",()=>setLanguage("en"));
+document.getElementById("year").textContent=new Date().getFullYear();
+setLanguage("it");
+
+// Resolve stable Windows assets dynamically. If the GitHub API is unavailable,
+// the buttons still point to the canonical latest-release page.
+(async()=>{
+ const releasePage="https://github.com/thefactor82/math-wizard/releases/latest";
+ const primary=document.getElementById("downloadBtn"), bottom=document.getElementById("downloadBtnBottom");
+ try{
+  const r=await fetch("https://api.github.com/repos/thefactor82/math-wizard/releases/latest",{headers:{Accept:"application/vnd.github+json"}});
+  if(!r.ok)throw new Error("GitHub API unavailable");
+  const data=await r.json(); if(data.prerelease||data.draft)throw new Error("No stable release");
+  const assets=data.assets||[];
+  const x64=assets.find(a=>/MathWizard-windows\.zip$/i.test(a.name));
+  const x86=assets.find(a=>/MathWizard-windows-32bit\.zip$/i.test(a.name));
+  const links=document.getElementById("assetLinks");
+  if(x64){primary.href=x64.browser_download_url;bottom.href=x64.browser_download_url;}
+  const addLink=(asset,label)=>{if(!asset)return;const a=document.createElement("a");a.href=asset.browser_download_url;a.textContent=label;a.rel="noopener";links.appendChild(a);};
+  addLink(x64,copy[lang].x64+" · "+data.tag_name);
+  addLink(x86,copy[lang].x86);
+  const fallback=document.createElement("a");fallback.href=releasePage;fallback.textContent=copy[lang].release;fallback.rel="noopener";links.appendChild(fallback);
+  const langObserver=new MutationObserver(()=>{if(links.children.length){const anchors=links.querySelectorAll("a");if(anchors.length>=1)anchors[0].textContent=copy[lang].x64+" · "+data.tag_name;if(anchors.length>=2&&x86)anchors[1].textContent=copy[lang].x86;anchors[anchors.length-1].textContent=copy[lang].release;}});
+  langObserver.observe(document.documentElement,{attributes:true,attributeFilter:["lang"]});
+ }catch(e){primary.href=releasePage;bottom.href=releasePage;}
+})();
+</script>
+</body>
+</html>
